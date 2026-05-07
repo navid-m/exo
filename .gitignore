@@ -1,3 +1,6 @@
+spectrelib
+out.c
+spectre-dev
 SPECTRE_LANGUAGE_REFERENCE.md
 lib/
 std__*
