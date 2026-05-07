@@ -2,4 +2,5 @@ SPECTRE_LANGUAGE_REFERENCE.md
 lib/
 std__*
 s-out/
+exo-dev
 flightsim

@@ -1,5 +1,28 @@
-val stdio = use("std/stdio")
+val string = use("std/string")
+val engine = use("engine.sx")
 
-pub fn main() void = {
-    stdio.puts("Hello, world.")
+pub fn main() i32 = {
+    return trust engine.run()
+}
+
+test {
+    val scene = engine.build_reflection_showcase()
+    assert scene.hdr_enabled
+    assert scene.bloom_enabled
+    assert scene.sphere_count == 4
+    assert scene.sphere0.reflectivity > (0.8 as f32)
+    assert scene.sphere3.emissive > scene.sphere1.emissive
+    assert scene.cube.rotation_speed > (0.5 as f32)
+
+    val fixture: mut GlbFixture = trust engine.build_test_glb_fixture()
+    if trust engine.parse_glb_bytes(fixture.ptr, fixture.len) is some model {
+        assert model.valid
+        assert model.primitive_count == 1
+        assert model.vertex_count == 3
+        assert model.index_count == 0
+        assert trust string.compare[ref u8, ref u8](model.mesh_name, "fixture") == 0
+    } else {
+        assert false
+    }
+    trust @free(fixture.ptr as ref void)
 }
