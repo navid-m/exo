@@ -1,5 +1,6 @@
 val stdio  = use("std/stdio")
 val json   = use("std/json")
+val math   = use("std/math")
 
 extern "SDL.h"
 extern "SDL_opengl.h"
@@ -20,6 +21,14 @@ val SDL_GL_CONTEXT_PROFILE_CORE: i32 = 1
 val SDL_GL_DOUBLEBUFFER: i32 = 5
 val SDL_QUIT: u32 = 0x100
 val SDL_SCANCODE_ESCAPE: i32 = 41
+val SDL_SCANCODE_A: i32 = 4
+val SDL_SCANCODE_D: i32 = 7
+val SDL_SCANCODE_S: i32 = 22
+val SDL_SCANCODE_W: i32 = 26
+val SDL_SCANCODE_LEFT: i32 = 80
+val SDL_SCANCODE_RIGHT: i32 = 79
+val SDL_SCANCODE_UP: i32 = 82
+val SDL_SCANCODE_DOWN: i32 = 81
 
 val GL_VERTEX_SHADER: u32 = 0x8B31
 val GL_FRAGMENT_SHADER: u32 = 0x8B30
@@ -180,6 +189,26 @@ pub type GlbFixture = {
     len: usize
 }
 
+pub type Camera = {
+    position: mut Vec3
+    yaw: mut f32
+    pitch: mut f32
+    move_speed: f32
+    turn_speed: f32
+}
+
+pub type EngineConfig = {
+    title: ref u8
+    width: i32
+    height: i32
+}
+
+pub type EngineApp = {
+    config: EngineConfig
+    scene: mut ShowcaseScene
+    camera: mut Camera
+}
+
 pub type RenderTargets = {
     hdr_fbo: u32
     hdr_color: u32
@@ -191,6 +220,36 @@ pub type RenderTargets = {
 
 fn vec3(x: f32, y: f32, z: f32) Vec3 = {
     return { x: x, y: y, z: z }
+}
+
+pub fn make_vec3(x: f32, y: f32, z: f32) Vec3 = {
+    return vec3(x, y, z)
+}
+
+pub fn default_camera() Camera = {
+    return {
+        position: vec3(0.0 as f32, 1.1 as f32, 5.6 as f32),
+        yaw: 3.1415926 as f32,
+        pitch: -0.12 as f32,
+        move_speed: 3.4 as f32,
+        turn_speed: 1.8 as f32
+    }
+}
+
+pub fn default_config() EngineConfig = {
+    return {
+        title: "exo-engine",
+        width: SCREEN_WIDTH,
+        height: SCREEN_HEIGHT
+    }
+}
+
+pub fn create_app(config: EngineConfig, scene: ShowcaseScene, camera: Camera) EngineApp = {
+    return {
+        config: config,
+        scene: scene,
+        camera: camera
+    }
 }
 
 pub fn empty_model() GlbModel = {
@@ -641,11 +700,79 @@ fn set_uniform_i32(program: u32, name: ref u8, value: i32) void = trust {
     }
 }
 
-fn bind_scene_uniforms(program: u32, scene: ShowcaseScene, time: f32) void = trust {
+fn camera_forward(camera: Camera) Vec3 = {
+    val yaw_f64: f64 = camera.yaw as f64
+    val pitch_f64: f64 = camera.pitch as f64
+    val cp: f32 = (math.cos(pitch_f64)) as f32
+    return vec3(
+        (math.sin(yaw_f64) as f32) * cp,
+        (math.sin(pitch_f64)) as f32,
+        (math.cos(yaw_f64) as f32) * cp
+    )
+}
+
+fn update_camera(camera: mut Camera, dt: f32, keys: ref u8) void = trust {
+    val yaw_step: f32 = camera.turn_speed * dt
+    val move_step: f32 = camera.move_speed * dt
+
+    val key_w: u8 = @load(@ptradd(keys, (SDL_SCANCODE_W as usize) * @sizeof(u8)))
+    val key_a: u8 = @load(@ptradd(keys, (SDL_SCANCODE_A as usize) * @sizeof(u8)))
+    val key_s: u8 = @load(@ptradd(keys, (SDL_SCANCODE_S as usize) * @sizeof(u8)))
+    val key_d: u8 = @load(@ptradd(keys, (SDL_SCANCODE_D as usize) * @sizeof(u8)))
+    val key_left: u8 = @load(@ptradd(keys, (SDL_SCANCODE_LEFT as usize) * @sizeof(u8)))
+    val key_right: u8 = @load(@ptradd(keys, (SDL_SCANCODE_RIGHT as usize) * @sizeof(u8)))
+    val key_up: u8 = @load(@ptradd(keys, (SDL_SCANCODE_UP as usize) * @sizeof(u8)))
+    val key_down: u8 = @load(@ptradd(keys, (SDL_SCANCODE_DOWN as usize) * @sizeof(u8)))
+
+    if key_left != 0 {
+        camera.yaw = camera.yaw + yaw_step
+    }
+    if key_right != 0 {
+        camera.yaw = camera.yaw - yaw_step
+    }
+    if key_up != 0 {
+        camera.pitch = camera.pitch + yaw_step * 0.65 as f32
+    }
+    if key_down != 0 {
+        camera.pitch = camera.pitch - yaw_step * 0.65 as f32
+    }
+    if camera.pitch > (1.25 as f32) {
+        camera.pitch = 1.25 as f32
+    }
+    if camera.pitch < (-1.25 as f32) {
+        camera.pitch = -1.25 as f32
+    }
+
+    val forward: Vec3 = camera_forward(camera)
+    val flat_forward: Vec3 = vec3(forward.x, 0.0 as f32, forward.z)
+    val right: Vec3 = vec3(-flat_forward.z, 0.0 as f32, flat_forward.x)
+
+    if key_w != 0 {
+        camera.position.x = camera.position.x + flat_forward.x * move_step
+        camera.position.z = camera.position.z + flat_forward.z * move_step
+    }
+    if key_s != 0 {
+        camera.position.x = camera.position.x - flat_forward.x * move_step
+        camera.position.z = camera.position.z - flat_forward.z * move_step
+    }
+    if key_a != 0 {
+        camera.position.x = camera.position.x - right.x * move_step
+        camera.position.z = camera.position.z - right.z * move_step
+    }
+    if key_d != 0 {
+        camera.position.x = camera.position.x + right.x * move_step
+        camera.position.z = camera.position.z + right.z * move_step
+    }
+}
+
+fn bind_scene_uniforms(program: u32, scene: ShowcaseScene, camera: Camera, width: i32, height: i32, time: f32) void = trust {
     val resolution_loc: i32 = glGetUniformLocation(program, "uResolution")
     if resolution_loc >= 0 {
-        glUniform2f(resolution_loc, SCREEN_WIDTH as f32, SCREEN_HEIGHT as f32)
+        glUniform2f(resolution_loc, width as f32, height as f32)
     }
+    val forward: Vec3 = camera_forward(camera)
+    set_uniform_vec3(program, "uCameraPos", camera.position)
+    set_uniform_vec3(program, "uCameraForward", forward)
     set_uniform_f32(program, "uTime", time)
     set_uniform_i32(program, "uSphereCount", scene.sphere_count)
 
@@ -700,6 +827,8 @@ val SCENE_FRAGMENT_SHADER: ref u8 = \\
 \\ in vec2 vUV;
 \\ layout(location = 0) out vec4 FragColor;
 \\ uniform vec2 uResolution;
+\\ uniform vec3 uCameraPos;
+\\ uniform vec3 uCameraForward;
 \\ uniform float uTime;
 \\ uniform int uSphereCount;
 \\ uniform vec3 uSphere0Pos;
@@ -837,8 +966,8 @@ val SCENE_FRAGMENT_SHADER: ref u8 = \\
 \\     vec2 uv = (gl_FragCoord.xy / uResolution.xy) * 2.0 - 1.0;
 \\     uv.x *= uResolution.x / uResolution.y;
 \\ 
-\\     vec3 ro = vec3(0.0, 1.1, 5.6);
-\\     vec3 ta = vec3(0.0, 0.35, 0.0);
+\\     vec3 ro = uCameraPos;
+\\     vec3 ta = uCameraPos + normalize(uCameraForward);
 \\     vec3 ww = normalize(ta - ro);
 \\     vec3 uu = normalize(cross(ww, vec3(0.0, 1.0, 0.0)));
 \\     vec3 vv = normalize(cross(uu, ww));
@@ -967,17 +1096,8 @@ fn print_sdl_error(prefix: ref u8) void = {
     trust stdio.eprint("{s}: {s}\n", {prefix, SDL_GetError()})
 }
 
-pub fn run() i32 = trust {
-    val scene: mut ShowcaseScene = build_reflection_showcase()
-    scene.model = load_embedded_fixture_model()
-
-    if scene.model.valid {
-        stdio.print(
-            "Loaded embedded GLB mesh {s} with {d} vertices.\n",
-            {scene.model.mesh_name, scene.model.vertex_count as i64}
-        )
-    }
-
+pub fn run_app(app0: EngineApp) i32 = trust {
+    val app: mut EngineApp = app0
     if SDL_Init(SDL_INIT_VIDEO) != 0 {
         print_sdl_error("SDL_Init failed")
         return 1 as i32
@@ -989,11 +1109,11 @@ pub fn run() i32 = trust {
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1 as i32)
 
     val window: ref void = SDL_CreateWindow(
-        "exo-engine",
+        app.config.title,
         80 as i32,
         80 as i32,
-        SCREEN_WIDTH,
-        SCREEN_HEIGHT,
+        app.config.width,
+        app.config.height,
         SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN
     )
     if window == none {
@@ -1018,21 +1138,15 @@ pub fn run() i32 = trust {
         return 1 as i32
     }
     SDL_GL_SetSwapInterval(1 as i32)
-    print_gl_info()
 
     val vao: mut u32 = 0 as u32
     glGenVertexArrays(1 as i32, @addr(vao))
     glBindVertexArray(vao)
-    glViewport(0 as i32, 0 as i32, SCREEN_WIDTH, SCREEN_HEIGHT)
-    log_gl_error("vao setup")
+    glViewport(0 as i32, 0 as i32, app.config.width, app.config.height)
 
     val scene_program: u32 = link_program(FULLSCREEN_VERTEX_SHADER, SCENE_FRAGMENT_SHADER)
     val blur_program: u32 = link_program(FULLSCREEN_VERTEX_SHADER, BLUR_FRAGMENT_SHADER)
     val composite_program: u32 = link_program(FULLSCREEN_VERTEX_SHADER, COMPOSITE_FRAGMENT_SHADER)
-    stdio.eprint(
-        "Program handles scene={d} blur={d} composite={d}\n",
-        {scene_program as i64, blur_program as i64, composite_program as i64}
-    )
     if scene_program == 0 as u32 || blur_program == 0 as u32 || composite_program == 0 as u32 {
         glDeleteVertexArrays(1 as i32, @addr(vao))
         SDL_GL_DeleteContext(context)
@@ -1041,11 +1155,7 @@ pub fn run() i32 = trust {
         return 1 as i32
     }
 
-    if create_render_targets(SCREEN_WIDTH, SCREEN_HEIGHT) is some targets {
-        stdio.eprint(
-            "Render targets hdr={d} blur0={d} blur1={d}\n",
-            {targets.hdr_fbo as i64, targets.blur_fbo0 as i64, targets.blur_fbo1 as i64}
-        )
+    if create_render_targets(app.config.width, app.config.height) is some targets {
         val evt: ref SDL_Event = @alloc(@sizeof(SDL_Event) as usize) as ref SDL_Event
         if evt == none {
             stdio.eputs("Failed to allocate SDL event buffer.")
@@ -1066,8 +1176,8 @@ pub fn run() i32 = trust {
         }
 
         val start_ticks: u32 = SDL_GetTicks()
+        val last_ticks: mut u32 = start_ticks
         val quit: mut bool = false
-        val debug_logged: mut bool = false
 
         for !quit {
             for {
@@ -1088,15 +1198,18 @@ pub fn run() i32 = trust {
 
             val now_ticks: u32 = SDL_GetTicks()
             val time_value: f32 = ((now_ticks - start_ticks) as f32) / (1000.0 as f32)
+            val dt_raw: f32 = ((now_ticks - last_ticks) as f32) / (1000.0 as f32)
+            val dt: f32 = math.fclamp(dt_raw as f64, 0.0, 0.05) as f32
+            last_ticks = now_ticks
+            update_camera(app.camera, dt, keys)
 
             glBindFramebuffer(GL_FRAMEBUFFER, targets.hdr_fbo)
-            glViewport(0 as i32, 0 as i32, SCREEN_WIDTH, SCREEN_HEIGHT)
+            glViewport(0 as i32, 0 as i32, app.config.width, app.config.height)
             glClearColor(0.0 as f32, 0.0 as f32, 0.0 as f32, 1.0 as f32)
             glClear(GL_COLOR_BUFFER_BIT)
             glUseProgram(scene_program)
-            bind_scene_uniforms(scene_program, scene, time_value)
+            bind_scene_uniforms(scene_program, app.scene, app.camera, app.config.width, app.config.height, time_value)
             glDrawArrays(GL_TRIANGLES, 0 as i32, 3 as i32)
-            log_gl_error("scene pass")
 
             val blur_passes: mut i32 = 0
             val horizontal: mut bool = true
@@ -1135,16 +1248,15 @@ pub fn run() i32 = trust {
                 }
                 blur_passes++
             }
-            log_gl_error("blur pass")
 
             glBindFramebuffer(GL_FRAMEBUFFER, 0 as u32)
-            glViewport(0 as i32, 0 as i32, SCREEN_WIDTH, SCREEN_HEIGHT)
+            glViewport(0 as i32, 0 as i32, app.config.width, app.config.height)
             glClear(GL_COLOR_BUFFER_BIT)
             glUseProgram(composite_program)
             set_uniform_i32(composite_program, "uScene", 0 as i32)
             set_uniform_i32(composite_program, "uBloom", 1 as i32)
-            set_uniform_f32(composite_program, "uExposure", scene.exposure)
-            set_uniform_f32(composite_program, "uBloomStrength", scene.bloom_strength)
+            set_uniform_f32(composite_program, "uExposure", app.scene.exposure)
+            set_uniform_f32(composite_program, "uBloomStrength", app.scene.bloom_strength)
             glActiveTexture(GL_TEXTURE0)
             glBindTexture(GL_TEXTURE_2D, targets.hdr_color)
             glActiveTexture(GL_TEXTURE1)
@@ -1154,19 +1266,6 @@ pub fn run() i32 = trust {
                 glBindTexture(GL_TEXTURE_2D, targets.blur_tex1)
             }
             glDrawArrays(GL_TRIANGLES, 0 as i32, 3 as i32)
-            log_gl_error("composite pass")
-
-            if !debug_logged {
-                glBindFramebuffer(GL_FRAMEBUFFER, targets.hdr_fbo)
-                glReadBuffer(GL_COLOR_ATTACHMENT0)
-                sample_bound_pixel("hdr")
-                log_gl_error("hdr readback")
-                glBindFramebuffer(GL_FRAMEBUFFER, 0 as u32)
-                glReadBuffer(GL_BACK)
-                sample_bound_pixel("backbuffer")
-                log_gl_error("backbuffer readback")
-                debug_logged = true
-            }
             SDL_GL_SwapWindow(window)
         }
 

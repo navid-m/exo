@@ -2,19 +2,32 @@ val string = use("std/string")
 val engine = use("engine.sx")
 
 pub fn main() i32 = {
-    return trust engine.run()
+    val scene: mut engine.ShowcaseScene = engine.build_reflection_showcase()
+    scene.model = trust engine.load_embedded_fixture_model()
+    val app: engine.EngineApp = engine.create_app(
+        engine.default_config(),
+        scene,
+        engine.default_camera()
+    )
+    return trust engine.run_app(app)
 }
 
 test {
     val scene = engine.build_reflection_showcase()
+    val app: engine.EngineApp = engine.create_app(
+        engine.default_config(),
+        scene,
+        engine.default_camera()
+    )
     assert scene.hdr_enabled
     assert scene.bloom_enabled
     assert scene.sphere_count == 4
+    assert app.camera.move_speed > (3.0 as f32)
     assert scene.sphere0.reflectivity > (0.8 as f32)
     assert scene.sphere3.emissive > scene.sphere1.emissive
     assert scene.cube.rotation_speed > (0.5 as f32)
 
-    val fixture: mut GlbFixture = trust engine.build_test_glb_fixture()
+    val fixture: mut engine.GlbFixture = trust engine.build_test_glb_fixture()
     if trust engine.parse_glb_bytes(fixture.ptr, fixture.len) is some model {
         assert model.valid
         assert model.primitive_count == 1
