@@ -9,12 +9,24 @@ pub fn default_camera() engine.Camera = {
     return engine.default_camera()
 }
 
-pub fn create_app(scene: ecs.Scene3D) engine.ExoApp = {
-    return engine.create_app(default_config(), scene, default_camera())
+pub fn default_input_config() engine.InputConfig = {
+    return engine.default_input_config()
 }
 
-pub fn create_configured_app(config: engine.ExoConfig, scene: ecs.Scene3D, camera: engine.Camera) engine.ExoApp = {
-    return engine.create_app(config, scene, camera)
+pub fn default_key_bindings() engine.KeyBindings = {
+    return engine.default_key_bindings()
+}
+
+pub fn default_mouse_config() engine.MouseConfig = {
+    return engine.default_mouse_config()
+}
+
+pub fn create_app(scene: ecs.Scene3D) engine.ExoApp = {
+    return engine.create_app(default_config(), scene, default_camera(), default_input_config())
+}
+
+pub fn create_configured_app(config: engine.ExoConfig, scene: ecs.Scene3D, camera: engine.Camera, input: engine.InputConfig) engine.ExoApp = {
+    return engine.create_app(config, scene, camera, input)
 }
 
 pub fn run(app: engine.ExoApp) i32 = trust {
