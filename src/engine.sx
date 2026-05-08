@@ -6,27 +6,13 @@ val bin    = use("std/encoding/binary")
 val mstat  = use("std/math/static")
 val ecs    = use("ecs.sx")
 
-extern "SDL.h"
-extern "SDL_opengl.h"
-extern "SDL_mixer.h"
-
-link "-lSDL2"
-link "-lSDL2_mixer"
-link "-lGL"
+link "-lSDL3"
+link "-L/usr/local/lib"
+link "-Wl,-rpath,/usr/local/lib"
 
 val DEFAULT_SCREEN_WIDTH: i32 = 1440
 val DEFAULT_SCREEN_HEIGHT: i32 = 900
 
-val SDL_INIT_AUDIO: u32 = 0x00000010
-val SDL_INIT_VIDEO: u32 = 0x00000020
-val SDL_WINDOW_OPENGL: u32 = 0x00000002
-val SDL_WINDOW_SHOWN: u32 = 0x00000004
-val SDL_GL_CONTEXT_MAJOR_VERSION: i32 = 17
-val SDL_GL_CONTEXT_MINOR_VERSION: i32 = 18
-val SDL_GL_CONTEXT_PROFILE_MASK: i32 = 21
-val SDL_GL_CONTEXT_PROFILE_CORE: i32 = 1
-val SDL_GL_DOUBLEBUFFER: i32 = 5
-val SDL_QUIT: u32 = 0x100
 val SDL_SCANCODE_A: i32 = 4
 val SDL_SCANCODE_D: i32 = 7
 val SDL_SCANCODE_E: i32 = 8
@@ -46,132 +32,105 @@ val SDL_SCANCODE_UP: i32 = 82
 val SDL_SCANCODE_LSHIFT: i32 = 225
 val SDL_SCANCODE_RSHIFT: i32 = 229
 
-val GL_VERTEX_SHADER: u32 = 0x8B31
-val GL_FRAGMENT_SHADER: u32 = 0x8B30
-val GL_COMPILE_STATUS: u32 = 0x8B81
-val GL_LINK_STATUS: u32 = 0x8B82
-val GL_COLOR_BUFFER_BIT: u32 = 0x00004000
-val GL_DEPTH_BUFFER_BIT: u32 = 0x00000100
-val GL_TRIANGLES: u32 = 0x0004
-val GL_FLOAT: u32 = 0x1406
-val GL_FALSE: u8 = 0
-val GL_UNSIGNED_INT: u32 = 0x1405
-val GL_ARRAY_BUFFER: u32 = 0x8892
-val GL_ELEMENT_ARRAY_BUFFER: u32 = 0x8893
-val GL_STATIC_DRAW: u32 = 0x88E4
-val GL_DEPTH_TEST: u32 = 0x0B71
-val GL_TEXTURE_2D: u32 = 0x0DE1
-val GL_TEXTURE0: u32 = 0x84C0
-val GL_TEXTURE_MIN_FILTER: u32 = 0x2801
-val GL_TEXTURE_MAG_FILTER: u32 = 0x2800
-val GL_TEXTURE_WRAP_S: u32 = 0x2802
-val GL_TEXTURE_WRAP_T: u32 = 0x2803
-val GL_CLAMP_TO_EDGE: u32 = 0x812F
-val GL_LINEAR: u32 = 0x2601
-val GL_RGBA: u32 = 0x1908
-val GL_RGBA16F: u32 = 0x881A
-val GL_FRAMEBUFFER: u32 = 0x8D40
-val GL_RENDERBUFFER: u32 = 0x8D41
-val GL_COLOR_ATTACHMENT0: u32 = 0x8CE0
-val GL_DEPTH_ATTACHMENT: u32 = 0x8D00
-val GL_DEPTH_COMPONENT24: u32 = 0x81A6
-val GL_FRAMEBUFFER_COMPLETE: u32 = 0x8CD5
-val GL_BLEND: u32 = 0x0BE2
-val GL_SRC_ALPHA: u32 = 0x0302
-val GL_ONE_MINUS_SRC_ALPHA: u32 = 0x0303
-val GL_ONE: u32 = 1
-
 val GLB_MAGIC: u32 = 0x46546C67
 val GLB_VERSION: u32 = 2
 val GLB_JSON_CHUNK: u32 = 0x4E4F534A
 val GLB_BIN_CHUNK: u32 = 0x004E4942
 
-val MIX_INIT_MP3: i32 = 0x00000008
-val AUDIO_S16SYS: u16 = 0x8010
+val SDL_EVENT_QUIT: u32 = 256
+val SDL_EVENT_WINDOW_CLOSE_REQUESTED: u32 = 528
+val SDL_INIT_AUDIO: u32 = 16
+val SDL_INIT_VIDEO: u32 = 32
+val SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK: u32 = 0xFFFFFFFF
+val SDL_GPU_TEXTUREUSAGE_SAMPLER: u32 = 1
+val SDL_GPU_TEXTUREUSAGE_COLOR_TARGET: u32 = 2
+val SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET: u32 = 4
+val SDL_GPU_BUFFERUSAGE_VERTEX: u32 = 1
+val SDL_GPU_BUFFERUSAGE_INDEX: u32 = 2
+val SDL_GPU_SHADERFORMAT_SPIRV: u32 = 2
+val SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD: i32 = 0
+val SDL_GPU_TEXTURETYPE_2D: i32 = 0
+val SDL_GPU_SAMPLECOUNT_1: i32 = 0
+val SDL_GPU_SHADERSTAGE_VERTEX: i32 = 0
+val SDL_GPU_SHADERSTAGE_FRAGMENT: i32 = 1
+val SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2: i32 = 10
+val SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3: i32 = 11
+val SDL_GPU_VERTEXINPUTRATE_VERTEX: i32 = 0
+val SDL_GPU_PRIMITIVETYPE_TRIANGLELIST: i32 = 0
+val SDL_GPU_FILLMODE_FILL: i32 = 0
+val SDL_GPU_CULLMODE_NONE: i32 = 0
+val SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE: i32 = 0
+val SDL_GPU_COMPAREOP_LESS_OR_EQUAL: i32 = 4
+val SDL_GPU_BLENDOP_ADD: i32 = 1
+val SDL_GPU_BLENDFACTOR_ZERO: i32 = 1
+val SDL_GPU_BLENDFACTOR_ONE: i32 = 2
+val SDL_GPU_BLENDFACTOR_SRC_ALPHA: i32 = 7
+val SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA: i32 = 8
+val SDL_GPU_FILTER_LINEAR: i32 = 1
+val SDL_GPU_SAMPLERMIPMAPMODE_LINEAR: i32 = 1
+val SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE: i32 = 2
+val SDL_GPU_LOADOP_CLEAR: i32 = 1
+val SDL_GPU_LOADOP_DONT_CARE: i32 = 2
+val SDL_GPU_STOREOP_STORE: i32 = 0
+val SDL_GPU_STOREOP_DONT_CARE: i32 = 1
+val SDL_GPU_INDEXELEMENTSIZE_32BIT: i32 = 1
+val SDL_GPU_TEXTUREFORMAT_D32_FLOAT: i32 = 60
 
-pub extern type SDLEvent = {
-    type_value: mut u32
-    padding: mut [52]u8
-}
-
-pub extern (C, header) fn sdl_init(flags: u32) i32 = "SDL_Init"
-pub extern (C, header) fn sdl_quit() void = "SDL_Quit"
-pub extern (C, header) fn sdl_create_window(title: ref u8, x: i32, y: i32, w: i32, h: i32, flags: u32) ref void = "SDL_CreateWindow"
-pub extern (C, header) fn sdl_destroy_window(window: ref void) void = "SDL_DestroyWindow"
-pub extern (C, header) fn sdl_poll_event(event: ref SDLEvent) i32 = "SDL_PollEvent"
-pub extern (C, header) fn sdl_get_ticks() u32 = "SDL_GetTicks"
-pub extern (C, header) fn sdl_get_keyboard_state(numkeys: ref i32) ref u8 = "SDL_GetKeyboardState"
-pub extern (C, header) fn sdl_gl_set_attribute(attr: i32, value: i32) i32 = "SDL_GL_SetAttribute"
-pub extern (C, header) fn sdl_gl_create_context(window: ref void) ref void = "SDL_GL_CreateContext"
-pub extern (C, header) fn sdl_gl_delete_context(context: ref void) void = "SDL_GL_DeleteContext"
-pub extern (C, header) fn sdl_gl_make_current(window: ref void, context: ref void) i32 = "SDL_GL_MakeCurrent"
-pub extern (C, header) fn sdl_gl_set_swap_interval(interval: i32) i32 = "SDL_GL_SetSwapInterval"
-pub extern (C, header) fn sdl_gl_swap_window(window: ref void) void = "SDL_GL_SwapWindow"
-pub extern (C, header) fn sdl_get_error() ref u8 = "SDL_GetError"
-pub extern (C, header) fn sdl_set_relative_mouse_mode(enabled: i32) i32 = "SDL_SetRelativeMouseMode"
-pub extern (C, header) fn sdl_get_relative_mouse_state(x: ref i32, y: ref i32) u32 = "SDL_GetRelativeMouseState"
-pub extern (C, header) fn mix_init(flags: i32) i32 = "Mix_Init"
-pub extern (C, header) fn mix_quit() void = "Mix_Quit"
-pub extern (C, header) fn mix_open_audio(frequency: i32, format: u16, channels: i32, chunksize: i32) i32 = "Mix_OpenAudio"
-pub extern (C, header) fn mix_close_audio() void = "Mix_CloseAudio"
-pub extern (C, header) fn mix_load_music(path: ref u8) ref void = "Mix_LoadMUS"
-pub extern (C, header) fn mix_play_music(music: ref void, loops: i32) i32 = "Mix_PlayMusic"
-pub extern (C, header) fn mix_volume_music(volume: i32) i32 = "Mix_VolumeMusic"
-pub extern (C, header) fn mix_free_music(music: ref void) void = "Mix_FreeMusic"
-pub extern (C, header) fn mix_get_error() ref u8 = "Mix_GetError"
-
-pub extern (C, header) fn gl_create_shader(stage: u32) u32 = "glCreateShader"
-pub extern (C, header) fn gl_shader_source(shader: u32, count: i32, source: ref ref u8, lengths: ref i32) void = "glShaderSource"
-pub extern (C, header) fn gl_compile_shader(shader: u32) void = "glCompileShader"
-pub extern (C, header) fn gl_get_shaderiv(shader: u32, pname: u32, params: ref i32) void = "glGetShaderiv"
-pub extern (C, header) fn gl_get_shader_info_log(shader: u32, max_len: i32, out_len: ref i32, info_log: ref u8) void = "glGetShaderInfoLog"
-pub extern (C, header) fn gl_delete_shader(shader: u32) void = "glDeleteShader"
-pub extern (C, header) fn gl_create_program() u32 = "glCreateProgram"
-pub extern (C, header) fn gl_attach_shader(program: u32, shader: u32) void = "glAttachShader"
-pub extern (C, header) fn gl_link_program(program: u32) void = "glLinkProgram"
-pub extern (C, header) fn gl_get_programiv(program: u32, pname: u32, params: ref i32) void = "glGetProgramiv"
-pub extern (C, header) fn gl_get_program_info_log(program: u32, max_len: i32, out_len: ref i32, info_log: ref u8) void = "glGetProgramInfoLog"
-pub extern (C, header) fn gl_delete_program(program: u32) void = "glDeleteProgram"
-pub extern (C, header) fn gl_use_program(program: u32) void = "glUseProgram"
-pub extern (C, header) fn gl_get_uniform_location(program: u32, name: ref u8) i32 = "glGetUniformLocation"
-pub extern (C, header) fn gl_uniform1f(location: i32, value: f32) void = "glUniform1f"
-pub extern (C, header) fn gl_uniform1i(location: i32, value: i32) void = "glUniform1i"
-pub extern (C, header) fn gl_uniform2f(location: i32, x: f32, y: f32) void = "glUniform2f"
-pub extern (C, header) fn gl_uniform3f(location: i32, x: f32, y: f32, z: f32) void = "glUniform3f"
-pub extern (C, header) fn gl_uniform_matrix4fv(location: i32, count: i32, transpose: u8, value: ref f32) void = "glUniformMatrix4fv"
-pub extern (C, header) fn gl_gen_vertex_arrays(n: i32, arrays: ref u32) void = "glGenVertexArrays"
-pub extern (C, header) fn gl_bind_vertex_array(array: u32) void = "glBindVertexArray"
-pub extern (C, header) fn gl_delete_vertex_arrays(n: i32, arrays: ref u32) void = "glDeleteVertexArrays"
-pub extern (C, header) fn gl_gen_buffers(n: i32, buffers: ref u32) void = "glGenBuffers"
-pub extern (C, header) fn gl_bind_buffer(target: u32, buffer: u32) void = "glBindBuffer"
-pub extern (C, header) fn gl_buffer_data(target: u32, size: i64, data: ref void, usage: u32) void = "glBufferData"
-pub extern (C, header) fn gl_delete_buffers(n: i32, buffers: ref u32) void = "glDeleteBuffers"
-pub extern (C, header) fn gl_enable_vertex_attrib_array(index: u32) void = "glEnableVertexAttribArray"
-pub extern (C, header) fn gl_vertex_attrib_pointer(index: u32, size: i32, type_value: u32, normalized: u8, stride: i32, pointer: ref void) void = "glVertexAttribPointer"
-pub extern (C, header) fn gl_viewport(x: i32, y: i32, width: i32, height: i32) void = "glViewport"
-pub extern (C, header) fn gl_clear_color(r: f32, g: f32, b: f32, a: f32) void = "glClearColor"
-pub extern (C, header) fn gl_clear(mask: u32) void = "glClear"
-pub extern (C, header) fn gl_enable(cap: u32) void = "glEnable"
-pub extern (C, header) fn gl_disable(cap: u32) void = "glDisable"
-pub extern (C, header) fn gl_blend_func(sfactor: u32, dfactor: u32) void = "glBlendFunc"
-pub extern (C, header) fn gl_draw_elements(mode: u32, count: i32, type_value: u32, indices: ref void) void = "glDrawElements"
-pub extern (C, header) fn gl_draw_arrays(mode: u32, first: i32, count: i32) void = "glDrawArrays"
-pub extern (C, header) fn gl_active_texture(texture: u32) void = "glActiveTexture"
-pub extern (C, header) fn gl_gen_textures(n: i32, textures: ref u32) void = "glGenTextures"
-pub extern (C, header) fn gl_bind_texture(target: u32, texture: u32) void = "glBindTexture"
-pub extern (C, header) fn gl_delete_textures(n: i32, textures: ref u32) void = "glDeleteTextures"
-pub extern (C, header) fn gl_tex_image_2d(target: u32, level: i32, internal_format: i32, width: i32, height: i32, border: i32, format: u32, type_value: u32, data: ref void) void = "glTexImage2D"
-pub extern (C, header) fn gl_tex_parameteri(target: u32, pname: u32, param: i32) void = "glTexParameteri"
-pub extern (C, header) fn gl_gen_framebuffers(n: i32, framebuffers: ref u32) void = "glGenFramebuffers"
-pub extern (C, header) fn gl_bind_framebuffer(target: u32, framebuffer: u32) void = "glBindFramebuffer"
-pub extern (C, header) fn gl_delete_framebuffers(n: i32, framebuffers: ref u32) void = "glDeleteFramebuffers"
-pub extern (C, header) fn gl_framebuffer_texture_2d(target: u32, attachment: u32, textarget: u32, texture: u32, level: i32) void = "glFramebufferTexture2D"
-pub extern (C, header) fn gl_check_framebuffer_status(target: u32) u32 = "glCheckFramebufferStatus"
-pub extern (C, header) fn gl_gen_renderbuffers(n: i32, renderbuffers: ref u32) void = "glGenRenderbuffers"
-pub extern (C, header) fn gl_bind_renderbuffer(target: u32, renderbuffer: u32) void = "glBindRenderbuffer"
-pub extern (C, header) fn gl_delete_renderbuffers(n: i32, renderbuffers: ref u32) void = "glDeleteRenderbuffers"
-pub extern (C, header) fn gl_renderbuffer_storage(target: u32, internal_format: u32, width: i32, height: i32) void = "glRenderbufferStorage"
-pub extern (C, header) fn gl_framebuffer_renderbuffer(target: u32, attachment: u32, renderbuffer_target: u32, renderbuffer: u32) void = "glFramebufferRenderbuffer"
+extern (C) fn SDL_Init(flags: u32) bool = "SDL_Init"
+extern (C) fn SDL_Quit() void = "SDL_Quit"
+extern (C) fn SDL_GetError() ref u8 = "SDL_GetError"
+extern (C) fn SDL_CreateWindow(title: ref u8, w: i32, h: i32, flags: u64) ref void = "SDL_CreateWindow"
+extern (C) fn SDL_DestroyWindow(window: ref void) void = "SDL_DestroyWindow"
+extern (C) fn SDL_PollEvent(event: ref SDLEvent) bool = "SDL_PollEvent"
+extern (C) fn SDL_GetTicks() u64 = "SDL_GetTicks"
+extern (C) fn SDL_GetKeyboardState(numkeys: ref i32) ref bool = "SDL_GetKeyboardState"
+extern (C) fn SDL_SetWindowRelativeMouseMode(window: ref void, enabled: bool) bool = "SDL_SetWindowRelativeMouseMode"
+extern (C) fn SDL_GetRelativeMouseState(x: ref f32, y: ref f32) u32 = "SDL_GetRelativeMouseState"
+extern (C) fn SDL_CreateGPUDevice(format_flags: u32, debug_mode: bool, name: ref u8) ref void = "SDL_CreateGPUDevice"
+extern (C) fn SDL_DestroyGPUDevice(device: ref void) void = "SDL_DestroyGPUDevice"
+extern (C) fn SDL_ClaimWindowForGPUDevice(device: ref void, window: ref void) bool = "SDL_ClaimWindowForGPUDevice"
+extern (C) fn SDL_ReleaseWindowFromGPUDevice(device: ref void, window: ref void) void = "SDL_ReleaseWindowFromGPUDevice"
+extern (C) fn SDL_GetGPUSwapchainTextureFormat(device: ref void, window: ref void) i32 = "SDL_GetGPUSwapchainTextureFormat"
+extern (C) fn SDL_CreateGPUSampler(device: ref void, createinfo: ref SDLGPUSamplerCreateInfo) ref void = "SDL_CreateGPUSampler"
+extern (C) fn SDL_CreateGPUShader(device: ref void, createinfo: ref SDLGPUShaderCreateInfo) ref void = "SDL_CreateGPUShader"
+extern (C) fn SDL_CreateGPUGraphicsPipeline(device: ref void, createinfo: ref SDLGPUGraphicsPipelineCreateInfo) ref void = "SDL_CreateGPUGraphicsPipeline"
+extern (C) fn SDL_CreateGPUTexture(device: ref void, createinfo: ref SDLGPUTextureCreateInfo) ref void = "SDL_CreateGPUTexture"
+extern (C) fn SDL_CreateGPUBuffer(device: ref void, createinfo: ref SDLGPUBufferCreateInfo) ref void = "SDL_CreateGPUBuffer"
+extern (C) fn SDL_CreateGPUTransferBuffer(device: ref void, createinfo: ref SDLGPUTransferBufferCreateInfo) ref void = "SDL_CreateGPUTransferBuffer"
+extern (C) fn SDL_ReleaseGPUTexture(device: ref void, texture: ref void) void = "SDL_ReleaseGPUTexture"
+extern (C) fn SDL_ReleaseGPUSampler(device: ref void, sampler: ref void) void = "SDL_ReleaseGPUSampler"
+extern (C) fn SDL_ReleaseGPUBuffer(device: ref void, buffer: ref void) void = "SDL_ReleaseGPUBuffer"
+extern (C) fn SDL_ReleaseGPUTransferBuffer(device: ref void, transfer_buffer: ref void) void = "SDL_ReleaseGPUTransferBuffer"
+extern (C) fn SDL_ReleaseGPUShader(device: ref void, shader: ref void) void = "SDL_ReleaseGPUShader"
+extern (C) fn SDL_ReleaseGPUGraphicsPipeline(device: ref void, graphics_pipeline: ref void) void = "SDL_ReleaseGPUGraphicsPipeline"
+extern (C) fn SDL_AcquireGPUCommandBuffer(device: ref void) ref void = "SDL_AcquireGPUCommandBuffer"
+extern (C) fn SDL_PushGPUVertexUniformData(command_buffer: ref void, slot_index: u32, data: ref void, length: u32) void = "SDL_PushGPUVertexUniformData"
+extern (C) fn SDL_PushGPUFragmentUniformData(command_buffer: ref void, slot_index: u32, data: ref void, length: u32) void = "SDL_PushGPUFragmentUniformData"
+extern (C) fn SDL_BeginGPURenderPass(command_buffer: ref void, color_target_infos: ref SDLGPUColorTargetInfo, num_color_targets: u32, depth_stencil_target_info: ref SDLGPUDepthStencilTargetInfo) ref void = "SDL_BeginGPURenderPass"
+extern (C) fn SDL_BindGPUGraphicsPipeline(render_pass: ref void, graphics_pipeline: ref void) void = "SDL_BindGPUGraphicsPipeline"
+extern (C) fn SDL_SetGPUViewport(render_pass: ref void, viewport: ref SDLGPUViewport) void = "SDL_SetGPUViewport"
+extern (C) fn SDL_BindGPUVertexBuffers(render_pass: ref void, first_slot: u32, bindings: ref SDLGPUBufferBinding, num_bindings: u32) void = "SDL_BindGPUVertexBuffers"
+extern (C) fn SDL_BindGPUIndexBuffer(render_pass: ref void, binding: ref SDLGPUBufferBinding, index_element_size: i32) void = "SDL_BindGPUIndexBuffer"
+extern (C) fn SDL_BindGPUFragmentSamplers(render_pass: ref void, first_slot: u32, texture_sampler_bindings: ref SDLGPUTextureSamplerBinding, num_bindings: u32) void = "SDL_BindGPUFragmentSamplers"
+extern (C) fn SDL_DrawGPUIndexedPrimitives(render_pass: ref void, num_indices: u32, num_instances: u32, first_index: u32, vertex_offset: i32, first_instance: u32) void = "SDL_DrawGPUIndexedPrimitives"
+extern (C) fn SDL_EndGPURenderPass(render_pass: ref void) void = "SDL_EndGPURenderPass"
+extern (C) fn SDL_MapGPUTransferBuffer(device: ref void, transfer_buffer: ref void, cycle: bool) ref void = "SDL_MapGPUTransferBuffer"
+extern (C) fn SDL_UnmapGPUTransferBuffer(device: ref void, transfer_buffer: ref void) void = "SDL_UnmapGPUTransferBuffer"
+extern (C) fn SDL_BeginGPUCopyPass(command_buffer: ref void) ref void = "SDL_BeginGPUCopyPass"
+extern (C) fn SDL_UploadToGPUBuffer(copy_pass: ref void, source: ref SDLGPUTransferBufferLocation, destination: ref SDLGPUBufferRegion, cycle: bool) void = "SDL_UploadToGPUBuffer"
+extern (C) fn SDL_EndGPUCopyPass(copy_pass: ref void) void = "SDL_EndGPUCopyPass"
+extern (C) fn SDL_WaitAndAcquireGPUSwapchainTexture(command_buffer: ref void, window: ref void, swapchain_texture: ref ref void, swapchain_texture_width: ref u32, swapchain_texture_height: ref u32) bool = "SDL_WaitAndAcquireGPUSwapchainTexture"
+extern (C) fn SDL_SubmitGPUCommandBuffer(command_buffer: ref void) bool = "SDL_SubmitGPUCommandBuffer"
+extern (C) fn SDL_CancelGPUCommandBuffer(command_buffer: ref void) bool = "SDL_CancelGPUCommandBuffer"
+extern (C) fn SDL_LoadWAV(path: ref u8, spec: ref SDLAudioSpec, audio_buf: ref ref u8, audio_len: ref u32) bool = "SDL_LoadWAV"
+extern (C) fn SDL_OpenAudioDeviceStream(devid: u32, spec: ref SDLAudioSpec, callback: ref void, userdata: ref void) ref void = "SDL_OpenAudioDeviceStream"
+extern (C) fn SDL_SetAudioStreamGain(stream: ref void, gain: f32) bool = "SDL_SetAudioStreamGain"
+extern (C) fn SDL_ResumeAudioStreamDevice(stream: ref void) bool = "SDL_ResumeAudioStreamDevice"
+extern (C) fn SDL_ClearAudioStream(stream: ref void) bool = "SDL_ClearAudioStream"
+extern (C) fn SDL_PutAudioStreamData(stream: ref void, buf: ref void, len: i32) bool = "SDL_PutAudioStreamData"
+extern (C) fn SDL_FlushAudioStream(stream: ref void) bool = "SDL_FlushAudioStream"
+extern (C) fn SDL_DestroyAudioStream(stream: ref void) void = "SDL_DestroyAudioStream"
+extern (C) fn SDL_free(ptr: ref void) void = "SDL_free"
 
 extern (C) fn fopen(path: ref u8, mode: ref u8) ref void = "fopen"
 extern (C) fn fclose(stream: ref void) i32 = "fclose"
@@ -200,18 +159,8 @@ type Mat4 = {
 }
 
 type MeshGPU = {
-    vao: u32
-    vbo: u32
-    ebo: u32
+    raw: ref void
     index_count: i32
-}
-
-type RenderTarget = {
-    framebuffer: u32
-    color_texture: u32
-    depth_rbo: u32
-    width: i32
-    height: i32
 }
 
 type F32Slot = { value: mut f32 }
@@ -284,7 +233,1175 @@ pub type ExoApp = {
 
 type RuntimeAudioMixer = {
     initialized: mut bool
-    sample_music: mut ref void
+    sample_audio: mut ref void
+}
+
+type SDLEvent = {
+    type: mut u32
+    p01: mut u32
+    p02: mut u32
+    p03: mut u32
+    p04: mut u32
+    p05: mut u32
+    p06: mut u32
+    p07: mut u32
+    p08: mut u32
+    p09: mut u32
+    p10: mut u32
+    p11: mut u32
+    p12: mut u32
+    p13: mut u32
+    p14: mut u32
+    p15: mut u32
+    p16: mut u32
+    p17: mut u32
+    p18: mut u32
+    p19: mut u32
+    p20: mut u32
+    p21: mut u32
+    p22: mut u32
+    p23: mut u32
+    p24: mut u32
+    p25: mut u32
+    p26: mut u32
+    p27: mut u32
+    p28: mut u32
+    p29: mut u32
+    p30: mut u32
+    p31: mut u32
+}
+
+type SDLFColor = {
+    r: mut f32
+    g: mut f32
+    b: mut f32
+    a: mut f32
+}
+
+type SDLAudioSpec = {
+    format: mut i32
+    channels: mut i32
+    freq: mut i32
+}
+
+type SDLGPUSamplerCreateInfo = {
+    min_filter: mut i32
+    mag_filter: mut i32
+    mipmap_mode: mut i32
+    address_mode_u: mut i32
+    address_mode_v: mut i32
+    address_mode_w: mut i32
+    mip_lod_bias: mut f32
+    max_anisotropy: mut f32
+    compare_op: mut i32
+    min_lod: mut f32
+    max_lod: mut f32
+    enable_anisotropy: mut bool
+    enable_compare: mut bool
+    padding1: mut u8
+    padding2: mut u8
+    props: mut u32
+}
+
+type SDLGPUVertexBufferDescription = {
+    slot: mut u32
+    pitch: mut u32
+    input_rate: mut i32
+    instance_step_rate: mut u32
+}
+
+type SDLGPUVertexAttribute = {
+    location: mut u32
+    buffer_slot: mut u32
+    format: mut i32
+    offset: mut u32
+}
+
+type SDLGPUVertexInputState = {
+    vertex_buffer_descriptions: mut ref SDLGPUVertexBufferDescription
+    num_vertex_buffers: mut u32
+    vertex_attributes: mut ref SDLGPUVertexAttribute
+    num_vertex_attributes: mut u32
+}
+
+type SDLGPUStencilOpState = {
+    fail_op: mut i32
+    pass_op: mut i32
+    depth_fail_op: mut i32
+    compare_op: mut i32
+}
+
+type SDLGPUColorTargetBlendState = {
+    src_color_blendfactor: mut i32
+    dst_color_blendfactor: mut i32
+    color_blend_op: mut i32
+    src_alpha_blendfactor: mut i32
+    dst_alpha_blendfactor: mut i32
+    alpha_blend_op: mut i32
+    color_write_mask: mut u8
+    enable_blend: mut bool
+    enable_color_write_mask: mut bool
+    padding1: mut u8
+    padding2: mut u8
+}
+
+type SDLGPUShaderCreateInfo = {
+    code_size: mut usize
+    code: mut ref u8
+    entrypoint: mut ref u8
+    format: mut u32
+    stage: mut i32
+    num_samplers: mut u32
+    num_storage_textures: mut u32
+    num_storage_buffers: mut u32
+    num_uniform_buffers: mut u32
+    props: mut u32
+}
+
+type SDLGPUTextureCreateInfo = {
+    type: mut i32
+    format: mut i32
+    usage: mut u32
+    width: mut u32
+    height: mut u32
+    layer_count_or_depth: mut u32
+    num_levels: mut u32
+    sample_count: mut i32
+    props: mut u32
+}
+
+type SDLGPUBufferCreateInfo = {
+    usage: mut u32
+    size: mut u32
+    props: mut u32
+}
+
+type SDLGPUTransferBufferCreateInfo = {
+    usage: mut i32
+    size: mut u32
+    props: mut u32
+}
+
+type SDLGPURasterizerState = {
+    fill_mode: mut i32
+    cull_mode: mut i32
+    front_face: mut i32
+    depth_bias_constant_factor: mut f32
+    depth_bias_clamp: mut f32
+    depth_bias_slope_factor: mut f32
+    enable_depth_bias: mut bool
+    enable_depth_clip: mut bool
+    padding1: mut u8
+    padding2: mut u8
+}
+
+type SDLGPUMultisampleState = {
+    sample_count: mut i32
+    sample_mask: mut u32
+    enable_mask: mut bool
+    enable_alpha_to_coverage: mut bool
+    padding2: mut u8
+    padding3: mut u8
+}
+
+type SDLGPUDepthStencilState = {
+    compare_op: mut i32
+    back_stencil_state: mut SDLGPUStencilOpState
+    front_stencil_state: mut SDLGPUStencilOpState
+    compare_mask: mut u8
+    write_mask: mut u8
+    enable_depth_test: mut bool
+    enable_depth_write: mut bool
+    enable_stencil_test: mut bool
+    padding1: mut u8
+    padding2: mut u8
+    padding3: mut u8
+}
+
+type SDLGPUColorTargetDescription = {
+    format: mut i32
+    blend_state: mut SDLGPUColorTargetBlendState
+}
+
+type SDLGPUGraphicsPipelineTargetInfo = {
+    color_target_descriptions: mut ref SDLGPUColorTargetDescription
+    num_color_targets: mut u32
+    depth_stencil_format: mut i32
+    has_depth_stencil_target: mut bool
+    padding1: mut u8
+    padding2: mut u8
+    padding3: mut u8
+}
+
+type SDLGPUGraphicsPipelineCreateInfo = {
+    vertex_shader: mut ref void
+    fragment_shader: mut ref void
+    vertex_input_state: mut SDLGPUVertexInputState
+    primitive_type: mut i32
+    rasterizer_state: mut SDLGPURasterizerState
+    multisample_state: mut SDLGPUMultisampleState
+    depth_stencil_state: mut SDLGPUDepthStencilState
+    target_info: mut SDLGPUGraphicsPipelineTargetInfo
+    props: mut u32
+}
+
+type SDLGPUColorTargetInfo = {
+    texture: mut ref void
+    mip_level: mut u32
+    layer_or_depth_plane: mut u32
+    clear_color: mut SDLFColor
+    load_op: mut i32
+    store_op: mut i32
+    resolve_texture: mut ref void
+    resolve_mip_level: mut u32
+    resolve_layer: mut u32
+    cycle: mut bool
+    cycle_resolve_texture: mut bool
+    padding1: mut u8
+    padding2: mut u8
+}
+
+type SDLGPUDepthStencilTargetInfo = {
+    texture: mut ref void
+    clear_depth: mut f32
+    load_op: mut i32
+    store_op: mut i32
+    stencil_load_op: mut i32
+    stencil_store_op: mut i32
+    cycle: mut bool
+    clear_stencil: mut u8
+    mip_level: mut u8
+    layer: mut u8
+}
+
+type SDLGPUBufferBinding = {
+    buffer: mut ref void
+    offset: mut u32
+}
+
+type SDLGPUTextureSamplerBinding = {
+    texture: mut ref void
+    sampler: mut ref void
+}
+
+type SDLGPUViewport = {
+    x: mut f32
+    y: mut f32
+    w: mut f32
+    h: mut f32
+    min_depth: mut f32
+    max_depth: mut f32
+}
+
+type SDLGPUTransferBufferLocation = {
+    transfer_buffer: mut ref void
+    offset: mut u32
+}
+
+type SDLGPUBufferRegion = {
+    buffer: mut ref void
+    offset: mut u32
+    size: mut u32
+}
+
+type Vec4f = {
+    x: mut f32
+    y: mut f32
+    z: mut f32
+    w: mut f32
+}
+
+type SceneVertexUniforms = {
+    model: mut Mat4
+    view_proj: mut Mat4
+}
+
+type SceneFragmentUniforms = {
+    color_reflective: mut Vec4f
+    camera_glow: mut Vec4f
+    light_pos_intensity: mut Vec4f
+    light_color_radius: mut Vec4f
+    alpha_pad: mut Vec4f
+}
+
+type FloorVertexUniforms = {
+    model: mut Mat4
+    view_proj: mut Mat4
+    reflect_view_proj: mut Mat4
+}
+
+type FloorFragmentUniforms = {
+    camera_pos: mut Vec4f
+}
+
+type GlowVertexUniforms = {
+    view_proj: mut Mat4
+    position: mut Vec4f
+    size: mut Vec4f
+    camera_right: mut Vec4f
+    camera_up: mut Vec4f
+}
+
+type GlowFragmentUniforms = {
+    color_intensity: mut Vec4f
+    alpha_pad: mut Vec4f
+}
+
+type ExoSDL3Mesh = {
+    vertex_buffer: mut ref void
+    index_buffer: mut ref void
+    index_count: mut u32
+}
+
+type ExoSDL3Runtime = {
+    window: mut ref void
+    device: mut ref void
+    scene_pipeline: mut ref void
+    floor_pipeline: mut ref void
+    glow_pipeline: mut ref void
+    linear_sampler: mut ref void
+    reflection_color: mut ref void
+    reflection_depth: mut ref void
+    scene_depth: mut ref void
+    swapchain_texture: mut ref void
+    command_buffer: mut ref void
+    current_pass: mut ref void
+    swapchain_format: mut i32
+    render_width: mut u32
+    render_height: mut u32
+    frame_active: mut bool
+}
+
+type ExoSDL3Audio = {
+    stream: mut ref void
+    spec: mut SDLAudioSpec
+    buffer: mut ref u8
+    length: mut u32
+}
+
+type VertexAttributePair = {
+    first: mut SDLGPUVertexAttribute
+    second: mut SDLGPUVertexAttribute
+}
+
+type BinaryBlob = {
+    data: mut ref u8
+    len: mut usize
+}
+
+val exo_last_error: mut ref u8 = none
+
+fn clear_exo_error() void = {
+    exo_last_error = none
+}
+
+fn set_exo_error(msg: ref u8) bool = {
+    exo_last_error = msg
+    return false
+}
+
+fn set_exo_error_ptr(msg: ref u8) ref void = {
+    exo_last_error = msg
+    return none as ref void
+}
+
+fn exo_sdl3_get_error() ref u8 = {
+    if exo_last_error != none {
+        return exo_last_error
+    }
+    return SDL_GetError()
+}
+
+fn read_f32(base: ref f32, index: usize) f32 = trust {
+    val slot: ref F32Slot = @ptradd(base as ref void, index * (@sizeof(f32) as usize)) as ref F32Slot
+    return slot.value
+}
+
+fn transpose_mat4_ptr(src: ref f32) Mat4 = trust {
+    return mat4(
+        read_f32(src, 0 as usize), read_f32(src, 4 as usize), read_f32(src, 8 as usize), read_f32(src, 12 as usize),
+        read_f32(src, 1 as usize), read_f32(src, 5 as usize), read_f32(src, 9 as usize), read_f32(src, 13 as usize),
+        read_f32(src, 2 as usize), read_f32(src, 6 as usize), read_f32(src, 10 as usize), read_f32(src, 14 as usize),
+        read_f32(src, 3 as usize), read_f32(src, 7 as usize), read_f32(src, 11 as usize), read_f32(src, 15 as usize)
+    )
+}
+
+fn vec4_from_ptr(src: ref f32, w: f32) Vec4f = trust {
+    return {
+        x: read_f32(src, 0 as usize),
+        y: read_f32(src, 1 as usize),
+        z: read_f32(src, 2 as usize),
+        w: w
+    }
+}
+
+fn load_binary_file(path: ref u8) option[BinaryBlob] = trust {
+    val file: ref void = fopen(path, "rb")
+    if file == none {
+        set_exo_error("failed to open file")
+        return none
+    }
+    fseek(file, 0, 2 as i32)
+    val size: i64 = ftell(file)
+    rewind(file)
+    if size <= 0 {
+        fclose(file)
+        set_exo_error("failed to read file")
+        return none
+    }
+    val buf: ref u8 = @alloc(size as usize) as ref u8
+    if buf == none {
+        fclose(file)
+        set_exo_error("failed to allocate file buffer")
+        return none
+    }
+    val read_count: usize = fread(buf as ref void, 1 as usize, size as usize, file)
+    fclose(file)
+    if read_count != size as usize {
+        @free(buf as ref void)
+        set_exo_error("failed to read file")
+        return none
+    }
+    return some {
+        data: buf,
+        len: size as usize
+    }
+}
+
+fn exo_load_shader(runtime: ref ExoSDL3Runtime, path: ref u8, stage: i32, num_samplers: u32, num_uniform_buffers: u32) ref void = trust {
+    if load_binary_file(path) is some blob {
+        val info: mut SDLGPUShaderCreateInfo = @zeroed
+        info.code_size = blob.len
+        info.code = blob.data
+        info.entrypoint = "main"
+        info.format = SDL_GPU_SHADERFORMAT_SPIRV
+        info.stage = stage
+        info.num_samplers = num_samplers
+        info.num_uniform_buffers = num_uniform_buffers
+        val shader: ref void = SDL_CreateGPUShader(runtime.device, @addr(info))
+        @free(blob.data as ref void)
+        return shader
+    }
+    return none as ref void
+}
+
+fn exo_create_texture(runtime: ref ExoSDL3Runtime, format: i32, usage: u32, width: u32, height: u32) ref void = {
+    val info: mut SDLGPUTextureCreateInfo = @zeroed
+    info.type = SDL_GPU_TEXTURETYPE_2D
+    info.format = format
+    info.usage = usage
+    info.width = width
+    info.height = height
+    info.layer_count_or_depth = 1 as u32
+    info.num_levels = 1 as u32
+    info.sample_count = SDL_GPU_SAMPLECOUNT_1
+    return SDL_CreateGPUTexture(runtime.device, @addr(info))
+}
+
+fn exo_release_render_targets(runtime: mut ref ExoSDL3Runtime) void = trust {
+    if runtime.scene_depth != none {
+        SDL_ReleaseGPUTexture(runtime.device, runtime.scene_depth)
+        runtime.scene_depth = none
+    }
+    if runtime.reflection_depth != none {
+        SDL_ReleaseGPUTexture(runtime.device, runtime.reflection_depth)
+        runtime.reflection_depth = none
+    }
+    if runtime.reflection_color != none {
+        SDL_ReleaseGPUTexture(runtime.device, runtime.reflection_color)
+        runtime.reflection_color = none
+    }
+}
+
+fn exo_recreate_render_targets(runtime: mut ref ExoSDL3Runtime, width: u32, height: u32) bool = trust {
+    runtime.render_width = width
+    runtime.render_height = height
+    exo_release_render_targets(runtime)
+    runtime.reflection_color = exo_create_texture(
+        runtime,
+        runtime.swapchain_format,
+        SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER,
+        width,
+        height
+    )
+    if runtime.reflection_color == none {
+        return false
+    }
+    runtime.reflection_depth = exo_create_texture(
+        runtime,
+        SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
+        SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
+        width,
+        height
+    )
+    if runtime.reflection_depth == none {
+        return false
+    }
+    runtime.scene_depth = exo_create_texture(
+        runtime,
+        SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
+        SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
+        width,
+        height
+    )
+    return runtime.scene_depth != none
+}
+
+fn exo_create_pipeline(
+    runtime: ref ExoSDL3Runtime,
+    vs_path: ref u8,
+    fs_path: ref u8,
+    color_format: i32,
+    enable_blend: bool,
+    src_color: i32,
+    dst_color: i32,
+    src_alpha: i32,
+    dst_alpha: i32,
+    depth_write: bool,
+    fragment_samplers: u32
+) ref void = trust {
+    val vs: ref void = exo_load_shader(runtime, vs_path, SDL_GPU_SHADERSTAGE_VERTEX, 0 as u32, 1 as u32)
+    if vs == none {
+        return none as ref void
+    }
+    val fs: ref void = exo_load_shader(runtime, fs_path, SDL_GPU_SHADERSTAGE_FRAGMENT, fragment_samplers, 1 as u32)
+    if fs == none {
+        SDL_ReleaseGPUShader(runtime.device, vs)
+        return none as ref void
+    }
+    val vertex_buffer_desc: mut SDLGPUVertexBufferDescription = @zeroed
+    vertex_buffer_desc.slot = 0 as u32
+    vertex_buffer_desc.pitch = 24 as u32
+    vertex_buffer_desc.input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX
+    val vertex_attributes: mut VertexAttributePair = @zeroed
+    vertex_attributes.first.location = 0 as u32
+    vertex_attributes.first.buffer_slot = 0 as u32
+    vertex_attributes.first.format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3
+    vertex_attributes.first.offset = 0 as u32
+    vertex_attributes.second.location = 1 as u32
+    vertex_attributes.second.buffer_slot = 0 as u32
+    vertex_attributes.second.format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3
+    vertex_attributes.second.offset = 12 as u32
+    val color_target: mut SDLGPUColorTargetDescription = @zeroed
+    color_target.format = color_format
+    color_target.blend_state.enable_blend = enable_blend
+    color_target.blend_state.src_color_blendfactor = src_color
+    color_target.blend_state.dst_color_blendfactor = dst_color
+    color_target.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD
+    color_target.blend_state.src_alpha_blendfactor = src_alpha
+    color_target.blend_state.dst_alpha_blendfactor = dst_alpha
+    color_target.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD
+    val info: mut SDLGPUGraphicsPipelineCreateInfo = @zeroed
+    info.vertex_shader = vs
+    info.fragment_shader = fs
+    info.vertex_input_state.vertex_buffer_descriptions = @addr(vertex_buffer_desc)
+    info.vertex_input_state.num_vertex_buffers = 1 as u32
+    info.vertex_input_state.vertex_attributes = @addr(vertex_attributes.first)
+    info.vertex_input_state.num_vertex_attributes = 2 as u32
+    info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST
+    info.rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL
+    info.rasterizer_state.cull_mode = SDL_GPU_CULLMODE_NONE
+    info.rasterizer_state.front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE
+    info.rasterizer_state.enable_depth_clip = true
+    info.multisample_state.sample_count = SDL_GPU_SAMPLECOUNT_1
+    info.depth_stencil_state.compare_op = SDL_GPU_COMPAREOP_LESS_OR_EQUAL
+    info.depth_stencil_state.enable_depth_test = true
+    info.depth_stencil_state.enable_depth_write = depth_write
+    info.target_info.color_target_descriptions = @addr(color_target)
+    info.target_info.num_color_targets = 1 as u32
+    info.target_info.depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT
+    info.target_info.has_depth_stencil_target = true
+    val pipeline: ref void = SDL_CreateGPUGraphicsPipeline(runtime.device, @addr(info))
+    SDL_ReleaseGPUShader(runtime.device, fs)
+    SDL_ReleaseGPUShader(runtime.device, vs)
+    return pipeline
+}
+
+fn exo_create_pipelines(runtime: mut ref ExoSDL3Runtime) bool = trust {
+    runtime.scene_pipeline = exo_create_pipeline(
+        runtime,
+        "./assets/shaders/scene.vert.spv",
+        "./assets/shaders/scene.frag.spv",
+        runtime.swapchain_format,
+        false,
+        SDL_GPU_BLENDFACTOR_ONE,
+        SDL_GPU_BLENDFACTOR_ZERO,
+        SDL_GPU_BLENDFACTOR_ONE,
+        SDL_GPU_BLENDFACTOR_ZERO,
+        true,
+        0 as u32
+    )
+    if runtime.scene_pipeline == none {
+        return false
+    }
+    runtime.floor_pipeline = exo_create_pipeline(
+        runtime,
+        "./assets/shaders/floor.vert.spv",
+        "./assets/shaders/floor.frag.spv",
+        runtime.swapchain_format,
+        true,
+        SDL_GPU_BLENDFACTOR_SRC_ALPHA,
+        SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+        SDL_GPU_BLENDFACTOR_ONE,
+        SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+        false,
+        1 as u32
+    )
+    if runtime.floor_pipeline == none {
+        return false
+    }
+    runtime.glow_pipeline = exo_create_pipeline(
+        runtime,
+        "./assets/shaders/glow.vert.spv",
+        "./assets/shaders/glow.frag.spv",
+        runtime.swapchain_format,
+        true,
+        SDL_GPU_BLENDFACTOR_SRC_ALPHA,
+        SDL_GPU_BLENDFACTOR_ONE,
+        SDL_GPU_BLENDFACTOR_ONE,
+        SDL_GPU_BLENDFACTOR_ONE,
+        false,
+        0 as u32
+    )
+    return runtime.glow_pipeline != none
+}
+
+fn exo_destroy_pipelines(runtime: mut ref ExoSDL3Runtime) void = trust {
+    if runtime.glow_pipeline != none {
+        SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.glow_pipeline)
+        runtime.glow_pipeline = none
+    }
+    if runtime.floor_pipeline != none {
+        SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.floor_pipeline)
+        runtime.floor_pipeline = none
+    }
+    if runtime.scene_pipeline != none {
+        SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.scene_pipeline)
+        runtime.scene_pipeline = none
+    }
+}
+
+fn exo_begin_pass(runtime: mut ref ExoSDL3Runtime, color_target: ref void, depth_target: ref void, r: f32, g: f32, b: f32, a: f32) bool = trust {
+    clear_exo_error()
+    if !runtime.frame_active || runtime.command_buffer == none {
+        return set_exo_error("no active frame")
+    }
+    if runtime.current_pass != none {
+        SDL_EndGPURenderPass(runtime.current_pass)
+        runtime.current_pass = none
+    }
+    val color_info: mut SDLGPUColorTargetInfo = @zeroed
+    color_info.texture = color_target
+    color_info.clear_color.r = r
+    color_info.clear_color.g = g
+    color_info.clear_color.b = b
+    color_info.clear_color.a = a
+    color_info.load_op = SDL_GPU_LOADOP_CLEAR
+    color_info.store_op = SDL_GPU_STOREOP_STORE
+    val depth_info: mut SDLGPUDepthStencilTargetInfo = @zeroed
+    depth_info.texture = depth_target
+    depth_info.clear_depth = 1.0 as f32
+    depth_info.load_op = SDL_GPU_LOADOP_CLEAR
+    depth_info.store_op = SDL_GPU_STOREOP_DONT_CARE
+    depth_info.stencil_load_op = SDL_GPU_LOADOP_DONT_CARE
+    depth_info.stencil_store_op = SDL_GPU_STOREOP_DONT_CARE
+    runtime.current_pass = SDL_BeginGPURenderPass(runtime.command_buffer, @addr(color_info), 1 as u32, @addr(depth_info))
+    if runtime.current_pass == none {
+        return false
+    }
+    val viewport: mut SDLGPUViewport = @zeroed
+    viewport.x = 0.0 as f32
+    viewport.y = 0.0 as f32
+    viewport.w = runtime.render_width as f32
+    viewport.h = runtime.render_height as f32
+    viewport.min_depth = 0.0 as f32
+    viewport.max_depth = 1.0 as f32
+    SDL_SetGPUViewport(runtime.current_pass, @addr(viewport))
+    return true
+}
+
+fn exo_bind_mesh(runtime: ref ExoSDL3Runtime, mesh: ref ExoSDL3Mesh) void = trust {
+    val vertex_binding: mut SDLGPUBufferBinding = @zeroed
+    val index_binding: mut SDLGPUBufferBinding = @zeroed
+    vertex_binding.buffer = mesh.vertex_buffer
+    index_binding.buffer = mesh.index_buffer
+    SDL_BindGPUVertexBuffers(runtime.current_pass, 0 as u32, @addr(vertex_binding), 1 as u32)
+    SDL_BindGPUIndexBuffer(runtime.current_pass, @addr(index_binding), SDL_GPU_INDEXELEMENTSIZE_32BIT)
+}
+
+fn exo_destroy_runtime_resources(runtime: mut ref ExoSDL3Runtime) void = trust {
+    exo_release_render_targets(runtime)
+    if runtime.linear_sampler != none {
+        SDL_ReleaseGPUSampler(runtime.device, runtime.linear_sampler)
+        runtime.linear_sampler = none
+    }
+    exo_destroy_pipelines(runtime)
+}
+
+fn exo_sdl3_create_runtime(title: ref u8, width: i32, height: i32) ref void = trust {
+    clear_exo_error()
+    if !SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) {
+        return none as ref void
+    }
+    val runtime: mut ref ExoSDL3Runtime = @alloc(@sizeof(ExoSDL3Runtime)) as mut ref ExoSDL3Runtime
+    if runtime == none {
+        SDL_Quit()
+        return set_exo_error_ptr("failed to allocate runtime")
+    }
+    @deref(runtime) = @zeroed
+    runtime.window = SDL_CreateWindow(title, width, height, 0 as u64)
+    if runtime.window == none {
+        exo_sdl3_destroy_runtime(runtime as ref void)
+        return none as ref void
+    }
+    runtime.device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV, true, none as ref u8)
+    if runtime.device == none {
+        exo_sdl3_destroy_runtime(runtime as ref void)
+        return none as ref void
+    }
+    if !SDL_ClaimWindowForGPUDevice(runtime.device, runtime.window) {
+        exo_sdl3_destroy_runtime(runtime as ref void)
+        return none as ref void
+    }
+    runtime.swapchain_format = SDL_GetGPUSwapchainTextureFormat(runtime.device, runtime.window)
+    if !exo_create_pipelines(runtime) {
+        exo_sdl3_destroy_runtime(runtime as ref void)
+        return none as ref void
+    }
+    val sampler_info: mut SDLGPUSamplerCreateInfo = @zeroed
+    sampler_info.min_filter = SDL_GPU_FILTER_LINEAR
+    sampler_info.mag_filter = SDL_GPU_FILTER_LINEAR
+    sampler_info.mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_LINEAR
+    sampler_info.address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE
+    sampler_info.address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE
+    sampler_info.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE
+    sampler_info.max_lod = 1.0 as f32
+    runtime.linear_sampler = SDL_CreateGPUSampler(runtime.device, @addr(sampler_info))
+    if runtime.linear_sampler == none {
+        exo_sdl3_destroy_runtime(runtime as ref void)
+        return none as ref void
+    }
+    if !exo_recreate_render_targets(runtime, width as u32, height as u32) {
+        exo_sdl3_destroy_runtime(runtime as ref void)
+        return none as ref void
+    }
+    return runtime as ref void
+}
+
+fn exo_sdl3_destroy_runtime(runtime_raw: ref void) void = trust {
+    if runtime_raw == none {
+        SDL_Quit()
+        return
+    }
+    val runtime: mut ref ExoSDL3Runtime = runtime_raw as mut ref ExoSDL3Runtime
+    exo_destroy_runtime_resources(runtime)
+    if runtime.device != none && runtime.window != none {
+        SDL_ReleaseWindowFromGPUDevice(runtime.device, runtime.window)
+    }
+    if runtime.device != none {
+        SDL_DestroyGPUDevice(runtime.device)
+    }
+    if runtime.window != none {
+        SDL_DestroyWindow(runtime.window)
+    }
+    @free(runtime_raw)
+    SDL_Quit()
+}
+
+fn exo_sdl3_poll_quit() bool = {
+    val evt: mut SDLEvent = @zeroed
+    val quit: mut bool = false
+    for {
+        if !SDL_PollEvent(@addr(evt)) {
+            break
+        }
+        if evt.type == SDL_EVENT_QUIT || evt.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED {
+            quit = true
+        }
+    }
+    return quit
+}
+
+fn exo_sdl3_get_ticks() u64 = {
+    return SDL_GetTicks()
+}
+
+fn exo_sdl3_get_keyboard_state() ref u8 = trust {
+    return SDL_GetKeyboardState(none as ref i32) as ref u8
+}
+
+fn exo_sdl3_set_relative_mouse_mode(runtime_raw: ref void, enabled: bool) bool = trust {
+    clear_exo_error()
+    if runtime_raw == none {
+        return set_exo_error("runtime unavailable")
+    }
+    val runtime: ref ExoSDL3Runtime = runtime_raw as ref ExoSDL3Runtime
+    if runtime.window == none {
+        return set_exo_error("runtime window unavailable")
+    }
+    return SDL_SetWindowRelativeMouseMode(runtime.window, enabled)
+}
+
+fn exo_sdl3_get_relative_mouse_state(x: ref f32, y: ref f32) void = {
+    SDL_GetRelativeMouseState(x, y)
+}
+
+fn exo_sdl3_create_mesh(runtime_raw: ref void, vertices: ref void, vertex_bytes: u32, indices: ref void, index_bytes: u32, index_count: u32) ref void = trust {
+    clear_exo_error()
+    if runtime_raw == none {
+        return set_exo_error_ptr("runtime unavailable")
+    }
+    val runtime: ref ExoSDL3Runtime = runtime_raw as ref ExoSDL3Runtime
+    val mesh: mut ref ExoSDL3Mesh = @alloc(@sizeof(ExoSDL3Mesh)) as mut ref ExoSDL3Mesh
+    if mesh == none {
+        return set_exo_error_ptr("failed to allocate mesh")
+    }
+    @deref(mesh) = @zeroed
+    val vertex_info: mut SDLGPUBufferCreateInfo = @zeroed
+    vertex_info.usage = SDL_GPU_BUFFERUSAGE_VERTEX
+    vertex_info.size = vertex_bytes
+    mesh.vertex_buffer = SDL_CreateGPUBuffer(runtime.device, @addr(vertex_info))
+    if mesh.vertex_buffer == none {
+        exo_sdl3_destroy_mesh(runtime_raw, mesh as ref void)
+        return none as ref void
+    }
+    val index_info: mut SDLGPUBufferCreateInfo = @zeroed
+    index_info.usage = SDL_GPU_BUFFERUSAGE_INDEX
+    index_info.size = index_bytes
+    mesh.index_buffer = SDL_CreateGPUBuffer(runtime.device, @addr(index_info))
+    if mesh.index_buffer == none {
+        exo_sdl3_destroy_mesh(runtime_raw, mesh as ref void)
+        return none as ref void
+    }
+    val transfer_info: mut SDLGPUTransferBufferCreateInfo = @zeroed
+    transfer_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
+    transfer_info.size = vertex_bytes + index_bytes
+    val transfer: ref void = SDL_CreateGPUTransferBuffer(runtime.device, @addr(transfer_info))
+    if transfer == none {
+        exo_sdl3_destroy_mesh(runtime_raw, mesh as ref void)
+        return none as ref void
+    }
+    val mapped: ref void = SDL_MapGPUTransferBuffer(runtime.device, transfer, false)
+    if mapped == none {
+        SDL_ReleaseGPUTransferBuffer(runtime.device, transfer)
+        exo_sdl3_destroy_mesh(runtime_raw, mesh as ref void)
+        return none as ref void
+    }
+    @memcpy(mapped, vertices, vertex_bytes as usize)
+    @memcpy(@ptradd(mapped, vertex_bytes as usize), indices, index_bytes as usize)
+    SDL_UnmapGPUTransferBuffer(runtime.device, transfer)
+    val command_buffer: ref void = SDL_AcquireGPUCommandBuffer(runtime.device)
+    if command_buffer == none {
+        SDL_ReleaseGPUTransferBuffer(runtime.device, transfer)
+        exo_sdl3_destroy_mesh(runtime_raw, mesh as ref void)
+        return none as ref void
+    }
+    val copy_pass: ref void = SDL_BeginGPUCopyPass(command_buffer)
+    if copy_pass == none {
+        SDL_CancelGPUCommandBuffer(command_buffer)
+        SDL_ReleaseGPUTransferBuffer(runtime.device, transfer)
+        exo_sdl3_destroy_mesh(runtime_raw, mesh as ref void)
+        return none as ref void
+    }
+    val src_vertex: mut SDLGPUTransferBufferLocation = @zeroed
+    val dst_vertex: mut SDLGPUBufferRegion = @zeroed
+    val src_index: mut SDLGPUTransferBufferLocation = @zeroed
+    val dst_index: mut SDLGPUBufferRegion = @zeroed
+    src_vertex.transfer_buffer = transfer
+    dst_vertex.buffer = mesh.vertex_buffer
+    dst_vertex.size = vertex_bytes
+    src_index.transfer_buffer = transfer
+    src_index.offset = vertex_bytes
+    dst_index.buffer = mesh.index_buffer
+    dst_index.size = index_bytes
+    SDL_UploadToGPUBuffer(copy_pass, @addr(src_vertex), @addr(dst_vertex), false)
+    SDL_UploadToGPUBuffer(copy_pass, @addr(src_index), @addr(dst_index), false)
+    SDL_EndGPUCopyPass(copy_pass)
+    if !SDL_SubmitGPUCommandBuffer(command_buffer) {
+        SDL_ReleaseGPUTransferBuffer(runtime.device, transfer)
+        exo_sdl3_destroy_mesh(runtime_raw, mesh as ref void)
+        return none as ref void
+    }
+    SDL_ReleaseGPUTransferBuffer(runtime.device, transfer)
+    mesh.index_count = index_count
+    return mesh as ref void
+}
+
+fn exo_sdl3_destroy_mesh(runtime_raw: ref void, mesh_raw: ref void) void = trust {
+    if mesh_raw == none {
+        return
+    }
+    val mesh: ref ExoSDL3Mesh = mesh_raw as ref ExoSDL3Mesh
+    if runtime_raw != none {
+        val runtime: ref ExoSDL3Runtime = runtime_raw as ref ExoSDL3Runtime
+        if runtime.device != none {
+            if mesh.index_buffer != none {
+                SDL_ReleaseGPUBuffer(runtime.device, mesh.index_buffer)
+            }
+            if mesh.vertex_buffer != none {
+                SDL_ReleaseGPUBuffer(runtime.device, mesh.vertex_buffer)
+            }
+        }
+    }
+    @free(mesh_raw)
+}
+
+fn exo_sdl3_begin_frame(runtime_raw: ref void, width: ref u32, height: ref u32) bool = trust {
+    clear_exo_error()
+    if runtime_raw == none {
+        return set_exo_error("runtime unavailable")
+    }
+    val runtime: mut ref ExoSDL3Runtime = runtime_raw as mut ref ExoSDL3Runtime
+    if runtime.frame_active {
+        return set_exo_error("frame already active")
+    }
+    runtime.command_buffer = SDL_AcquireGPUCommandBuffer(runtime.device)
+    if runtime.command_buffer == none {
+        return false
+    }
+    val swap_width: mut u32 = 0 as u32
+    val swap_height: mut u32 = 0 as u32
+    if !SDL_WaitAndAcquireGPUSwapchainTexture(runtime.command_buffer, runtime.window, @addr(runtime.swapchain_texture), @addr(swap_width), @addr(swap_height)) {
+        SDL_CancelGPUCommandBuffer(runtime.command_buffer)
+        runtime.command_buffer = none
+        return false
+    }
+    if runtime.swapchain_texture == none {
+        SDL_CancelGPUCommandBuffer(runtime.command_buffer)
+        runtime.command_buffer = none
+        return set_exo_error("swapchain texture unavailable")
+    }
+    if swap_width != runtime.render_width || swap_height != runtime.render_height {
+        if !exo_recreate_render_targets(runtime, swap_width, swap_height) {
+            SDL_CancelGPUCommandBuffer(runtime.command_buffer)
+            runtime.command_buffer = none
+            return false
+        }
+    }
+    runtime.frame_active = true
+    if width != none {
+        @deref(width) = runtime.render_width
+    }
+    if height != none {
+        @deref(height) = runtime.render_height
+    }
+    return true
+}
+
+fn exo_sdl3_begin_reflection_pass(runtime_raw: ref void, r: f32, g: f32, b: f32, a: f32) bool = trust {
+    if runtime_raw == none {
+        clear_exo_error()
+        return set_exo_error("runtime unavailable")
+    }
+    val runtime: mut ref ExoSDL3Runtime = runtime_raw as mut ref ExoSDL3Runtime
+    return exo_begin_pass(runtime, runtime.reflection_color, runtime.reflection_depth, r, g, b, a)
+}
+
+fn exo_sdl3_begin_scene_pass(runtime_raw: ref void, r: f32, g: f32, b: f32, a: f32) bool = trust {
+    if runtime_raw == none {
+        clear_exo_error()
+        return set_exo_error("runtime unavailable")
+    }
+    val runtime: mut ref ExoSDL3Runtime = runtime_raw as mut ref ExoSDL3Runtime
+    return exo_begin_pass(runtime, runtime.swapchain_texture, runtime.scene_depth, r, g, b, a)
+}
+
+fn exo_sdl3_end_pass(runtime_raw: ref void) void = trust {
+    if runtime_raw == none {
+        return
+    }
+    val runtime: mut ref ExoSDL3Runtime = runtime_raw as mut ref ExoSDL3Runtime
+    if runtime.current_pass != none {
+        SDL_EndGPURenderPass(runtime.current_pass)
+        runtime.current_pass = none
+    }
+}
+
+fn exo_sdl3_submit_frame(runtime_raw: ref void) bool = trust {
+    clear_exo_error()
+    if runtime_raw == none {
+        return set_exo_error("frame not active")
+    }
+    val runtime: mut ref ExoSDL3Runtime = runtime_raw as mut ref ExoSDL3Runtime
+    if !runtime.frame_active || runtime.command_buffer == none {
+        return set_exo_error("frame not active")
+    }
+    exo_sdl3_end_pass(runtime_raw)
+    val ok: bool = SDL_SubmitGPUCommandBuffer(runtime.command_buffer)
+    runtime.command_buffer = none
+    runtime.swapchain_texture = none
+    runtime.frame_active = false
+    return ok
+}
+
+fn exo_sdl3_draw_scene_mesh(
+    runtime_raw: ref void,
+    mesh_raw: ref void,
+    model: ref f32,
+    view_proj: ref f32,
+    color: ref f32,
+    camera_pos: ref f32,
+    reflective: f32,
+    glow: f32,
+    alpha: f32,
+    light_pos: ref f32,
+    light_color: ref f32,
+    light_intensity: f32,
+    light_radius: f32
+) void = trust {
+    if runtime_raw == none || mesh_raw == none {
+        return
+    }
+    val runtime: ref ExoSDL3Runtime = runtime_raw as ref ExoSDL3Runtime
+    val mesh: ref ExoSDL3Mesh = mesh_raw as ref ExoSDL3Mesh
+    val vu: SceneVertexUniforms = {
+        model: transpose_mat4_ptr(model),
+        view_proj: transpose_mat4_ptr(view_proj)
+    }
+    val fu: SceneFragmentUniforms = {
+        color_reflective: vec4_from_ptr(color, reflective),
+        camera_glow: vec4_from_ptr(camera_pos, glow),
+        light_pos_intensity: vec4_from_ptr(light_pos, light_intensity),
+        light_color_radius: vec4_from_ptr(light_color, light_radius),
+        alpha_pad: { x: alpha, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
+    }
+    SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.scene_pipeline)
+    SDL_PushGPUVertexUniformData(runtime.command_buffer, 0 as u32, @addr(vu) as ref void, @sizeof(SceneVertexUniforms) as u32)
+    SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(SceneFragmentUniforms) as u32)
+    exo_bind_mesh(runtime, mesh)
+    SDL_DrawGPUIndexedPrimitives(runtime.current_pass, mesh.index_count, 1 as u32, 0 as u32, 0 as i32, 0 as u32)
+}
+
+fn exo_sdl3_draw_floor(runtime_raw: ref void, mesh_raw: ref void, model: ref f32, view_proj: ref f32, reflect_view_proj: ref f32, camera_pos: ref f32) void = trust {
+    if runtime_raw == none || mesh_raw == none {
+        return
+    }
+    val runtime: ref ExoSDL3Runtime = runtime_raw as ref ExoSDL3Runtime
+    val mesh: ref ExoSDL3Mesh = mesh_raw as ref ExoSDL3Mesh
+    val vu: FloorVertexUniforms = {
+        model: transpose_mat4_ptr(model),
+        view_proj: transpose_mat4_ptr(view_proj),
+        reflect_view_proj: transpose_mat4_ptr(reflect_view_proj)
+    }
+    val fu: FloorFragmentUniforms = {
+        camera_pos: vec4_from_ptr(camera_pos, 0.0 as f32)
+    }
+    val binding: mut SDLGPUTextureSamplerBinding = @zeroed
+    binding.texture = runtime.reflection_color
+    binding.sampler = runtime.linear_sampler
+    SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.floor_pipeline)
+    SDL_PushGPUVertexUniformData(runtime.command_buffer, 0 as u32, @addr(vu) as ref void, @sizeof(FloorVertexUniforms) as u32)
+    SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(FloorFragmentUniforms) as u32)
+    SDL_BindGPUFragmentSamplers(runtime.current_pass, 0 as u32, @addr(binding), 1 as u32)
+    exo_bind_mesh(runtime, mesh)
+    SDL_DrawGPUIndexedPrimitives(runtime.current_pass, mesh.index_count, 1 as u32, 0 as u32, 0 as i32, 0 as u32)
+}
+
+fn exo_sdl3_draw_glow(
+    runtime_raw: ref void,
+    mesh_raw: ref void,
+    view_proj: ref f32,
+    position: ref f32,
+    width: f32,
+    height: f32,
+    camera_right: ref f32,
+    camera_up: ref f32,
+    color: ref f32,
+    intensity: f32,
+    alpha: f32
+) void = trust {
+    if runtime_raw == none || mesh_raw == none {
+        return
+    }
+    val runtime: ref ExoSDL3Runtime = runtime_raw as ref ExoSDL3Runtime
+    val mesh: ref ExoSDL3Mesh = mesh_raw as ref ExoSDL3Mesh
+    val vu: GlowVertexUniforms = {
+        view_proj: transpose_mat4_ptr(view_proj),
+        position: vec4_from_ptr(position, 0.0 as f32),
+        size: { x: width, y: height, z: 0.0 as f32, w: 0.0 as f32 },
+        camera_right: vec4_from_ptr(camera_right, 0.0 as f32),
+        camera_up: vec4_from_ptr(camera_up, 0.0 as f32)
+    }
+    val fu: GlowFragmentUniforms = {
+        color_intensity: vec4_from_ptr(color, intensity),
+        alpha_pad: { x: alpha, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
+    }
+    SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.glow_pipeline)
+    SDL_PushGPUVertexUniformData(runtime.command_buffer, 0 as u32, @addr(vu) as ref void, @sizeof(GlowVertexUniforms) as u32)
+    SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(GlowFragmentUniforms) as u32)
+    exo_bind_mesh(runtime, mesh)
+    SDL_DrawGPUIndexedPrimitives(runtime.current_pass, mesh.index_count, 1 as u32, 0 as u32, 0 as i32, 0 as u32)
+}
+
+fn exo_sdl3_create_audio(wav_path: ref u8, volume: i32) ref void = trust {
+    clear_exo_error()
+    if wav_path == none || string.len_raw(wav_path) == (0 as usize) {
+        return set_exo_error_ptr("audio path is empty")
+    }
+    val audio: mut ref ExoSDL3Audio = @alloc(@sizeof(ExoSDL3Audio)) as mut ref ExoSDL3Audio
+    if audio == none {
+        return set_exo_error_ptr("failed to allocate audio")
+    }
+    @deref(audio) = @zeroed
+    if !SDL_LoadWAV(wav_path, @addr(audio.spec), @addr(audio.buffer), @addr(audio.length)) {
+        exo_sdl3_destroy_audio(audio as ref void)
+        return none as ref void
+    }
+    audio.stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, @addr(audio.spec), none as ref void, none as ref void)
+    if audio.stream == none {
+        exo_sdl3_destroy_audio(audio as ref void)
+        return none as ref void
+    }
+    SDL_SetAudioStreamGain(audio.stream, (volume as f32) / (128.0 as f32))
+    if !SDL_ResumeAudioStreamDevice(audio.stream) {
+        exo_sdl3_destroy_audio(audio as ref void)
+        return none as ref void
+    }
+    return audio as ref void
+}
+
+fn exo_sdl3_destroy_audio(audio_raw: ref void) void = trust {
+    if audio_raw == none {
+        return
+    }
+    val audio: ref ExoSDL3Audio = audio_raw as ref ExoSDL3Audio
+    if audio.stream != none {
+        SDL_DestroyAudioStream(audio.stream)
+    }
+    if audio.buffer != none {
+        SDL_free(audio.buffer as ref void)
+    }
+    @free(audio_raw)
+}
+
+fn exo_sdl3_play_audio(audio_raw: ref void, loops: i32, volume: i32) bool = trust {
+    clear_exo_error()
+    if audio_raw == none {
+        return set_exo_error("audio unavailable")
+    }
+    val audio: ref ExoSDL3Audio = audio_raw as ref ExoSDL3Audio
+    if audio.stream == none || audio.buffer == none || audio.length == (0 as u32) {
+        return set_exo_error("audio unavailable")
+    }
+    val play_loops: mut i32 = loops
+    if play_loops < (0 as i32) {
+        play_loops = 0 as i32
+    }
+    if !SDL_ClearAudioStream(audio.stream) {
+        return false
+    }
+    SDL_SetAudioStreamGain(audio.stream, (volume as f32) / (128.0 as f32))
+    val repeats: mut i32 = 0 as i32
+    for {
+        if repeats > play_loops {
+            break
+        }
+        if !SDL_PutAudioStreamData(audio.stream, audio.buffer as ref void, audio.length as i32) {
+            return false
+        }
+        repeats = repeats + (1 as i32)
+    }
+    return SDL_FlushAudioStream(audio.stream)
 }
 
 fn vec3(x: f32, y: f32, z: f32) ecs.Vec3 = {
@@ -341,15 +1458,6 @@ fn mat4(
     }
 }
 
-fn mat_identity() Mat4 = {
-    return mat4(
-        1.0 as f32, 0.0 as f32, 0.0 as f32, 0.0 as f32,
-        0.0 as f32, 1.0 as f32, 0.0 as f32, 0.0 as f32,
-        0.0 as f32, 0.0 as f32, 1.0 as f32, 0.0 as f32,
-        0.0 as f32, 0.0 as f32, 0.0 as f32, 1.0 as f32
-    )
-}
-
 fn mat_mul(a: Mat4, b: Mat4) Mat4 = {
     val r00: f32 = a.m00 * b.m00 + a.m01 * b.m10 + a.m02 * b.m20 + a.m03 * b.m30
     val r01: f32 = a.m00 * b.m01 + a.m01 * b.m11 + a.m02 * b.m21 + a.m03 * b.m31
@@ -367,7 +1475,6 @@ fn mat_mul(a: Mat4, b: Mat4) Mat4 = {
     val r31: f32 = a.m30 * b.m01 + a.m31 * b.m11 + a.m32 * b.m21 + a.m33 * b.m31
     val r32: f32 = a.m30 * b.m02 + a.m31 * b.m12 + a.m32 * b.m22 + a.m33 * b.m32
     val r33: f32 = a.m30 * b.m03 + a.m31 * b.m13 + a.m32 * b.m23 + a.m33 * b.m33
-
     return mat4(
         r00, r01, r02, r03,
         r10, r11, r12, r13,
@@ -411,7 +1518,7 @@ fn mat_perspective(fov_y: f32, aspect: f32, near_z: f32, far_z: f32) Mat4 = {
     return mat4(
         f / aspect, 0.0 as f32, 0.0 as f32, 0.0 as f32,
         0.0 as f32, f, 0.0 as f32, 0.0 as f32,
-        0.0 as f32, 0.0 as f32, (far_z + near_z) * nf, (2.0 as f32) * far_z * near_z * nf,
+        0.0 as f32, 0.0 as f32, far_z * nf, far_z * near_z * nf,
         0.0 as f32, 0.0 as f32, -1.0 as f32, 0.0 as f32
     )
 }
@@ -529,7 +1636,7 @@ fn dup_cstr(src: ref u8) ref u8 = trust {
         return none
     }
     val len: usize = string.len_raw(src)
-    val dst: ref u8 = @alloc(len + 1) as ref u8
+    val dst: ref u8 = @alloc(len + (1 as usize)) as ref u8
     if dst == none {
         return none
     }
@@ -556,49 +1663,43 @@ pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
     if len < (20 as usize) {
         return none
     }
-
     val magic: u32 = bin.read_u32_le(data, 0 as usize)
     val version: u32 = bin.read_u32_le(data, 4 as usize)
     val total_len: u32 = bin.read_u32_le(data, 8 as usize)
     if magic != GLB_MAGIC || version != GLB_VERSION {
         return none
     }
-    if ((total_len as usize) > len) {
+    val total_len_usize: usize = total_len as usize
+    if total_len_usize > len {
         return none
     }
-
     val json_len: u32 = bin.read_u32_le(data, 12 as usize)
     val json_type: u32 = bin.read_u32_le(data, 16 as usize)
     if json_type != GLB_JSON_CHUNK {
         return none
     }
-
     val json_offset: usize = 20 as usize
     val json_end: usize = json_offset + (json_len as usize)
     if json_end > len {
         return none
     }
-
-    val json_buf: ref u8 = @alloc((json_len as usize) + 1) as ref u8
+    val json_buf: ref u8 = @alloc((json_len as usize) + (1 as usize)) as ref u8
     if json_buf == none {
         return none
     }
     @memcpy(json_buf as ref void, @ptradd(data, json_offset) as ref void, json_len as usize)
     @store8(@ptradd(json_buf, json_len as usize), 0)
-
     val bin_header_offset: usize = json_end
     if bin_header_offset + (8 as usize) > len {
         @free(json_buf as ref void)
         return none
     }
-
     val bin_len: u32 = bin.read_u32_le(data, bin_header_offset)
     val bin_type: u32 = bin.read_u32_le(data, bin_header_offset + (4 as usize))
     if bin_type != GLB_BIN_CHUNK {
         @free(json_buf as ref void)
         return none
     }
-
     if json.parse(json_buf) is some doc {
         val root: ref void = json.doc_root(doc)
         val model: mut ecs.GlbModel = ecs.empty_model()
@@ -607,7 +1708,6 @@ pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
         model.json_length = json_len as usize
         model.bin_length = bin_len as usize
         model.mesh_name = dup_cstr("embedded-glb")
-
         if json.obj_get(root, "meshes") is some meshes {
             if json.arr_get(meshes, 0 as usize) is some mesh {
                 if json.obj_get_str(mesh, "name") is some mesh_name {
@@ -636,12 +1736,10 @@ pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
                 }
             }
         }
-
         json.doc_free(doc)
         @free(json_buf as ref void)
         return some model
     }
-
     @free(json_buf as ref void)
     return none
 }
@@ -651,7 +1749,6 @@ pub fn load_glb(path: ref u8) option[ecs.GlbModel] = trust {
     if file == none {
         return none
     }
-
     fseek(file, 0, 2 as i32)
     val size: i64 = ftell(file)
     rewind(file)
@@ -659,8 +1756,7 @@ pub fn load_glb(path: ref u8) option[ecs.GlbModel] = trust {
         fclose(file)
         return none
     }
-
-    val buf: ref u8 = @alloc((size as usize) + 1) as ref u8
+    val buf: ref u8 = @alloc((size as usize) + (1 as usize)) as ref u8
     if buf == none {
         fclose(file)
         return none
@@ -668,7 +1764,6 @@ pub fn load_glb(path: ref u8) option[ecs.GlbModel] = trust {
     fread(buf as ref void, 1 as usize, size as usize, file)
     @store8(@ptradd(buf, size as usize), 0)
     fclose(file)
-
     val model = parse_glb_bytes(buf, size as usize)
     @free(buf as ref void)
     return model
@@ -682,19 +1777,16 @@ pub fn build_test_glb_fixture() GlbFixture = trust {
     val total_len: usize = (12 as usize) + (8 as usize) + json_len + (8 as usize) + bin_len
     val ptr: ref u8 = @alloc(total_len + (1 as usize)) as ref u8
     @memset(ptr as ref void, 0, total_len + (1 as usize))
-
     bin.write_u32_le(ptr, 0 as usize, GLB_MAGIC)
     bin.write_u32_le(ptr, 4 as usize, GLB_VERSION)
     bin.write_u32_le(ptr, 8 as usize, total_len as u32)
     bin.write_u32_le(ptr, 12 as usize, json_len as u32)
     bin.write_u32_le(ptr, 16 as usize, GLB_JSON_CHUNK)
     @memcpy(@ptradd(ptr, 20 as usize) as ref void, json_chunk as ref void, json_len_raw)
-
     val bin_header: usize = (20 as usize) + json_len
     bin.write_u32_le(ptr, bin_header, bin_len as u32)
     bin.write_u32_le(ptr, bin_header + (4 as usize), GLB_BIN_CHUNK)
     @store8(@ptradd(ptr, total_len), 0)
-
     return {
         ptr: ptr,
         len: total_len
@@ -709,106 +1801,6 @@ pub fn load_embedded_fixture_model() ecs.GlbModel = trust {
     }
     @free(fixture.ptr as ref void)
     return ecs.empty_model()
-}
-
-fn dump_shader_log(shader: u32) void = trust {
-    val log: ref u8 = @alloc(2048 as usize) as ref u8
-    if log == none { return }
-    @memset(log as ref void, 0, 2048 as usize)
-    gl_get_shader_info_log(shader, 2047 as i32, none as ref i32, log)
-    stdio.eputs(log)
-    @free(log as ref void)
-}
-
-fn dump_program_log(program: u32) void = trust {
-    val log: ref u8 = @alloc(2048 as usize) as ref u8
-    if log == none { return }
-    @memset(log as ref void, 0, 2048 as usize)
-    gl_get_program_info_log(program, 2047 as i32, none as ref i32, log)
-    stdio.eputs(log)
-    @free(log as ref void)
-}
-
-fn compile_shader(stage: u32, source: ref u8) u32 = trust {
-    val shader: u32 = gl_create_shader(stage)
-    val src: mut ref u8 = source
-    gl_shader_source(shader, 1 as i32, @addr(src), none as ref i32)
-    gl_compile_shader(shader)
-
-    val its_ok: mut i32 = 0
-    gl_get_shaderiv(shader, GL_COMPILE_STATUS, @addr(its_ok))
-    if its_ok == 0 {
-        dump_shader_log(shader)
-        gl_delete_shader(shader)
-        return 0 as u32
-    }
-
-    return shader
-}
-
-fn link_program(vertex_source: ref u8, fragment_source: ref u8) u32 = trust {
-    val vs: u32 = compile_shader(GL_VERTEX_SHADER, vertex_source)
-    if vs == 0 as u32 {
-        return 0 as u32
-    }
-
-    val fs: u32 = compile_shader(GL_FRAGMENT_SHADER, fragment_source)
-    if fs == 0 as u32 {
-        gl_delete_shader(vs)
-        return 0 as u32
-    }
-
-    val program: u32 = gl_create_program()
-    gl_attach_shader(program, vs)
-    gl_attach_shader(program, fs)
-    gl_link_program(program)
-    gl_delete_shader(vs)
-    gl_delete_shader(fs)
-
-    val its_ok: mut i32 = 0
-    gl_get_programiv(program, GL_LINK_STATUS, @addr(its_ok))
-    if its_ok == 0 {
-        dump_program_log(program)
-        gl_delete_program(program)
-        return 0 as u32
-    }
-
-    return program
-}
-
-fn set_uniform_vec3(program: u32, name: ref u8, value: ecs.Vec3) void = trust {
-    val location: i32 = gl_get_uniform_location(program, name)
-    if location >= 0 {
-        gl_uniform3f(location, value.x, value.y, value.z)
-    }
-}
-
-fn set_uniform_f32(program: u32, name: ref u8, value: f32) void = trust {
-    val location: i32 = gl_get_uniform_location(program, name)
-    if location >= 0 {
-        gl_uniform1f(location, value)
-    }
-}
-
-fn set_uniform_i32(program: u32, name: ref u8, value: i32) void = trust {
-    val location: i32 = gl_get_uniform_location(program, name)
-    if location >= 0 {
-        gl_uniform1i(location, value)
-    }
-}
-
-fn set_uniform_vec2(program: u32, name: ref u8, x: f32, y: f32) void = trust {
-    val location: i32 = gl_get_uniform_location(program, name)
-    if location >= 0 {
-        gl_uniform2f(location, x, y)
-    }
-}
-
-fn set_uniform_mat4(program: u32, name: ref u8, value: Mat4) void = trust {
-    val location: i32 = gl_get_uniform_location(program, name)
-    if location >= 0 {
-        gl_uniform_matrix4fv(location, 1 as i32, 1 as u8, @addr(value.m00))
-    }
 }
 
 fn store_f32(base: ref void, index: usize, value: f32) void = trust {
@@ -831,135 +1823,22 @@ fn write_vertex(base: ref void, vertex_index: usize, position: ecs.Vec3, normal:
     store_f32(base, offset + (5 as usize), normal.z)
 }
 
-fn upload_mesh(vertices: ref void, vertex_float_count: usize, indices: ref void, index_count: i32) MeshGPU = trust {
-    val mesh: mut MeshGPU = {
-        vao: 0 as u32,
-        vbo: 0 as u32,
-        ebo: 0 as u32,
-        index_count: index_count
-    }
-
-    gl_gen_vertex_arrays(1 as i32, @addr(mesh.vao))
-    gl_gen_buffers(1 as i32, @addr(mesh.vbo))
-    gl_gen_buffers(1 as i32, @addr(mesh.ebo))
-
-    gl_bind_vertex_array(mesh.vao)
-    gl_bind_buffer(GL_ARRAY_BUFFER, mesh.vbo)
-    gl_buffer_data(
-        GL_ARRAY_BUFFER,
-        (vertex_float_count * (@sizeof(f32) as usize)) as i64,
+fn upload_mesh(runtime: ref void, vertices: ref void, vertex_float_count: usize, indices: ref void, index_count: i32) MeshGPU = trust {
+    val raw: ref void = exo_sdl3_create_mesh(
+        runtime,
         vertices,
-        GL_STATIC_DRAW
-    )
-    gl_bind_buffer(GL_ELEMENT_ARRAY_BUFFER, mesh.ebo)
-    gl_buffer_data(
-        GL_ELEMENT_ARRAY_BUFFER,
-        ((index_count as usize) * (@sizeof(u32) as usize)) as i64,
+        (vertex_float_count * (@sizeof(f32) as usize)) as u32,
         indices,
-        GL_STATIC_DRAW
+        ((index_count as usize) * (@sizeof(u32) as usize)) as u32,
+        index_count as u32
     )
-
-    gl_enable_vertex_attrib_array(0 as u32)
-    gl_vertex_attrib_pointer(
-        0 as u32,
-        3 as i32,
-        GL_FLOAT,
-        GL_FALSE,
-        (6 * (@sizeof(f32) as i32)),
-        none as ref void
-    )
-    gl_enable_vertex_attrib_array(1 as u32)
-    gl_vertex_attrib_pointer(
-        1 as u32,
-        3 as i32,
-        GL_FLOAT,
-        GL_FALSE,
-        (6 * (@sizeof(f32) as i32)),
-        @ptradd(none as ref void, 3 * (@sizeof(f32) as usize)) as ref void
-    )
-
-    gl_bind_vertex_array(0 as u32)
-    return mesh
+    return { raw: raw, index_count: index_count }
 }
 
-fn destroy_mesh(mesh: MeshGPU) void = trust {
-    if mesh.ebo != 0 as u32 {
-        gl_delete_buffers(1 as i32, @addr(mesh.ebo))
+fn destroy_mesh(runtime: ref void, mesh: MeshGPU) void = trust {
+    if mesh.raw != none {
+        exo_sdl3_destroy_mesh(runtime, mesh.raw)
     }
-    if mesh.vbo != 0 as u32 {
-        gl_delete_buffers(1 as i32, @addr(mesh.vbo))
-    }
-    if mesh.vao != 0 as u32 {
-        gl_delete_vertex_arrays(1 as i32, @addr(mesh.vao))
-    }
-}
-
-fn render_target_valid(target: RenderTarget) bool = {
-    return target.framebuffer != 0 as u32 &&
-           target.color_texture != 0 as u32 &&
-           target.depth_rbo != 0 as u32
-}
-
-fn destroy_render_target(target: RenderTarget) void = trust {
-    if target.depth_rbo != 0 as u32 {
-        gl_delete_renderbuffers(1 as i32, @addr(target.depth_rbo))
-    }
-    if target.color_texture != 0 as u32 {
-        gl_delete_textures(1 as i32, @addr(target.color_texture))
-    }
-    if target.framebuffer != 0 as u32 {
-        gl_delete_framebuffers(1 as i32, @addr(target.framebuffer))
-    }
-}
-
-fn create_render_target(width: i32, height: i32) RenderTarget = trust {
-    val target: mut RenderTarget = {
-        framebuffer: 0 as u32,
-        color_texture: 0 as u32,
-        depth_rbo: 0 as u32,
-        width: width,
-        height: height
-    }
-
-    gl_gen_framebuffers(1 as i32, @addr(target.framebuffer))
-    gl_bind_framebuffer(GL_FRAMEBUFFER, target.framebuffer)
-
-    gl_gen_textures(1 as i32, @addr(target.color_texture))
-    gl_bind_texture(GL_TEXTURE_2D, target.color_texture)
-    gl_tex_image_2d(GL_TEXTURE_2D, 0 as i32, GL_RGBA16F as i32, width, height, 0 as i32, GL_RGBA, GL_FLOAT, none as ref void)
-    gl_tex_parameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR as i32)
-    gl_tex_parameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR as i32)
-    gl_tex_parameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE as i32)
-    gl_tex_parameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE as i32)
-    gl_framebuffer_texture_2d(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, target.color_texture, 0 as i32)
-
-    gl_gen_renderbuffers(1 as i32, @addr(target.depth_rbo))
-    gl_bind_renderbuffer(GL_RENDERBUFFER, target.depth_rbo)
-    gl_renderbuffer_storage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, width, height)
-    gl_framebuffer_renderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, target.depth_rbo)
-
-    if gl_check_framebuffer_status(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE {
-        gl_bind_framebuffer(GL_FRAMEBUFFER, 0 as u32)
-        destroy_render_target(target)
-        return {
-            framebuffer: 0 as u32,
-            color_texture: 0 as u32,
-            depth_rbo: 0 as u32,
-            width: width,
-            height: height
-        }
-    }
-
-    gl_bind_framebuffer(GL_FRAMEBUFFER, 0 as u32)
-    gl_bind_texture(GL_TEXTURE_2D, 0 as u32)
-    gl_bind_renderbuffer(GL_RENDERBUFFER, 0 as u32)
-    return target
-}
-
-fn create_post_vao() u32 = trust {
-    val vao: mut u32 = 0 as u32
-    gl_gen_vertex_arrays(1 as i32, @addr(vao))
-    return vao
 }
 
 fn cube_face(
@@ -978,7 +1857,6 @@ fn cube_face(
     write_vertex(vertices, base_vertex + (1 as usize), p1, normal)
     write_vertex(vertices, base_vertex + (2 as usize), p2, normal)
     write_vertex(vertices, base_vertex + (3 as usize), p3, normal)
-
     store_u32(indices, base_index + (0 as usize), (base_vertex + (0 as usize)) as u32)
     store_u32(indices, base_index + (1 as usize), (base_vertex + (1 as usize)) as u32)
     store_u32(indices, base_index + (2 as usize), (base_vertex + (2 as usize)) as u32)
@@ -987,7 +1865,7 @@ fn cube_face(
     store_u32(indices, base_index + (5 as usize), (base_vertex + (3 as usize)) as u32)
 }
 
-fn build_cube_mesh() MeshGPU = trust {
+fn build_cube_mesh(runtime: ref void) MeshGPU = trust {
     val vertex_float_count: usize = 24 as usize * 6 as usize
     val index_count: i32 = 36 as i32
     val vertices: ref void = @alloc(vertex_float_count * (@sizeof(f32) as usize))
@@ -995,14 +1873,8 @@ fn build_cube_mesh() MeshGPU = trust {
     if vertices == none || indices == none {
         if vertices != none { @free(vertices) }
         if indices != none { @free(indices) }
-        return {
-            vao: 0 as u32,
-            vbo: 0 as u32,
-            ebo: 0 as u32,
-            index_count: 0 as i32
-        }
+        return { raw: none as ref void, index_count: 0 as i32 }
     }
-
     cube_face(
         vertices, indices, 0 as i32,
         vec3(-0.5 as f32, -0.5 as f32, 0.5 as f32),
@@ -1051,55 +1923,46 @@ fn build_cube_mesh() MeshGPU = trust {
         vec3(-0.5 as f32, -0.5 as f32, 0.5 as f32),
         vec3(0.0 as f32, -1.0 as f32, 0.0 as f32)
     )
-
-    val mesh: MeshGPU = upload_mesh(vertices, vertex_float_count, indices, index_count)
+    val mesh: MeshGPU = upload_mesh(runtime, vertices, vertex_float_count, indices, index_count)
     @free(vertices)
     @free(indices)
     return mesh
 }
 
-fn build_sphere_mesh(lat_segments: i32, lon_segments: i32) MeshGPU = trust {
-    val vertex_count: i32 = (lat_segments + 1) * (lon_segments + 1)
-    val index_count: i32 = lat_segments * lon_segments * 6
+fn build_sphere_mesh(runtime: ref void, lat_segments: i32, lon_segments: i32) MeshGPU = trust {
+    val vertex_count: i32 = (lat_segments + 1 as i32) * (lon_segments + 1 as i32)
+    val index_count: i32 = lat_segments * lon_segments * 6 as i32
     val vertex_float_count: usize = (vertex_count as usize) * (6 as usize)
     val vertices: ref void = @alloc(vertex_float_count * (@sizeof(f32) as usize))
     val indices: ref void = @alloc((index_count as usize) * (@sizeof(u32) as usize))
     if vertices == none || indices == none {
         if vertices != none { @free(vertices) }
         if indices != none { @free(indices) }
-        return {
-            vao: 0 as u32,
-            vbo: 0 as u32,
-            ebo: 0 as u32,
-            index_count: 0 as i32
-        }
+        return { raw: none as ref void, index_count: 0 as i32 }
     }
-
     for (iy = 0; iy <= lat_segments; iy++) {
         val v: f32 = (iy as f32) / (lat_segments as f32)
         val theta: f64 = (v as f64) * mstat.PI
         val y: f32 = math.cos(theta) as f32
         val ring_r: f32 = math.sin(theta) as f32
-
         for (ix = 0; ix <= lon_segments; ix++) {
             val u: f32 = (ix as f32) / (lon_segments as f32)
             val phi: f64 = (u as f64) * ((2.0 as f64) * mstat.PI)
             val x: f32 = (math.cos(phi) as f32) * ring_r
             val z: f32 = (math.sin(phi) as f32) * ring_r
             val normal: ecs.Vec3 = vec3(x, y, z)
-            val vertex_index: usize = ((iy * (lon_segments + 1)) + ix) as usize
+            val vertex_index: usize = ((iy * (lon_segments + 1 as i32)) + ix) as usize
             write_vertex(vertices, vertex_index, normal, normal)
         }
     }
-
-    val row_stride: i32 = lon_segments + 1
+    val row_stride: i32 = lon_segments + 1 as i32
     for (face_y = 0; face_y < lat_segments; face_y++) {
         for (face_x = 0; face_x < lon_segments; face_x++) {
             val a: u32 = ((face_y * row_stride) + face_x) as u32
-            val b: u32 = (((face_y + 1) * row_stride) + face_x) as u32
-            val c: u32 = a + 1
-            val d: u32 = b + 1
-            val index_base: usize = (((face_y * lon_segments) + face_x) * 6) as usize
+            val b: u32 = (((face_y + 1 as i32) * row_stride) + face_x) as u32
+            val c: u32 = a + (1 as u32)
+            val d: u32 = b + (1 as u32)
+            val index_base: usize = (((face_y * lon_segments) + face_x) * 6 as i32) as usize
             store_u32(indices, index_base + (0 as usize), a)
             store_u32(indices, index_base + (1 as usize), b)
             store_u32(indices, index_base + (2 as usize), c)
@@ -1108,14 +1971,13 @@ fn build_sphere_mesh(lat_segments: i32, lon_segments: i32) MeshGPU = trust {
             store_u32(indices, index_base + (5 as usize), d)
         }
     }
-
-    val mesh: MeshGPU = upload_mesh(vertices, vertex_float_count, indices, index_count)
+    val mesh: MeshGPU = upload_mesh(runtime, vertices, vertex_float_count, indices, index_count)
     @free(vertices)
     @free(indices)
     return mesh
 }
 
-fn build_quad_mesh() MeshGPU = trust {
+fn build_quad_mesh(runtime: ref void) MeshGPU = trust {
     val vertex_float_count: usize = (4 as usize) * (6 as usize)
     val index_count: i32 = 6 as i32
     val vertices: ref void = @alloc(vertex_float_count * (@sizeof(f32) as usize))
@@ -1123,7 +1985,7 @@ fn build_quad_mesh() MeshGPU = trust {
     if vertices == none || indices == none {
         if vertices != none { @free(vertices) }
         if indices != none { @free(indices) }
-        return { vao: 0 as u32, vbo: 0 as u32, ebo: 0 as u32, index_count: 0 as i32 }
+        return { raw: none as ref void, index_count: 0 as i32 }
     }
     val n: ecs.Vec3 = vec3(0.0 as f32, 0.0 as f32, 1.0 as f32)
     write_vertex(vertices, 0 as usize, vec3(-0.5 as f32, -0.5 as f32, 0.0 as f32), n)
@@ -1136,14 +1998,14 @@ fn build_quad_mesh() MeshGPU = trust {
     store_u32(indices, 3 as usize, 0 as u32)
     store_u32(indices, 4 as usize, 2 as u32)
     store_u32(indices, 5 as usize, 3 as u32)
-    val mesh: MeshGPU = upload_mesh(vertices, vertex_float_count, indices, index_count)
+    val mesh: MeshGPU = upload_mesh(runtime, vertices, vertex_float_count, indices, index_count)
     @free(vertices)
     @free(indices)
     return mesh
 }
 
 fn mesh_valid(mesh: MeshGPU) bool = {
-    return mesh.vao != 0 as u32 && mesh.index_count > 0
+    return mesh.raw != none && mesh.index_count > (0 as i32)
 }
 
 fn camera_forward(camera: Camera) ecs.Vec3 = {
@@ -1152,7 +2014,7 @@ fn camera_forward(camera: Camera) ecs.Vec3 = {
     val cp: f32 = (math.cos(pitch_f64)) as f32
     return vec3(
         (math.sin(yaw_f64) as f32) * cp,
-        (math.sin(pitch_f64)) as f32,
+        (math.sin(pitch_f64) as f32),
         (math.cos(yaw_f64) as f32) * cp
     )
 }
@@ -1160,21 +2022,18 @@ fn camera_forward(camera: Camera) ecs.Vec3 = {
 fn update_camera(camera: mut Camera, input: InputConfig, dt: f32, keys: ref u8, mouse_dx: f32, mouse_dy: f32) void = trust {
     val yaw_step: f32 = camera.turn_speed * dt
     val move_step: f32 = camera.move_speed * dt
-
-    val key_fwd:   u8 = @load8(@ptradd(keys, input.keys.move_forward as usize))
-    val key_back:  u8 = @load8(@ptradd(keys, input.keys.move_back    as usize))
-    val key_left:  u8 = @load8(@ptradd(keys, input.keys.move_left    as usize))
-    val key_right: u8 = @load8(@ptradd(keys, input.keys.move_right   as usize))
-    val key_tleft: u8 = @load8(@ptradd(keys, input.keys.turn_left    as usize))
-    val key_tright:u8 = @load8(@ptradd(keys, input.keys.turn_right   as usize))
-    val key_up:    u8 = @load8(@ptradd(keys, input.keys.look_up      as usize))
-    val key_down:  u8 = @load8(@ptradd(keys, input.keys.look_down    as usize))
-
-    if key_tleft  != 0 { camera.yaw   = camera.yaw   + yaw_step }
-    if key_tright != 0 { camera.yaw   = camera.yaw   - yaw_step }
-    if key_up     != 0 { camera.pitch = camera.pitch + yaw_step * (0.70 as f32) }
-    if key_down   != 0 { camera.pitch = camera.pitch - yaw_step * (0.70 as f32) }
-
+    val key_fwd:    u8 = @load8(@ptradd(keys, input.keys.move_forward as usize))
+    val key_back:   u8 = @load8(@ptradd(keys, input.keys.move_back    as usize))
+    val key_left:   u8 = @load8(@ptradd(keys, input.keys.move_left    as usize))
+    val key_right:  u8 = @load8(@ptradd(keys, input.keys.move_right   as usize))
+    val key_tleft:  u8 = @load8(@ptradd(keys, input.keys.turn_left    as usize))
+    val key_tright: u8 = @load8(@ptradd(keys, input.keys.turn_right   as usize))
+    val key_up:     u8 = @load8(@ptradd(keys, input.keys.look_up      as usize))
+    val key_down:   u8 = @load8(@ptradd(keys, input.keys.look_down    as usize))
+    if key_tleft != 0 { camera.yaw = camera.yaw + yaw_step }
+    if key_tright != 0 { camera.yaw = camera.yaw - yaw_step }
+    if key_up != 0 { camera.pitch = camera.pitch + yaw_step * (0.70 as f32) }
+    if key_down != 0 { camera.pitch = camera.pitch - yaw_step * (0.70 as f32) }
     if input.mouse.enabled {
         camera.yaw = camera.yaw - mouse_dx * input.mouse.sensitivity_x
         if input.mouse.invert_y {
@@ -1183,208 +2042,19 @@ fn update_camera(camera: mut Camera, input: InputConfig, dt: f32, keys: ref u8, 
             camera.pitch = camera.pitch - mouse_dy * input.mouse.sensitivity_y
         }
     }
-
-    if camera.pitch > (1.2 as f32)  { camera.pitch =  1.2 as f32 }
+    if camera.pitch > (1.2 as f32) { camera.pitch = 1.2 as f32 }
     if camera.pitch < (-1.2 as f32) { camera.pitch = -1.2 as f32 }
-
     val forward: ecs.Vec3 = camera_forward(camera)
     val flat_fwd: ecs.Vec3 = vec3_normalize(vec3(forward.x, 0.0 as f32, forward.z))
-    val right_v:  ecs.Vec3 = vec3_normalize(vec3(-flat_fwd.z, 0.0 as f32, flat_fwd.x))
-
-    if key_fwd   != 0 { camera.position = vec3_add(camera.position, vec3_scale(flat_fwd, move_step)) }
-    if key_back  != 0 { camera.position = vec3_sub(camera.position, vec3_scale(flat_fwd, move_step)) }
-    if key_left  != 0 { camera.position = vec3_sub(camera.position, vec3_scale(right_v,  move_step)) }
-    if key_right != 0 { camera.position = vec3_add(camera.position, vec3_scale(right_v,  move_step)) }
+    val right_v: ecs.Vec3 = vec3_normalize(vec3(-flat_fwd.z, 0.0 as f32, flat_fwd.x))
+    if key_fwd != 0 { camera.position = vec3_add(camera.position, vec3_scale(flat_fwd, move_step)) }
+    if key_back != 0 { camera.position = vec3_sub(camera.position, vec3_scale(flat_fwd, move_step)) }
+    if key_left != 0 { camera.position = vec3_sub(camera.position, vec3_scale(right_v, move_step)) }
+    if key_right != 0 { camera.position = vec3_add(camera.position, vec3_scale(right_v, move_step)) }
 }
 
-val SCENE_VERTEX_SHADER: ref u8 = \\
-\\ #version 330 core
-\\ layout(location = 0) in vec3 aPosition;
-\\ layout(location = 1) in vec3 aNormal;
-\\ uniform mat4 uModel;
-\\ uniform mat4 uViewProj;
-\\ out vec3 vWorldPos;
-\\ out vec3 vWorldNormal;
-\\ void main() {
-\\     vec4 world = uModel * vec4(aPosition, 1.0);
-\\     vWorldPos = world.xyz;
-\\     vWorldNormal = normalize((uModel * vec4(aNormal, 0.0)).xyz);
-\\     gl_Position = uViewProj * world;
-\\ }
-
-val SCENE_FRAGMENT_SHADER: ref u8 = \\
-\\ #version 330 core
-\\ in vec3 vWorldPos;
-\\ in vec3 vWorldNormal;
-\\ out vec4 FragColor;
-\\ uniform vec3 uColor;
-\\ uniform vec3 uCameraPos;
-\\ uniform float uReflective;
-\\ uniform float uGlow;
-\\ uniform float uAlpha;
-\\ uniform vec3 uLightPos;
-\\ uniform vec3 uLightColor;
-\\ uniform float uLightIntensity;
-\\ uniform float uLightRadius;
-\\ vec3 sky_color(vec3 d) {
-\\     float t = clamp(d.y * 0.5 + 0.5, 0.0, 1.0);
-\\     return mix(vec3(0.05, 0.08, 0.14), vec3(0.26, 0.48, 0.84), t);
-\\ }
-\\ void main() {
-\\     vec3 n = normalize(vWorldNormal);
-\\     vec3 view_dir = normalize(uCameraPos - vWorldPos);
-\\     vec3 light_dir = normalize(vec3(-0.50, 0.82, 0.28));
-\\     float diff = max(dot(n, light_dir), 0.0);
-\\     float hemi = n.y * 0.5 + 0.5;
-\\     vec3 half_vec = normalize(light_dir + view_dir);
-\\     float spec = pow(max(dot(n, half_vec), 0.0), 36.0);
-\\     vec3 ambient = mix(vec3(0.07, 0.09, 0.13), sky_color(vec3(0.0, hemi * 2.0 - 1.0, 0.0)) * 0.28, hemi);
-\\     vec3 base = uColor * (0.30 + diff * 0.68) + ambient * 0.35;
-\\     vec3 highlight = vec3(1.0, 0.98, 0.94) * spec * (0.06 + uReflective * 0.12);
-\\     vec3 glow = uColor * uGlow * 0.10;
-\\     vec3 to_light = uLightPos - vWorldPos;
-\\     float dist = length(to_light);
-\\     float att = 1.0 / (1.0 + (dist * dist) / (uLightRadius * uLightRadius));
-\\     vec3 pl_dir = normalize(to_light);
-\\     float pdiff = max(dot(n, pl_dir), 0.0);
-\\     vec3 phalf = normalize(pl_dir + view_dir);
-\\     float pspec = pow(max(dot(n, phalf), 0.0), 48.0);
-\\     vec3 point_contrib = uLightColor * uLightIntensity * att * (uColor * pdiff * 0.55 + vec3(1.0, 0.98, 0.96) * pspec * (0.08 + uReflective * 0.14));
-\\     FragColor = vec4(base + highlight + glow + point_contrib, uAlpha);
-\\ }
-
-val FLOOR_VERTEX_SHADER: ref u8 = \\
-\\ #version 330 core
-\\ layout(location = 0) in vec3 aPosition;
-\\ layout(location = 1) in vec3 aNormal;
-\\ uniform mat4 uModel;
-\\ uniform mat4 uViewProj;
-\\ uniform mat4 uReflectViewProj;
-\\ out vec3 vWorldPos;
-\\ out vec3 vWorldNormal;
-\\ out vec4 vReflectClip;
-\\ void main() {
-\\     vec4 world = uModel * vec4(aPosition, 1.0);
-\\     vWorldPos = world.xyz;
-\\     vWorldNormal = normalize((uModel * vec4(aNormal, 0.0)).xyz);
-\\     vReflectClip = uReflectViewProj * world;
-\\     gl_Position = uViewProj * world;
-\\ }
-
-val FLOOR_FRAGMENT_SHADER: ref u8 = \\
-\\ #version 330 core
-\\ in vec3 vWorldPos;
-\\ in vec3 vWorldNormal;
-\\ in vec4 vReflectClip;
-\\ out vec4 FragColor;
-\\ uniform sampler2D uReflectionTex;
-\\ uniform vec3 uCameraPos;
-\\ vec3 sky_color(vec3 d) {
-\\     float t = clamp(d.y * 0.5 + 0.5, 0.0, 1.0);
-\\     return mix(vec3(0.05, 0.08, 0.14), vec3(0.26, 0.48, 0.84), t);
-\\ }
-\\ void main() {
-\\     vec3 n = normalize(vWorldNormal);
-\\     vec3 view_dir = normalize(uCameraPos - vWorldPos);
-\\     vec2 uv = vReflectClip.xy / max(vReflectClip.w, 0.0001);
-\\     uv = uv * 0.5 + 0.5;
-\\     vec3 reflection = sky_color(reflect(-view_dir, n));
-\\     if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) {
-\\         reflection = texture(uReflectionTex, uv).rgb;
-\\     }
-\\     float fresnel = pow(1.0 - max(dot(view_dir, n), 0.0), 5.0);
-\\     vec3 tint = vec3(0.03, 0.06, 0.08);
-\\     vec3 color = mix(tint, reflection, 0.42 + fresnel * 0.36);
-\\     vec3 highlight = vec3(1.0, 0.98, 0.95) * pow(max(dot(reflect(-view_dir, n), vec3(0.0, 1.0, 0.0)), 0.0), 18.0) * 0.04;
-\\     FragColor = vec4(color + highlight, 0.58);
-\\ }
-
-val POST_VERTEX_SHADER: ref u8 = \\
-\\ #version 330 core
-\\ out vec2 vUv;
-\\ void main() {
-\\     vec2 pos;
-\\     if (gl_VertexID == 0) {
-\\         pos = vec2(-1.0, -1.0);
-\\     } else if (gl_VertexID == 1) {
-\\         pos = vec2(3.0, -1.0);
-\\     } else {
-\\         pos = vec2(-1.0, 3.0);
-\\     }
-\\     vUv = pos * 0.5 + 0.5;
-\\     gl_Position = vec4(pos, 0.0, 1.0);
-\\ }
-
-val POST_FRAGMENT_SHADER: ref u8 = \\
-\\ #version 330 core
-\\ in vec2 vUv;
-\\ out vec4 FragColor;
-\\ uniform sampler2D uSceneTex;
-\\ uniform vec2 uTexelSize;
-\\ uniform float uExposure;
-\\ vec3 bright_sample(vec2 uv) {
-\\     vec3 c = texture(uSceneTex, uv).rgb;
-\\     float m = max(max(c.r, c.g), c.b);
-\\     float gain = max(m - 1.15, 0.0);
-\\     return c * gain * 0.65;
-\\ }
-\\ void main() {
-\\     vec3 scene = texture(uSceneTex, vUv).rgb;
-\\     vec2 tx = uTexelSize;
-\\     vec3 bloom = bright_sample(vUv) * 0.10;
-\\     bloom += bright_sample(vUv + vec2(tx.x * 2.0, 0.0)) * 0.07;
-\\     bloom += bright_sample(vUv - vec2(tx.x * 2.0, 0.0)) * 0.07;
-\\     bloom += bright_sample(vUv + vec2(0.0, tx.y * 2.0)) * 0.07;
-\\     bloom += bright_sample(vUv - vec2(0.0, tx.y * 2.0)) * 0.07;
-\\     bloom += bright_sample(vUv + vec2(tx.x * 3.0, tx.y * 3.0)) * 0.05;
-\\     bloom += bright_sample(vUv + vec2(-tx.x * 3.0, tx.y * 3.0)) * 0.05;
-\\     bloom += bright_sample(vUv + vec2(tx.x * 3.0, -tx.y * 3.0)) * 0.05;
-\\     bloom += bright_sample(vUv + vec2(-tx.x * 3.0, -tx.y * 3.0)) * 0.05;
-\\     vec3 hdr = scene + bloom;
-\\     vec3 mapped = vec3(1.0) - exp(-hdr * uExposure);
-\\     mapped = pow(mapped, vec3(1.0 / 2.2));
-\\     FragColor = vec4(mapped, 1.0);
-\\ }
-
-val GLOW_VERTEX_SHADER: ref u8 = \\
-\\ #version 330 core
-\\ layout(location = 0) in vec3 aPosition;
-\\ layout(location = 1) in vec3 aNormal;
-\\ uniform mat4 uViewProj;
-\\ uniform vec3 uBillboardPos;
-\\ uniform vec2 uBillboardSize;
-\\ uniform vec3 uCameraRight;
-\\ uniform vec3 uCameraUp;
-\\ out vec3 vLocalPos;
-\\ void main() {
-\\     vLocalPos = aPosition;
-\\     vec3 world_pos = uBillboardPos
-\\         + uCameraRight * (aPosition.x * uBillboardSize.x)
-\\         + uCameraUp    * (aPosition.y * uBillboardSize.y);
-\\     gl_Position = uViewProj * vec4(world_pos, 1.0);
-\\ }
-
-val GLOW_FRAGMENT_SHADER: ref u8 = \\
-\\ #version 330 core
-\\ in vec3 vLocalPos;
-\\ out vec4 FragColor;
-\\ uniform vec3 uGlowColor;
-\\ uniform float uGlowIntensity;
-\\ uniform float uAlpha;
-\\ void main() {
-\\     float r = length(vLocalPos.xy) * 2.0;
-\\     float fade = pow(max(1.0 - r, 0.0), 2.0);
-\\     FragColor = vec4(uGlowColor * uGlowIntensity, uAlpha * fade);
-\\ }
-
 fn model_matrix_scaled(position: ecs.Vec3, scale: ecs.Vec3, rotation_y: f32) Mat4 = {
-    return mat_mul(
-        mat_translation(position),
-        mat_mul(
-            mat_rotation_y(rotation_y),
-            mat_scale(scale)
-        )
-    )
+    return mat_mul(mat_translation(position), mat_mul(mat_rotation_y(rotation_y), mat_scale(scale)))
 }
 
 fn model_matrix(position: ecs.Vec3, uniform_scale: f32, rotation_y: f32) Mat4 = {
@@ -1413,113 +2083,81 @@ fn view_projection(camera: Camera, width: i32, height: i32) Mat4 = {
     return mat_mul(projection, view)
 }
 
-fn draw_mesh(program: u32, mesh: MeshGPU, model: Mat4, view_proj: Mat4, color: ecs.Vec3, camera_pos: ecs.Vec3, reflective: f32, glow: f32, alpha: f32, light: ecs.PointLight) void = trust {
-    set_uniform_mat4(program, "uModel", model)
-    set_uniform_mat4(program, "uViewProj", view_proj)
-    set_uniform_vec3(program, "uColor", color)
-    set_uniform_vec3(program, "uCameraPos", camera_pos)
-    set_uniform_f32(program, "uReflective", reflective)
-    set_uniform_f32(program, "uGlow", glow)
-    set_uniform_f32(program, "uAlpha", alpha)
-    set_uniform_vec3(program, "uLightPos", light.position)
-    set_uniform_vec3(program, "uLightColor", light.color)
-    set_uniform_f32(program, "uLightIntensity", light.intensity)
-    set_uniform_f32(program, "uLightRadius", light.radius)
-    gl_bind_vertex_array(mesh.vao)
-    gl_draw_elements(GL_TRIANGLES, mesh.index_count, GL_UNSIGNED_INT, none as ref void)
+fn draw_mesh(runtime: ref void, mesh: MeshGPU, model: Mat4, view_proj: Mat4, color: ecs.Vec3, camera_pos: ecs.Vec3, reflective: f32, glow: f32, alpha: f32, light: ecs.PointLight) void = trust {
+    exo_sdl3_draw_scene_mesh(
+        runtime,
+        mesh.raw,
+        @addr(model.m00),
+        @addr(view_proj.m00),
+        @addr(color.x),
+        @addr(camera_pos.x),
+        reflective,
+        glow,
+        alpha,
+        @addr(light.position.x),
+        @addr(light.color.x),
+        light.intensity,
+        light.radius
+    )
 }
 
-fn draw_billboard(program: u32, mesh: MeshGPU, pos: ecs.Vec3, width: f32, height: f32, view_proj: Mat4, cam_right: ecs.Vec3, cam_up: ecs.Vec3, color: ecs.Vec3, intensity: f32, alpha: f32) void = trust {
-    set_uniform_mat4(program, "uViewProj", view_proj)
-    set_uniform_vec3(program, "uBillboardPos", pos)
-    set_uniform_vec2(program, "uBillboardSize", width, height)
-    set_uniform_vec3(program, "uCameraRight", cam_right)
-    set_uniform_vec3(program, "uCameraUp", cam_up)
-    set_uniform_vec3(program, "uGlowColor", color)
-    set_uniform_f32(program, "uGlowIntensity", intensity)
-    set_uniform_f32(program, "uAlpha", alpha)
-    gl_bind_vertex_array(mesh.vao)
-    gl_draw_elements(GL_TRIANGLES, mesh.index_count, GL_UNSIGNED_INT, none as ref void)
-    gl_bind_vertex_array(0 as u32)
+fn draw_billboard(runtime: ref void, mesh: MeshGPU, pos: ecs.Vec3, width: f32, height: f32, view_proj: Mat4, cam_right: ecs.Vec3, cam_up: ecs.Vec3, color: ecs.Vec3, intensity: f32, alpha: f32) void = trust {
+    exo_sdl3_draw_glow(
+        runtime,
+        mesh.raw,
+        @addr(view_proj.m00),
+        @addr(pos.x),
+        width,
+        height,
+        @addr(cam_right.x),
+        @addr(cam_up.x),
+        @addr(color.x),
+        intensity,
+        alpha
+    )
 }
 
-fn draw_typed_entities[E: ecs.SceneEntity](program: u32, mesh: MeshGPU, entities: list[E], camera: Camera, view_proj: Mat4, time: f32, glow_scale: f32, light: ecs.PointLight) void = trust {
+fn draw_typed_entities[E: ecs.SceneEntity](runtime: ref void, mesh: MeshGPU, entities: list[E], camera: Camera, view_proj: Mat4, time: f32, glow_scale: f32, light: ecs.PointLight) void = trust {
     for entity in entities {
         val mm: Mat4 = model_matrix(E.se_position(entity), E.se_scale(entity), E.se_rotation(entity, time))
-        draw_mesh(program, mesh, mm, view_proj, E.se_color(entity), camera.position, E.se_reflective(entity), glow_scale * (0.025 as f32), 1.0 as f32, light)
+        draw_mesh(runtime, mesh, mm, view_proj, E.se_color(entity), camera.position, E.se_reflective(entity), glow_scale * (0.025 as f32), 1.0 as f32, light)
     }
 }
 
-fn draw_scene_entities(program: u32, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, scene: ecs.Scene3D, camera: Camera, view_proj: Mat4, time: f32, glow_scale: f32) void = trust {
-    draw_typed_entities[ecs.SphereEntity](program, sphere_mesh, scene.spheres, camera, view_proj, time, glow_scale, scene.light)
-    draw_typed_entities[ecs.CubeEntity](program, cube_mesh, scene.cubes, camera, view_proj, time, glow_scale, scene.light)
+fn draw_scene_entities(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, scene: ecs.Scene3D, camera: Camera, view_proj: Mat4, time: f32, glow_scale: f32) void = trust {
+    draw_typed_entities[ecs.SphereEntity](runtime, sphere_mesh, scene.spheres, camera, view_proj, time, glow_scale, scene.light)
+    draw_typed_entities[ecs.CubeEntity](runtime, cube_mesh, scene.cubes, camera, view_proj, time, glow_scale, scene.light)
 }
 
-fn draw_floor(program: u32, mesh: MeshGPU, model: Mat4, view_proj: Mat4, reflect_view_proj: Mat4, camera: Camera, reflection_target: RenderTarget) void = trust {
-    gl_use_program(program)
-    set_uniform_mat4(program, "uModel", model)
-    set_uniform_mat4(program, "uViewProj", view_proj)
-    set_uniform_mat4(program, "uReflectViewProj", reflect_view_proj)
-    set_uniform_vec3(program, "uCameraPos", camera.position)
-    set_uniform_i32(program, "uReflectionTex", 0 as i32)
-    gl_active_texture(GL_TEXTURE0)
-    gl_bind_texture(GL_TEXTURE_2D, reflection_target.color_texture)
-    gl_bind_vertex_array(mesh.vao)
-    gl_draw_elements(GL_TRIANGLES, mesh.index_count, GL_UNSIGNED_INT, none as ref void)
-    gl_bind_vertex_array(0 as u32)
-    gl_bind_texture(GL_TEXTURE_2D, 0 as u32)
+fn draw_floor(runtime: ref void, mesh: MeshGPU, model: Mat4, view_proj: Mat4, reflect_view_proj: Mat4, camera: Camera) void = trust {
+    exo_sdl3_draw_floor(runtime, mesh.raw, @addr(model.m00), @addr(view_proj.m00), @addr(reflect_view_proj.m00), @addr(camera.position.x))
 }
 
-fn render_reflection_scene(program: u32, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, scene: ecs.Scene3D, camera: Camera, width: i32, height: i32, time: f32, plane_y: f32) void = trust {
+fn render_reflection_scene(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, scene: ecs.Scene3D, camera: Camera, width: i32, height: i32, time: f32, plane_y: f32) void = trust {
     val mirrored: Camera = mirrored_camera(camera, plane_y)
     val reflect_vp: Mat4 = view_projection(mirrored, width, height)
-    gl_use_program(program)
-    draw_scene_entities(program, cube_mesh, sphere_mesh, scene, mirrored, reflect_vp, time, 0.60 as f32)
+    draw_scene_entities(runtime, cube_mesh, sphere_mesh, scene, mirrored, reflect_vp, time, 0.60 as f32)
 }
 
-fn render_scene(scene_program: u32, floor_program: u32, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, scene: ecs.Scene3D, camera: Camera, width: i32, height: i32, time: f32, reflection_target: RenderTarget) void = trust {
+fn render_scene(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, quad_mesh: MeshGPU, scene: ecs.Scene3D, camera: Camera, width: i32, height: i32, time: f32) void = trust {
     val vp: Mat4 = view_projection(camera, width, height)
     val floor_y: f32 = -0.18 as f32
     val floor_position: ecs.Vec3 = vec3(0.0 as f32, floor_y - (0.08 as f32), -1.45 as f32)
     val floor_scale: ecs.Vec3 = vec3(7.8 as f32, 0.16 as f32, 7.8 as f32)
     val reflect_vp: Mat4 = view_projection(mirrored_camera(camera, floor_y), width, height)
-    draw_scene_entities(scene_program, cube_mesh, sphere_mesh, scene, camera, vp, time, 1.00 as f32)
-    gl_enable(GL_BLEND)
-    gl_blend_func(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-    draw_floor(
-        floor_program,
-        cube_mesh,
-        model_matrix_scaled(floor_position, floor_scale, 0.0 as f32),
-        vp,
-        reflect_vp,
-        camera,
-        reflection_target
-    )
-    gl_disable(GL_BLEND)
-}
-
-fn render_post_process(program: u32, quad_vao: u32, target: RenderTarget) void = trust {
-    gl_bind_framebuffer(GL_FRAMEBUFFER, 0 as u32)
-    gl_disable(GL_DEPTH_TEST)
-    gl_use_program(program)
-    gl_active_texture(GL_TEXTURE0)
-    gl_bind_texture(GL_TEXTURE_2D, target.color_texture)
-    set_uniform_i32(program, "uSceneTex", 0 as i32)
-    set_uniform_vec2(program, "uTexelSize", (1.0 as f32) / (target.width as f32), (1.0 as f32) / (target.height as f32))
-    set_uniform_f32(program, "uExposure", 0.86 as f32)
-    gl_bind_vertex_array(quad_vao)
-    gl_draw_arrays(GL_TRIANGLES, 0 as i32, 3 as i32)
-    gl_bind_vertex_array(0 as u32)
-    gl_bind_texture(GL_TEXTURE_2D, 0 as u32)
-    gl_enable(GL_DEPTH_TEST)
+    draw_scene_entities(runtime, cube_mesh, sphere_mesh, scene, camera, vp, time, 1.00 as f32)
+    draw_floor(runtime, cube_mesh, model_matrix_scaled(floor_position, floor_scale, 0.0 as f32), vp, reflect_vp, camera)
+    val light_pos: ecs.Vec3 = scene.light.position
+    val light_color: ecs.Vec3 = scene.light.color
+    val cam_fwd: ecs.Vec3 = camera_forward(camera)
+    val world_up_v: ecs.Vec3 = vec3(0.0 as f32, 1.0 as f32, 0.0 as f32)
+    val cam_right: ecs.Vec3 = vec3_normalize(vec3_cross(cam_fwd, world_up_v))
+    val cam_up: ecs.Vec3 = vec3_normalize(vec3_cross(cam_right, cam_fwd))
+    draw_billboard(runtime, quad_mesh, light_pos, 1.05 as f32, 1.05 as f32, vp, cam_right, cam_up, light_color, 1.4 as f32, 0.62 as f32)
 }
 
 fn print_sdl_error(prefix: ref u8) void = {
-    trust stdio.eprint("{s}: {s}\n", {prefix, sdl_get_error()})
-}
-
-fn print_mix_error(prefix: ref u8) void = {
-    trust stdio.eprint("{s}: {s}\n", {prefix, mix_get_error()})
+    trust stdio.eprint("{s}: {s}\n", {prefix, exo_sdl3_get_error()})
 }
 
 fn audio_enabled(config: AudioMixerConfig) bool = {
@@ -1532,49 +2170,30 @@ fn audio_enabled(config: AudioMixerConfig) bool = {
 fn init_runtime_audio(config: AudioMixerConfig) RuntimeAudioMixer = trust {
     val runtime: mut RuntimeAudioMixer = {
         initialized: false,
-        sample_music: none as ref void
+        sample_audio: none as ref void
     }
     if !audio_enabled(config) {
         return runtime
     }
-    if ((mix_init(MIX_INIT_MP3) & MIX_INIT_MP3) == 0) {
-        print_mix_error("Mix_Init failed")
-        return runtime
-    }
-    if mix_open_audio(44100 as i32, AUDIO_S16SYS, 2 as i32, 1024 as i32) != 0 {
-        print_mix_error("Mix_OpenAudio failed")
-        mix_quit()
+    runtime.sample_audio = exo_sdl3_create_audio(config.sample.path, config.music_volume)
+    if runtime.sample_audio == none {
         return runtime
     }
     runtime.initialized = true
-    runtime.sample_music = mix_load_music(config.sample.path)
-    if runtime.sample_music == none {
-        print_mix_error("Mix_LoadMUS failed")
-        mix_close_audio()
-        mix_quit()
-        runtime.initialized = false
-        return runtime
-    }
-    mix_volume_music(config.music_volume)
     return runtime
 }
 
 fn shutdown_runtime_audio(runtime: RuntimeAudioMixer) void = trust {
-    if runtime.sample_music != none {
-        mix_free_music(runtime.sample_music)
-    }
-    if runtime.initialized {
-        mix_close_audio()
-        mix_quit()
+    if runtime.sample_audio != none {
+        exo_sdl3_destroy_audio(runtime.sample_audio)
     }
 }
 
 fn play_runtime_audio(config: AudioMixerConfig, runtime: RuntimeAudioMixer) bool = trust {
-    if !runtime.initialized || runtime.sample_music == none {
+    if !runtime.initialized || runtime.sample_audio == none {
         return false
     }
-    mix_volume_music(config.music_volume)
-    return mix_play_music(runtime.sample_music, config.sample.loops) == 0
+    return exo_sdl3_play_audio(runtime.sample_audio, config.sample.loops, config.music_volume)
 }
 
 fn set_active_scene(app: mut ExoApp, index: usize) void = {
@@ -1599,162 +2218,48 @@ fn cycle_scene(app: mut ExoApp) void = {
 
 pub fn run_app(app0: ExoApp) i32 = trust {
     val app: mut ExoApp = app0
-    val sdl_flags: mut u32 = SDL_INIT_VIDEO
-    if audio_enabled(app.audio) {
-        sdl_flags = sdl_flags | SDL_INIT_AUDIO
-    }
-
-    if sdl_init(sdl_flags) != 0 {
-        print_sdl_error("SDL_Init failed")
+    val runtime: ref void = exo_sdl3_create_runtime(app.config.title, app.config.width, app.config.height)
+    if runtime == none {
+        print_sdl_error("SDL3 runtime init failed")
         return 1 as i32
     }
-
-    sdl_gl_set_attribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3 as i32)
-    sdl_gl_set_attribute(SDL_GL_CONTEXT_MINOR_VERSION, 3 as i32)
-    sdl_gl_set_attribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE)
-    sdl_gl_set_attribute(SDL_GL_DOUBLEBUFFER, 1 as i32)
-
-    val window: ref void = sdl_create_window(
-        app.config.title,
-        80 as i32,
-        80 as i32,
-        app.config.width,
-        app.config.height,
-        SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN
-    )
-    if window == none {
-        print_sdl_error("SDL_CreateWindow failed")
-        sdl_quit()
-        return 1 as i32
-    }
-
-    val context: ref void = sdl_gl_create_context(window)
-    if context == none {
-        print_sdl_error("SDL_GL_CreateContext failed")
-        sdl_destroy_window(window)
-        sdl_quit()
-        return 1 as i32
-    }
-
-    if sdl_gl_make_current(window, context) != 0 {
-        print_sdl_error("SDL_GL_MakeCurrent failed")
-        sdl_gl_delete_context(context)
-        sdl_destroy_window(window)
-        sdl_quit()
-        return 1 as i32
-    }
-
-    sdl_gl_set_swap_interval(1 as i32)
     if app.input.mouse.enabled {
-        sdl_set_relative_mouse_mode(1 as i32)
+        if !exo_sdl3_set_relative_mouse_mode(runtime, true) {
+            print_sdl_error("SDL_SetWindowRelativeMouseMode failed")
+            exo_sdl3_destroy_runtime(runtime)
+            return 1 as i32
+        }
     }
-    gl_viewport(0 as i32, 0 as i32, app.config.width, app.config.height)
-    gl_enable(GL_DEPTH_TEST)
-
-    val scene_program: u32 = link_program(SCENE_VERTEX_SHADER, SCENE_FRAGMENT_SHADER)
-    if scene_program == 0 as u32 {
-        sdl_gl_delete_context(context)
-        sdl_destroy_window(window)
-        sdl_quit()
-        return 1 as i32
-    }
-
-    val floor_program: u32 = link_program(FLOOR_VERTEX_SHADER, FLOOR_FRAGMENT_SHADER)
-    if floor_program == 0 as u32 {
-        gl_delete_program(scene_program)
-        sdl_gl_delete_context(context)
-        sdl_destroy_window(window)
-        sdl_quit()
-        return 1 as i32
-    }
-
-    val glow_program: u32 = link_program(GLOW_VERTEX_SHADER, GLOW_FRAGMENT_SHADER)
-    if glow_program == 0 as u32 {
-        gl_delete_program(floor_program)
-        gl_delete_program(scene_program)
-        sdl_gl_delete_context(context)
-        sdl_destroy_window(window)
-        sdl_quit()
-        return 1 as i32
-    }
-
-    val reflection_target: RenderTarget = create_render_target(app.config.width, app.config.height)
-    if !render_target_valid(reflection_target) {
-        destroy_render_target(reflection_target)
-        gl_delete_program(glow_program)
-        gl_delete_program(floor_program)
-        gl_delete_program(scene_program)
-        sdl_gl_delete_context(context)
-        sdl_destroy_window(window)
-        sdl_quit()
-        return 1 as i32
-    }
-
-    val cube_mesh: MeshGPU = build_cube_mesh()
-    val sphere_mesh: MeshGPU = build_sphere_mesh(16 as i32, 24 as i32)
-    val quad_mesh: MeshGPU = build_quad_mesh()
+    val cube_mesh: MeshGPU = build_cube_mesh(runtime)
+    val sphere_mesh: MeshGPU = build_sphere_mesh(runtime, 16 as i32, 24 as i32)
+    val quad_mesh: MeshGPU = build_quad_mesh(runtime)
     if !mesh_valid(cube_mesh) || !mesh_valid(sphere_mesh) || !mesh_valid(quad_mesh) {
-        destroy_mesh(quad_mesh)
-        destroy_mesh(sphere_mesh)
-        destroy_mesh(cube_mesh)
-        destroy_render_target(reflection_target)
-        gl_delete_program(glow_program)
-        gl_delete_program(floor_program)
-        gl_delete_program(scene_program)
-        sdl_gl_delete_context(context)
-        sdl_destroy_window(window)
-        sdl_quit()
+        destroy_mesh(runtime, quad_mesh)
+        destroy_mesh(runtime, sphere_mesh)
+        destroy_mesh(runtime, cube_mesh)
+        exo_sdl3_destroy_runtime(runtime)
         return 1 as i32
     }
-
-    val evt: ref SDLEvent = @alloc(@sizeof(SDLEvent) as usize) as ref SDLEvent
-    if evt == none {
-        destroy_mesh(quad_mesh)
-        destroy_mesh(sphere_mesh)
-        destroy_mesh(cube_mesh)
-        destroy_render_target(reflection_target)
-        gl_delete_program(glow_program)
-        gl_delete_program(floor_program)
-        gl_delete_program(scene_program)
-        sdl_gl_delete_context(context)
-        sdl_destroy_window(window)
-        sdl_quit()
-        return 1 as i32
-    }
-
-    val start_ticks: u32 = sdl_get_ticks()
-    val last_ticks: mut u32 = start_ticks
     val audio_runtime: RuntimeAudioMixer = init_runtime_audio(app.audio)
-    if audio_enabled(app.audio) && (!audio_runtime.initialized || audio_runtime.sample_music == none) {
-        @free(evt as ref void)
-        destroy_mesh(quad_mesh)
-        destroy_mesh(sphere_mesh)
-        destroy_mesh(cube_mesh)
-        destroy_render_target(reflection_target)
-        gl_delete_program(glow_program)
-        gl_delete_program(floor_program)
-        gl_delete_program(scene_program)
-        sdl_gl_delete_context(context)
-        sdl_destroy_window(window)
-        sdl_quit()
+    if audio_enabled(app.audio) && !audio_runtime.initialized {
+        print_sdl_error("SDL3 audio init failed")
+        destroy_mesh(runtime, quad_mesh)
+        destroy_mesh(runtime, sphere_mesh)
+        destroy_mesh(runtime, cube_mesh)
+        exo_sdl3_destroy_runtime(runtime)
         return 1 as i32
     }
+    val start_ticks: u64 = exo_sdl3_get_ticks()
+    val last_ticks: mut u64 = start_ticks
     val quit: mut bool = false
+    val exit_code: mut i32 = 0 as i32
     val prev_scene_key: mut u8 = 0 as u8
     val prev_audio_key: mut u8 = 0 as u8
-
     for !quit {
-        for {
-            if sdl_poll_event(evt) != 0 {
-                if evt.type_value == SDL_QUIT {
-                    quit = true
-                }
-            } else {
-                break
-            }
+        if exo_sdl3_poll_quit() {
+            quit = true
         }
-
-        val keys: ref u8 = sdl_get_keyboard_state(none as ref i32)
+        val keys: ref u8 = exo_sdl3_get_keyboard_state()
         val quit_pressed: u8 = @load8(@ptradd(keys, app.input.quit_key as usize))
         val scene_pressed: u8 = @load8(@ptradd(keys, app.next_scene_key as usize))
         val audio_pressed: u8 = @load8(@ptradd(keys, app.audio.trigger_key as usize))
@@ -1766,67 +2271,53 @@ pub fn run_app(app0: ExoApp) i32 = trust {
         }
         if audio_pressed != 0 && prev_audio_key == 0 {
             if !play_runtime_audio(app.audio, audio_runtime) {
-                print_mix_error("Mix_PlayMusic failed")
+                print_sdl_error("SDL3 audio play failed")
             }
         }
         prev_scene_key = scene_pressed
         prev_audio_key = audio_pressed
 
-        val mx: mut i32 = 0 as i32
-        val my: mut i32 = 0 as i32
-        sdl_get_relative_mouse_state(@addr(mx), @addr(my))
+        val mx: mut f32 = 0.0 as f32
+        val my: mut f32 = 0.0 as f32
+        exo_sdl3_get_relative_mouse_state(@addr(mx), @addr(my))
 
-        val now_ticks: u32 = sdl_get_ticks()
+        val now_ticks: u64 = exo_sdl3_get_ticks()
         val dt_raw: f32 = ((now_ticks - last_ticks) as f32) / (1000.0 as f32)
         val dt: f32 = math.fclamp(dt_raw as f64, 0.0, 0.05) as f32
         val time_value: f32 = ((now_ticks - start_ticks) as f32) / (1000.0 as f32)
         last_ticks = now_ticks
+        update_camera(app.camera, app.input, dt, keys, mx, my)
 
-        update_camera(app.camera, app.input, dt, keys, mx as f32, my as f32)
-
-        gl_bind_framebuffer(GL_FRAMEBUFFER, reflection_target.framebuffer)
-        gl_enable(GL_DEPTH_TEST)
-        gl_viewport(0 as i32, 0 as i32, reflection_target.width, reflection_target.height)
-        gl_clear_color(0.05 as f32, 0.08 as f32, 0.14 as f32, 1.0 as f32)
-        gl_clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        render_reflection_scene(scene_program, cube_mesh, sphere_mesh, app.scene, app.camera, reflection_target.width, reflection_target.height, time_value, -0.18 as f32)
-
-        gl_bind_framebuffer(GL_FRAMEBUFFER, 0 as u32)
-        gl_enable(GL_DEPTH_TEST)
-        gl_viewport(0 as i32, 0 as i32, app.config.width, app.config.height)
-        gl_clear_color(0.09 as f32, 0.15 as f32, 0.30 as f32, 1.0 as f32)
-        gl_clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        render_scene(scene_program, floor_program, cube_mesh, sphere_mesh, app.scene, app.camera, app.config.width, app.config.height, time_value, reflection_target)
-        val lp: ecs.Vec3 = app.scene.light.position
-        val lc: ecs.Vec3 = app.scene.light.color
-        val gvp: Mat4 = view_projection(app.camera, app.config.width, app.config.height)
-        val cam_fwd: ecs.Vec3 = camera_forward(app.camera)
-        val world_up_v: ecs.Vec3 = vec3(0.0 as f32, 1.0 as f32, 0.0 as f32)
-        val cam_right: ecs.Vec3 = vec3_normalize(vec3_cross(cam_fwd, world_up_v))
-        val cam_up: ecs.Vec3 = vec3_cross(cam_right, cam_fwd)
-        gl_enable(GL_BLEND)
-        gl_blend_func(GL_SRC_ALPHA, GL_ONE)
-        gl_use_program(glow_program)
-        draw_billboard(glow_program, quad_mesh, lp, 0.38 as f32, 0.38 as f32, gvp, cam_right, cam_up, lc, 4.0 as f32, 0.90 as f32)
-        draw_billboard(glow_program, quad_mesh, lp, 1.30 as f32, 1.30 as f32, gvp, cam_right, cam_up, lc, 1.2 as f32, 0.55 as f32)
-        draw_billboard(glow_program, quad_mesh, lp, 9.0 as f32, 0.24 as f32, gvp, cam_right, cam_up, lc, 1.4 as f32, 0.45 as f32)
-        draw_billboard(glow_program, quad_mesh, lp, 0.24 as f32, 9.0 as f32, gvp, cam_right, cam_up, lc, 1.4 as f32, 0.45 as f32)
-        gl_blend_func(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-        gl_disable(GL_BLEND)
-        sdl_gl_swap_window(window)
+        val frame_w: mut u32 = app.config.width as u32
+        val frame_h: mut u32 = app.config.height as u32
+        if !exo_sdl3_begin_frame(runtime, @addr(frame_w), @addr(frame_h)) {
+            print_sdl_error("SDL3 begin frame failed")
+            exit_code = 1 as i32
+            break
+        }
+        if !exo_sdl3_begin_reflection_pass(runtime, 0.05 as f32, 0.08 as f32, 0.14 as f32, 1.0 as f32) {
+            print_sdl_error("SDL3 reflection pass failed")
+            exit_code = 1 as i32
+            break
+        }
+        render_reflection_scene(runtime, cube_mesh, sphere_mesh, app.scene, app.camera, frame_w as i32, frame_h as i32, time_value, -0.18 as f32)
+        if !exo_sdl3_begin_scene_pass(runtime, 0.09 as f32, 0.15 as f32, 0.30 as f32, 1.0 as f32) {
+            print_sdl_error("SDL3 scene pass failed")
+            exit_code = 1 as i32
+            break
+        }
+        render_scene(runtime, cube_mesh, sphere_mesh, quad_mesh, app.scene, app.camera, frame_w as i32, frame_h as i32, time_value)
+        exo_sdl3_end_pass(runtime)
+        if !exo_sdl3_submit_frame(runtime) {
+            print_sdl_error("SDL3 submit frame failed")
+            exit_code = 1 as i32
+            break
+        }
     }
-
     shutdown_runtime_audio(audio_runtime)
-    @free(evt as ref void)
-    destroy_mesh(quad_mesh)
-    destroy_mesh(sphere_mesh)
-    destroy_mesh(cube_mesh)
-    destroy_render_target(reflection_target)
-    gl_delete_program(glow_program)
-    gl_delete_program(floor_program)
-    gl_delete_program(scene_program)
-    sdl_gl_delete_context(context)
-    sdl_destroy_window(window)
-    sdl_quit()
-    return 0 as i32
+    destroy_mesh(runtime, quad_mesh)
+    destroy_mesh(runtime, sphere_mesh)
+    destroy_mesh(runtime, cube_mesh)
+    exo_sdl3_destroy_runtime(runtime)
+    return exit_code
 }

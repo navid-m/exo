@@ -94,7 +94,7 @@ pub fn main() i32 = {
         trigger_key: engine.SDL_SCANCODE_Y,
         music_volume: 96 as i32,
         sample: {
-            path: "./assets/example_sound.mp3",
+            path: "./assets/example_sound.wav",
             loops: 0 as i32
         }
     }
