@@ -670,7 +670,18 @@ fn load_binary_file(path: ref u8) option[BinaryBlob] = trust {
 
 fn exo_load_shader(runtime: ref ExoSDL3Runtime, path: ref u8, stage: i32, num_samplers: u32, num_uniform_buffers: u32) ref void = trust {
     if load_binary_file(path) is some blob {
-        val info: mut SDLGPUShaderCreateInfo = @zeroed
+        val info: mut SDLGPUShaderCreateInfo = {
+            code_size: 0 as usize,
+            code: none as ref u8,
+            entrypoint: none as ref u8,
+            format: 0 as u32,
+            stage: 0 as i32,
+            num_samplers: 0 as u32,
+            num_storage_textures: 0 as u32,
+            num_storage_buffers: 0 as u32,
+            num_uniform_buffers: 0 as u32,
+            props: 0 as u32
+        }
         info.code_size = blob.len
         info.code = blob.data
         info.entrypoint = "main"
@@ -686,7 +697,17 @@ fn exo_load_shader(runtime: ref ExoSDL3Runtime, path: ref u8, stage: i32, num_sa
 }
 
 fn exo_create_texture(runtime: ref ExoSDL3Runtime, format: i32, usage: u32, width: u32, height: u32) ref void = {
-    val info: mut SDLGPUTextureCreateInfo = @zeroed
+    val info: mut SDLGPUTextureCreateInfo = {
+        typ: 0 as i32,
+        format: 0 as i32,
+        usage: 0 as u32,
+        width: 0 as u32,
+        height: 0 as u32,
+        layer_count_or_depth: 0 as u32,
+        num_levels: 0 as u32,
+        sample_count: 0 as i32,
+        props: 0 as u32
+    }
     info.typ = SDL_GPU_TEXTURETYPE_2D
     info.format = format
     info.usage = usage
@@ -769,11 +790,29 @@ fn exo_create_pipeline(
         SDL_ReleaseGPUShader(runtime.device, vs)
         return none as ref void
     }
-    val vertex_buffer_desc: mut SDLGPUVertexBufferDescription = @zeroed
+    val vertex_buffer_desc: mut SDLGPUVertexBufferDescription = {
+        slot: 0 as u32,
+        pitch: 0 as u32,
+        input_rate: 0 as i32,
+        instance_step_rate: 0 as u32
+    }
     vertex_buffer_desc.slot = 0 as u32
     vertex_buffer_desc.pitch = 24 as u32
     vertex_buffer_desc.input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX
-    val vertex_attributes: mut VertexAttributePair = @zeroed
+    val vertex_attributes: mut VertexAttributePair = {
+        first: {
+            location: 0 as u32,
+            buffer_slot: 0 as u32,
+            format: 0 as i32,
+            offset: 0 as u32
+        },
+        second: {
+            location: 0 as u32,
+            buffer_slot: 0 as u32,
+            format: 0 as i32,
+            offset: 0 as u32
+        }
+    }
     vertex_attributes.first.location = 0 as u32
     vertex_attributes.first.buffer_slot = 0 as u32
     vertex_attributes.first.format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3
@@ -782,7 +821,22 @@ fn exo_create_pipeline(
     vertex_attributes.second.buffer_slot = 0 as u32
     vertex_attributes.second.format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3
     vertex_attributes.second.offset = 12 as u32
-    val color_target: mut SDLGPUColorTargetDescription = @zeroed
+    val color_target: mut SDLGPUColorTargetDescription = {
+        format: 0 as i32,
+        blend_state: {
+            src_color_blendfactor: 0 as i32,
+            dst_color_blendfactor: 0 as i32,
+            color_blend_op: 0 as i32,
+            src_alpha_blendfactor: 0 as i32,
+            dst_alpha_blendfactor: 0 as i32,
+            alpha_blend_op: 0 as i32,
+            color_write_mask: 0 as u8,
+            enable_blend: false,
+            enable_color_write_mask: false,
+            padding1: 0 as u8,
+            padding2: 0 as u8
+        }
+    }
     color_target.format = color_format
     color_target.blend_state.enable_blend = enable_blend
     color_target.blend_state.src_color_blendfactor = src_color
@@ -791,7 +845,70 @@ fn exo_create_pipeline(
     color_target.blend_state.src_alpha_blendfactor = src_alpha
     color_target.blend_state.dst_alpha_blendfactor = dst_alpha
     color_target.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD
-    val info: mut SDLGPUGraphicsPipelineCreateInfo = @zeroed
+    val info: mut SDLGPUGraphicsPipelineCreateInfo = {
+        vertex_shader: none as ref void,
+        fragment_shader: none as ref void,
+        vertex_input_state: {
+            vertex_buffer_descriptions: none as ref SDLGPUVertexBufferDescription,
+            num_vertex_buffers: 0 as u32,
+            vertex_attributes: none as ref SDLGPUVertexAttribute,
+            num_vertex_attributes: 0 as u32
+        },
+        primitive_type: 0 as i32,
+        rasterizer_state: {
+            fill_mode: 0 as i32,
+            cull_mode: 0 as i32,
+            front_face: 0 as i32,
+            depth_bias_constant_factor: 0.0 as f32,
+            depth_bias_clamp: 0.0 as f32,
+            depth_bias_slope_factor: 0.0 as f32,
+            enable_depth_bias: false,
+            enable_depth_clip: false,
+            padding1: 0 as u8,
+            padding2: 0 as u8
+        },
+        multisample_state: {
+            sample_count: 0 as i32,
+            sample_mask: 0 as u32,
+            enable_mask: false,
+            enable_alpha_to_coverage: false,
+            padding2: 0 as u8,
+            padding3: 0 as u8
+        },
+        depth_stencil_state: {
+            compare_op: 0 as i32,
+            back_stencil_state: {
+                fail_op: 0 as i32,
+                pass_op: 0 as i32,
+                depth_fail_op: 0 as i32,
+                compare_op: 0 as i32
+            },
+            front_stencil_state: {
+                fail_op: 0 as i32,
+                pass_op: 0 as i32,
+                depth_fail_op: 0 as i32,
+                compare_op: 0 as i32
+            },
+            compare_mask: 0 as u8,
+            write_mask: 0 as u8,
+            enable_depth_test: false,
+            enable_depth_write: false,
+            enable_stencil_test: false,
+            padding1: 0 as u8,
+            padding2: 0 as u8,
+            padding3: 0 as u8
+        },
+        target_info: {
+            color_target_descriptions: none as ref SDLGPUColorTargetDescription,
+            num_color_targets: 0 as u32,
+            depth_stencil_format: 0 as i32,
+            has_depth_stencil_target: false,
+            padding1: 0 as u8,
+            padding2: 0 as u8,
+            padding3: 0 as u8
+        },
+        props: 0 as u32
+    }
     info.vertex_shader = vs
     info.fragment_shader = fs
     info.vertex_input_state.vertex_buffer_descriptions = @addr(vertex_buffer_desc)
@@ -890,7 +1007,21 @@ fn exo_begin_pass(runtime: mut ref ExoSDL3Runtime, color_target: ref void, depth
         SDL_EndGPURenderPass(runtime.current_pass)
         runtime.current_pass = none
     }
-    val color_info: mut SDLGPUColorTargetInfo = @zeroed
+    val color_info: mut SDLGPUColorTargetInfo = {
+        texture: none as ref void,
+        mip_level: 0 as u32,
+        layer_or_depth_plane: 0 as u32,
+        clear_color: { r: 0.0 as f32, g: 0.0 as f32, b: 0.0 as f32, a: 0.0 as f32 },
+        load_op: 0 as i32,
+        store_op: 0 as i32,
+        resolve_texture: none as ref void,
+        resolve_mip_level: 0 as u32,
+        resolve_layer: 0 as u32,
+        cycle: false,
+        cycle_resolve_texture: false,
+        padding1: 0 as u8,
+        padding2: 0 as u8
+    }
     color_info.texture = color_target
     color_info.clear_color.r = r
     color_info.clear_color.g = g
@@ -898,7 +1029,18 @@ fn exo_begin_pass(runtime: mut ref ExoSDL3Runtime, color_target: ref void, depth
     color_info.clear_color.a = a
     color_info.load_op = SDL_GPU_LOADOP_CLEAR
     color_info.store_op = SDL_GPU_STOREOP_STORE
-    val depth_info: mut SDLGPUDepthStencilTargetInfo = @zeroed
+    val depth_info: mut SDLGPUDepthStencilTargetInfo = {
+        texture: none as ref void,
+        clear_depth: 0.0 as f32,
+        load_op: 0 as i32,
+        store_op: 0 as i32,
+        stencil_load_op: 0 as i32,
+        stencil_store_op: 0 as i32,
+        cycle: false,
+        clear_stencil: 0 as u8,
+        mip_level: 0 as u8,
+        layer: 0 as u8
+    }
     depth_info.texture = depth_target
     depth_info.clear_depth = 1.0 as f32
     depth_info.load_op = SDL_GPU_LOADOP_CLEAR
@@ -909,7 +1051,14 @@ fn exo_begin_pass(runtime: mut ref ExoSDL3Runtime, color_target: ref void, depth
     if runtime.current_pass == none {
         return false
     }
-    val viewport: mut SDLGPUViewport = @zeroed
+    val viewport: mut SDLGPUViewport = {
+        x: 0.0 as f32,
+        y: 0.0 as f32,
+        w: 0.0 as f32,
+        h: 0.0 as f32,
+        min_depth: 0.0 as f32,
+        max_depth: 0.0 as f32
+    }
     viewport.x = 0.0 as f32
     viewport.y = 0.0 as f32
     viewport.w = runtime.render_width as f32
@@ -921,8 +1070,14 @@ fn exo_begin_pass(runtime: mut ref ExoSDL3Runtime, color_target: ref void, depth
 }
 
 fn exo_bind_mesh(runtime: ref ExoSDL3Runtime, mesh: ref ExoSDL3Mesh) void = trust {
-    val vertex_binding: mut SDLGPUBufferBinding = @zeroed
-    val index_binding: mut SDLGPUBufferBinding = @zeroed
+    val vertex_binding: mut SDLGPUBufferBinding = {
+        buffer: none as ref void,
+        offset: 0 as u32
+    }
+    val index_binding: mut SDLGPUBufferBinding = {
+        buffer: none as ref void,
+        offset: 0 as u32
+    }
     vertex_binding.buffer = mesh.vertex_buffer
     index_binding.buffer = mesh.index_buffer
     SDL_BindGPUVertexBuffers(runtime.current_pass, 0 as u32, @addr(vertex_binding), 1 as u32)
@@ -948,7 +1103,6 @@ fn exo_sdl3_create_runtime(title: ref u8, width: i32, height: i32) ref void = tr
         SDL_Quit()
         return set_exo_error_ptr("failed to allocate runtime")
     }
-    @deref(runtime) = @zeroed
     runtime.window = SDL_CreateWindow(title, width, height, 0 as u64)
     if runtime.window == none {
         exo_sdl3_destroy_runtime(runtime as ref void)
@@ -968,7 +1122,24 @@ fn exo_sdl3_create_runtime(title: ref u8, width: i32, height: i32) ref void = tr
         exo_sdl3_destroy_runtime(runtime as ref void)
         return none as ref void
     }
-    val sampler_info: mut SDLGPUSamplerCreateInfo = @zeroed
+    val sampler_info: mut SDLGPUSamplerCreateInfo = {
+        min_filter: 0 as i32,
+        mag_filter: 0 as i32,
+        mipmap_mode: 0 as i32,
+        address_mode_u: 0 as i32,
+        address_mode_v: 0 as i32,
+        address_mode_w: 0 as i32,
+        mip_lod_bias: 0.0 as f32,
+        max_anisotropy: 0.0 as f32,
+        compare_op: 0 as i32,
+        min_lod: 0.0 as f32,
+        max_lod: 0.0 as f32,
+        enable_anisotropy: false,
+        enable_compare: false,
+        padding1: 0 as u8,
+        padding2: 0 as u8,
+        props: 0 as u32
+    }
     sampler_info.min_filter = SDL_GPU_FILTER_LINEAR
     sampler_info.mag_filter = SDL_GPU_FILTER_LINEAR
     sampler_info.mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_LINEAR
@@ -1009,7 +1180,12 @@ fn exo_sdl3_destroy_runtime(runtime_raw: ref void) void = trust {
 }
 
 fn exo_sdl3_poll_quit() bool = {
-    val evt: mut SDLEvent = @zeroed
+    val evt: mut SDLEvent = {
+        typ: 0 as u32, p01: 0 as u32, p02: 0 as u32, p03: 0 as u32, p04: 0 as u32, p05: 0 as u32, p06: 0 as u32, p07: 0 as u32,
+        p08: 0 as u32, p09: 0 as u32, p10: 0 as u32, p11: 0 as u32, p12: 0 as u32, p13: 0 as u32, p14: 0 as u32, p15: 0 as u32,
+        p16: 0 as u32, p17: 0 as u32, p18: 0 as u32, p19: 0 as u32, p20: 0 as u32, p21: 0 as u32, p22: 0 as u32, p23: 0 as u32,
+        p24: 0 as u32, p25: 0 as u32, p26: 0 as u32, p27: 0 as u32, p28: 0 as u32, p29: 0 as u32, p30: 0 as u32, p31: 0 as u32
+    }
     val quit: mut bool = false
     for {
         if !(trust SDL_PollEvent(@addr(evt))) {
@@ -1056,8 +1232,11 @@ fn exo_sdl3_create_mesh(runtime_raw: ref void, vertices: ref void, vertex_bytes:
     if mesh == none {
         return set_exo_error_ptr("failed to allocate mesh")
     }
-    @deref(mesh) = @zeroed
-    val vertex_info: mut SDLGPUBufferCreateInfo = @zeroed
+    val vertex_info: mut SDLGPUBufferCreateInfo = {
+        usage: 0 as u32,
+        size: 0 as u32,
+        props: 0 as u32
+    }
     vertex_info.usage = SDL_GPU_BUFFERUSAGE_VERTEX
     vertex_info.size = vertex_bytes
     mesh.vertex_buffer = SDL_CreateGPUBuffer(runtime.device, @addr(vertex_info))
@@ -1065,7 +1244,11 @@ fn exo_sdl3_create_mesh(runtime_raw: ref void, vertices: ref void, vertex_bytes:
         exo_sdl3_destroy_mesh(runtime_raw, mesh as ref void)
         return none as ref void
     }
-    val index_info: mut SDLGPUBufferCreateInfo = @zeroed
+    val index_info: mut SDLGPUBufferCreateInfo = {
+        usage: 0 as u32,
+        size: 0 as u32,
+        props: 0 as u32
+    }
     index_info.usage = SDL_GPU_BUFFERUSAGE_INDEX
     index_info.size = index_bytes
     mesh.index_buffer = SDL_CreateGPUBuffer(runtime.device, @addr(index_info))
@@ -1073,7 +1256,11 @@ fn exo_sdl3_create_mesh(runtime_raw: ref void, vertices: ref void, vertex_bytes:
         exo_sdl3_destroy_mesh(runtime_raw, mesh as ref void)
         return none as ref void
     }
-    val transfer_info: mut SDLGPUTransferBufferCreateInfo = @zeroed
+    val transfer_info: mut SDLGPUTransferBufferCreateInfo = {
+        usage: 0 as i32,
+        size: 0 as u32,
+        props: 0 as u32
+    }
     transfer_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
     transfer_info.size = vertex_bytes + index_bytes
     val transfer: ref void = SDL_CreateGPUTransferBuffer(runtime.device, @addr(transfer_info))
@@ -1103,10 +1290,24 @@ fn exo_sdl3_create_mesh(runtime_raw: ref void, vertices: ref void, vertex_bytes:
         exo_sdl3_destroy_mesh(runtime_raw, mesh as ref void)
         return none as ref void
     }
-    val src_vertex: mut SDLGPUTransferBufferLocation = @zeroed
-    val dst_vertex: mut SDLGPUBufferRegion = @zeroed
-    val src_index: mut SDLGPUTransferBufferLocation = @zeroed
-    val dst_index: mut SDLGPUBufferRegion = @zeroed
+    val src_vertex: mut SDLGPUTransferBufferLocation = {
+        transfer_buffer: none as ref void,
+        offset: 0 as u32
+    }
+    val dst_vertex: mut SDLGPUBufferRegion = {
+        buffer: none as ref void,
+        offset: 0 as u32,
+        size: 0 as u32
+    }
+    val src_index: mut SDLGPUTransferBufferLocation = {
+        transfer_buffer: none as ref void,
+        offset: 0 as u32
+    }
+    val dst_index: mut SDLGPUBufferRegion = {
+        buffer: none as ref void,
+        offset: 0 as u32,
+        size: 0 as u32
+    }
     src_vertex.transfer_buffer = transfer
     dst_vertex.buffer = mesh.vertex_buffer
     dst_vertex.size = vertex_bytes
@@ -1286,7 +1487,10 @@ fn exo_sdl3_draw_floor(runtime_raw: ref void, mesh_raw: ref void, model: ref f32
     val fu: mut FloorFragmentUniforms = {
         camera_pos: vec4_from_ptr(camera_pos, 0.0 as f32)
     }
-    val binding: mut SDLGPUTextureSamplerBinding = @zeroed
+    val binding: mut SDLGPUTextureSamplerBinding = {
+        texture: none as ref void,
+        sampler: none as ref void
+    }
     binding.texture = runtime.reflection_color
     binding.sampler = runtime.linear_sampler
     SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.floor_pipeline)
@@ -1342,7 +1546,6 @@ fn exo_sdl3_create_audio(wav_path: ref u8, volume: i32) ref void = trust {
     if audio == none {
         return set_exo_error_ptr("failed to allocate audio")
     }
-    @deref(audio) = @zeroed
     if !SDL_LoadWAV(wav_path, @addr(audio.speci), @addr(audio.buffer), @addr(audio.length)) {
         exo_sdl3_destroy_audio(audio as ref void)
         return none as ref void
