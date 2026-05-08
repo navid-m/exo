@@ -10,8 +10,8 @@ extern "SDL_opengl.h"
 link "-lSDL2"
 link "-lGL"
 
-val SCREEN_WIDTH: i32 = 1440
-val SCREEN_HEIGHT: i32 = 900
+val DEFAULT_SCREEN_WIDTH: i32 = 1440
+val DEFAULT_SCREEN_HEIGHT: i32 = 900
 
 val SDL_INIT_VIDEO: u32 = 0x00000020
 val SDL_WINDOW_OPENGL: u32 = 0x00000002
@@ -433,8 +433,8 @@ pub fn default_input_config() InputConfig = {
 pub fn default_config() ExoConfig = {
     return {
         title: "exo-engine",
-        width: SCREEN_WIDTH,
-        height: SCREEN_HEIGHT
+        width: DEFAULT_SCREEN_WIDTH,
+        height: DEFAULT_SCREEN_HEIGHT
     }
 }
 
