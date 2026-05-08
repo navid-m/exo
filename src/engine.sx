@@ -1,6 +1,7 @@
 val stdio = use("std/stdio")
 val json  = use("std/json")
 val math  = use("std/math")
+val mstat = use("std/math/static")
 
 extern "SDL.h"
 extern "SDL_opengl.h"
@@ -10,7 +11,6 @@ link "-lGL"
 
 val SCREEN_WIDTH: i32 = 1440
 val SCREEN_HEIGHT: i32 = 900
-val PI: f64 = 3.141592653589793
 
 val SDL_INIT_VIDEO: u32 = 0x00000020
 val SDL_WINDOW_OPENGL: u32 = 0x00000002
@@ -444,7 +444,7 @@ pub fn build_simple_scene() Scene3D = {
 pub fn default_camera() Camera = {
     return {
         position: vec3(0.0 as f32, 1.10 as f32, 6.4 as f32),
-        yaw: PI as f32,
+        yaw: mstat.PI as f32,
         pitch: -0.12 as f32,
         move_speed: 4.8 as f32,
         turn_speed: 1.9 as f32
@@ -1035,13 +1035,13 @@ fn build_sphere_mesh(lat_segments: i32, lon_segments: i32) MeshGPU = trust {
 
     for (iy = 0; iy <= lat_segments; iy++) {
         val v: f32 = (iy as f32) / (lat_segments as f32)
-        val theta: f64 = (v as f64) * PI
+        val theta: f64 = (v as f64) * mstat.PI
         val y: f32 = math.cos(theta) as f32
         val ring_r: f32 = math.sin(theta) as f32
 
         for (ix = 0; ix <= lon_segments; ix++) {
             val u: f32 = (ix as f32) / (lon_segments as f32)
-            val phi: f64 = (u as f64) * ((2.0 as f64) * PI)
+            val phi: f64 = (u as f64) * ((2.0 as f64) * mstat.PI)
             val x: f32 = (math.cos(phi) as f32) * ring_r
             val z: f32 = (math.sin(phi) as f32) * ring_r
             val normal: Vec3 = vec3(x, y, z)
@@ -1306,7 +1306,7 @@ fn mirrored_camera(camera: Camera, plane_y: f32) Camera = {
 
 fn view_projection(camera: Camera, width: i32, height: i32) Mat4 = {
     val aspect: f32 = (width as f32) / (height as f32)
-    val projection: Mat4 = mat_perspective((60.0 as f32) * ((PI as f32) / (180.0 as f32)), aspect, 0.1 as f32, 100.0 as f32)
+    val projection: Mat4 = mat_perspective((60.0 as f32) * ((mstat.PI as f32) / (180.0 as f32)), aspect, 0.1 as f32, 100.0 as f32)
     val center: Vec3 = vec3_add(camera.position, camera_forward(camera))
     val view: Mat4 = mat_look_at(camera.position, center, vec3(0.0 as f32, 1.0 as f32, 0.0 as f32))
     return mat_mul(projection, view)
