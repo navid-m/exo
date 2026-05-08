@@ -50,8 +50,13 @@ pub fn main() i32 = {
         },
         quit_key: engine.SDL_SCANCODE_ESCAPE
     }
+    val config: engine.ExoConfig = {
+        title: "exo-engine",
+        width:  1280 as i32,
+        height:  720 as i32
+    }
     val app: engine.ExoApp = rendering.create_configured_app(
-        rendering.default_config(),
+        config,
         scene,
         rendering.default_camera(),
         input
