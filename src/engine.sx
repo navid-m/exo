@@ -65,6 +65,7 @@ val GL_FRAMEBUFFER_COMPLETE: u32 = 0x8CD5
 val GL_BLEND: u32 = 0x0BE2
 val GL_SRC_ALPHA: u32 = 0x0302
 val GL_ONE_MINUS_SRC_ALPHA: u32 = 0x0303
+val GL_ONE: u32 = 1
 
 val GLB_MAGIC: u32 = 0x46546C67
 val GLB_VERSION: u32 = 2
@@ -1078,6 +1079,10 @@ val SCENE_FRAGMENT_SHADER: ref u8 = \\
 \\ uniform float uReflective;
 \\ uniform float uGlow;
 \\ uniform float uAlpha;
+\\ uniform vec3 uLightPos;
+\\ uniform vec3 uLightColor;
+\\ uniform float uLightIntensity;
+\\ uniform float uLightRadius;
 \\ vec3 sky_color(vec3 d) {
 \\     float t = clamp(d.y * 0.5 + 0.5, 0.0, 1.0);
 \\     return mix(vec3(0.05, 0.08, 0.14), vec3(0.26, 0.48, 0.84), t);
@@ -1094,7 +1099,15 @@ val SCENE_FRAGMENT_SHADER: ref u8 = \\
 \\     vec3 base = uColor * (0.30 + diff * 0.68) + ambient * 0.35;
 \\     vec3 highlight = vec3(1.0, 0.98, 0.94) * spec * (0.06 + uReflective * 0.12);
 \\     vec3 glow = uColor * uGlow * 0.10;
-\\     FragColor = vec4(base + highlight + glow, uAlpha);
+\\     vec3 to_light = uLightPos - vWorldPos;
+\\     float dist = length(to_light);
+\\     float att = 1.0 / (1.0 + (dist * dist) / (uLightRadius * uLightRadius));
+\\     vec3 pl_dir = normalize(to_light);
+\\     float pdiff = max(dot(n, pl_dir), 0.0);
+\\     vec3 phalf = normalize(pl_dir + view_dir);
+\\     float pspec = pow(max(dot(n, phalf), 0.0), 48.0);
+\\     vec3 point_contrib = uLightColor * uLightIntensity * att * (uColor * pdiff * 0.55 + vec3(1.0, 0.98, 0.96) * pspec * (0.08 + uReflective * 0.14));
+\\     FragColor = vec4(base + highlight + glow + point_contrib, uAlpha);
 \\ }
 
 val FLOOR_VERTEX_SHADER: ref u8 = \\
@@ -1190,6 +1203,31 @@ val POST_FRAGMENT_SHADER: ref u8 = \\
 \\     FragColor = vec4(mapped, 1.0);
 \\ }
 
+val GLOW_VERTEX_SHADER: ref u8 = \\
+\\ #version 330 core
+\\ layout(location = 0) in vec3 aPosition;
+\\ layout(location = 1) in vec3 aNormal;
+\\ uniform mat4 uModel;
+\\ uniform mat4 uViewProj;
+\\ out vec3 vLocalPos;
+\\ void main() {
+\\     vLocalPos = aPosition;
+\\     gl_Position = uViewProj * uModel * vec4(aPosition, 1.0);
+\\ }
+
+val GLOW_FRAGMENT_SHADER: ref u8 = \\
+\\ #version 330 core
+\\ in vec3 vLocalPos;
+\\ out vec4 FragColor;
+\\ uniform vec3 uGlowColor;
+\\ uniform float uGlowIntensity;
+\\ uniform float uAlpha;
+\\ void main() {
+\\     float edge = max(max(abs(vLocalPos.x), abs(vLocalPos.y)), abs(vLocalPos.z));
+\\     float fade = 1.0 - smoothstep(0.30, 0.50, edge);
+\\     FragColor = vec4(uGlowColor * uGlowIntensity, uAlpha * fade);
+\\ }
+
 fn model_matrix_scaled(position: ecs.Vec3, scale: ecs.Vec3, rotation_y: f32) Mat4 = {
     return mat_mul(
         mat_translation(position),
@@ -1226,7 +1264,7 @@ fn view_projection(camera: Camera, width: i32, height: i32) Mat4 = {
     return mat_mul(projection, view)
 }
 
-fn draw_mesh(program: u32, mesh: MeshGPU, model: Mat4, view_proj: Mat4, color: ecs.Vec3, camera_pos: ecs.Vec3, reflective: f32, glow: f32, alpha: f32) void = trust {
+fn draw_mesh(program: u32, mesh: MeshGPU, model: Mat4, view_proj: Mat4, color: ecs.Vec3, camera_pos: ecs.Vec3, reflective: f32, glow: f32, alpha: f32, light: ecs.PointLight) void = trust {
     set_uniform_mat4(program, "uModel", model)
     set_uniform_mat4(program, "uViewProj", view_proj)
     set_uniform_vec3(program, "uColor", color)
@@ -1234,8 +1272,23 @@ fn draw_mesh(program: u32, mesh: MeshGPU, model: Mat4, view_proj: Mat4, color: e
     set_uniform_f32(program, "uReflective", reflective)
     set_uniform_f32(program, "uGlow", glow)
     set_uniform_f32(program, "uAlpha", alpha)
+    set_uniform_vec3(program, "uLightPos", light.position)
+    set_uniform_vec3(program, "uLightColor", light.color)
+    set_uniform_f32(program, "uLightIntensity", light.intensity)
+    set_uniform_f32(program, "uLightRadius", light.radius)
     gl_bind_vertex_array(mesh.vao)
     gl_draw_elements(GL_TRIANGLES, mesh.index_count, GL_UNSIGNED_INT, none as ref void)
+}
+
+fn draw_glow_mesh(program: u32, mesh: MeshGPU, model: Mat4, view_proj: Mat4, color: ecs.Vec3, intensity: f32, alpha: f32) void = trust {
+    set_uniform_mat4(program, "uModel", model)
+    set_uniform_mat4(program, "uViewProj", view_proj)
+    set_uniform_vec3(program, "uGlowColor", color)
+    set_uniform_f32(program, "uGlowIntensity", intensity)
+    set_uniform_f32(program, "uAlpha", alpha)
+    gl_bind_vertex_array(mesh.vao)
+    gl_draw_elements(GL_TRIANGLES, mesh.index_count, GL_UNSIGNED_INT, none as ref void)
+    gl_bind_vertex_array(0 as u32)
 }
 
 fn draw_demo_cubes(program: u32, cube_mesh: MeshGPU, scene: ecs.Scene3D, camera: Camera, view_proj: Mat4, time: f32, glow_scale: f32) void = trust {
@@ -1248,7 +1301,8 @@ fn draw_demo_cubes(program: u32, cube_mesh: MeshGPU, scene: ecs.Scene3D, camera:
         camera.position,
         0.08 as f32,
         glow_scale * (0.02 as f32),
-        1.0 as f32
+        1.0 as f32,
+        scene.light
     )
     draw_mesh(
         program,
@@ -1259,7 +1313,8 @@ fn draw_demo_cubes(program: u32, cube_mesh: MeshGPU, scene: ecs.Scene3D, camera:
         camera.position,
         0.10 as f32,
         glow_scale * (0.02 as f32),
-        1.0 as f32
+        1.0 as f32,
+        scene.light
     )
 }
 
@@ -1390,9 +1445,20 @@ pub fn run_app(app0: ExoApp) i32 = trust {
         return 1 as i32
     }
 
+    val glow_program: u32 = link_program(GLOW_VERTEX_SHADER, GLOW_FRAGMENT_SHADER)
+    if glow_program == 0 as u32 {
+        gl_delete_program(floor_program)
+        gl_delete_program(scene_program)
+        sdl_gl_delete_context(context)
+        sdl_destroy_window(window)
+        sdl_quit()
+        return 1 as i32
+    }
+
     val reflection_target: RenderTarget = create_render_target(app.config.width, app.config.height)
     if !render_target_valid(reflection_target) {
         destroy_render_target(reflection_target)
+        gl_delete_program(glow_program)
         gl_delete_program(floor_program)
         gl_delete_program(scene_program)
         sdl_gl_delete_context(context)
@@ -1407,6 +1473,7 @@ pub fn run_app(app0: ExoApp) i32 = trust {
         destroy_mesh(sphere_mesh)
         destroy_mesh(cube_mesh)
         destroy_render_target(reflection_target)
+        gl_delete_program(glow_program)
         gl_delete_program(floor_program)
         gl_delete_program(scene_program)
         sdl_gl_delete_context(context)
@@ -1420,6 +1487,7 @@ pub fn run_app(app0: ExoApp) i32 = trust {
         destroy_mesh(sphere_mesh)
         destroy_mesh(cube_mesh)
         destroy_render_target(reflection_target)
+        gl_delete_program(glow_program)
         gl_delete_program(floor_program)
         gl_delete_program(scene_program)
         sdl_gl_delete_context(context)
@@ -1470,6 +1538,18 @@ pub fn run_app(app0: ExoApp) i32 = trust {
         gl_clear_color(0.09 as f32, 0.15 as f32, 0.30 as f32, 1.0 as f32)
         gl_clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         render_scene(scene_program, floor_program, cube_mesh, sphere_mesh, app.scene, app.camera, app.config.width, app.config.height, time_value, reflection_target)
+        val lp: ecs.Vec3 = app.scene.light.position
+        val lc: ecs.Vec3 = app.scene.light.color
+        val gvp: Mat4 = view_projection(app.camera, app.config.width, app.config.height)
+        gl_enable(GL_BLEND)
+        gl_blend_func(GL_ONE, GL_ONE)
+        gl_use_program(glow_program)
+        draw_glow_mesh(glow_program, sphere_mesh, model_matrix(lp, 0.16 as f32, 0.0 as f32), gvp, lc, 3.5 as f32, 0.90 as f32)
+        draw_glow_mesh(glow_program, cube_mesh, model_matrix_scaled(lp, vec3(7.0 as f32, 0.05 as f32, 0.05 as f32), 0.0 as f32), gvp, lc, 1.2 as f32, 0.25 as f32)
+        draw_glow_mesh(glow_program, cube_mesh, model_matrix_scaled(lp, vec3(0.05 as f32, 0.05 as f32, 7.0 as f32), 0.0 as f32), gvp, lc, 1.2 as f32, 0.25 as f32)
+        draw_glow_mesh(glow_program, cube_mesh, model_matrix_scaled(vec3(lp.x, lp.y - (3.0 as f32), lp.z), vec3(0.10 as f32, 6.0 as f32, 0.10 as f32), 0.0 as f32), gvp, lc, 0.9 as f32, 0.20 as f32)
+        gl_blend_func(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+        gl_disable(GL_BLEND)
         sdl_gl_swap_window(window)
     }
 
@@ -1477,6 +1557,7 @@ pub fn run_app(app0: ExoApp) i32 = trust {
     destroy_mesh(sphere_mesh)
     destroy_mesh(cube_mesh)
     destroy_render_target(reflection_target)
+    gl_delete_program(glow_program)
     gl_delete_program(floor_program)
     gl_delete_program(scene_program)
     sdl_gl_delete_context(context)

@@ -17,6 +17,13 @@ pub type CubeEntity = {
     rotation_speed: f32
 }
 
+pub type PointLight = {
+    position: Vec3
+    color: Vec3
+    intensity: f32
+    radius: f32
+}
+
 pub type GlbModel = {
     valid: mut bool
     byte_length: mut usize
@@ -36,6 +43,7 @@ pub type Scene3D = {
     cube0: CubeEntity
     cube1: CubeEntity
     model: mut GlbModel
+    light: PointLight
 }
 
 pub fn make_vec3(x: f32, y: f32, z: f32) Vec3 = {
@@ -59,6 +67,19 @@ pub fn make_cube(position: Vec3, color: Vec3, size: f32, rotation_speed: f32) Cu
     }
 }
 
+pub fn default_light() PointLight = {
+    return {
+        position: { x: 0.0 as f32, y: 4.0 as f32, z: 0.0 as f32 },
+        color: { x: 1.0 as f32, y: 0.92 as f32, z: 0.78 as f32 },
+        intensity: 1.6 as f32,
+        radius: 7.0 as f32
+    }
+}
+
+pub fn make_light(position: Vec3, color: Vec3, intensity: f32, radius: f32) PointLight = {
+    return { position: position, color: color, intensity: intensity, radius: radius }
+}
+
 pub fn empty_model() GlbModel = {
     return {
         valid: false,
@@ -80,6 +101,18 @@ pub fn make_scene(sphere0: SphereEntity, sphere1: SphereEntity, cube0: CubeEntit
         sphere1: sphere1,
         cube0: cube0,
         cube1: cube1,
-        model: empty_model()
+        model: empty_model(),
+        light: default_light()
+    }
+}
+
+pub fn make_scene_lit(sphere0: SphereEntity, sphere1: SphereEntity, cube0: CubeEntity, cube1: CubeEntity, light: PointLight) Scene3D = {
+    return {
+        sphere0: sphere0,
+        sphere1: sphere1,
+        cube0: cube0,
+        cube1: cube1,
+        model: empty_model(),
+        light: light
     }
 }
