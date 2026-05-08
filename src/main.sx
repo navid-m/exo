@@ -50,8 +50,8 @@ fn build_demo_scene() engine.Scene3D = {
             sky_top: engine.make_vec3(0.40 as f32, 0.62 as f32, 0.98 as f32),
             ambient_strength: 0.54 as f32,
             floor_tint: engine.make_vec3(0.03 as f32, 0.05 as f32, 0.09 as f32),
-            floor_alpha: 0.64 as f32,
-            floor_reflectivity: 0.74 as f32
+            floor_alpha: 0.54 as f32,
+            floor_reflectivity: 0.88 as f32
         },
         model: engine.empty_model()
     }
