@@ -122,8 +122,8 @@ extern (C) fn SDL_EndGPUCopyPass(copy_pass: ref void) void = "SDL_EndGPUCopyPass
 extern (C) fn SDL_WaitAndAcquireGPUSwapchainTexture(command_buffer: ref void, window: ref void, swapchain_texture: ref ref void, swapchain_texture_width: ref u32, swapchain_texture_height: ref u32) bool = "SDL_WaitAndAcquireGPUSwapchainTexture"
 extern (C) fn SDL_SubmitGPUCommandBuffer(command_buffer: ref void) bool = "SDL_SubmitGPUCommandBuffer"
 extern (C) fn SDL_CancelGPUCommandBuffer(command_buffer: ref void) bool = "SDL_CancelGPUCommandBuffer"
-extern (C) fn SDL_LoadWAV(path: ref u8, spec: ref SDLAudioSpec, audio_buf: ref ref u8, audio_len: ref u32) bool = "SDL_LoadWAV"
-extern (C) fn SDL_OpenAudioDeviceStream(devid: u32, spec: ref SDLAudioSpec, callback: ref void, userdata: ref void) ref void = "SDL_OpenAudioDeviceStream"
+extern (C) fn SDL_LoadWAV(path: ref u8, speci: ref SDLAudioSpec, audio_buf: ref ref u8, audio_len: ref u32) bool = "SDL_LoadWAV"
+extern (C) fn SDL_OpenAudioDeviceStream(devid: u32, speci: ref SDLAudioSpec, callback: ref void, userdata: ref void) ref void = "SDL_OpenAudioDeviceStream"
 extern (C) fn SDL_SetAudioStreamGain(stream: ref void, gain: f32) bool = "SDL_SetAudioStreamGain"
 extern (C) fn SDL_ResumeAudioStreamDevice(stream: ref void) bool = "SDL_ResumeAudioStreamDevice"
 extern (C) fn SDL_ClearAudioStream(stream: ref void) bool = "SDL_ClearAudioStream"
@@ -237,7 +237,7 @@ type RuntimeAudioMixer = {
 }
 
 type SDLEvent = {
-    type: mut u32
+    typ: mut u32
     p01: mut u32
     p02: mut u32
     p03: mut u32
@@ -359,7 +359,7 @@ type SDLGPUShaderCreateInfo = {
 }
 
 type SDLGPUTextureCreateInfo = {
-    type: mut i32
+    typ: mut i32
     format: mut i32
     usage: mut u32
     width: mut u32
@@ -574,7 +574,7 @@ type ExoSDL3Runtime = {
 
 type ExoSDL3Audio = {
     stream: mut ref void
-    spec: mut SDLAudioSpec
+    speci: mut SDLAudioSpec
     buffer: mut ref u8
     length: mut u32
 }
@@ -609,7 +609,7 @@ fn exo_sdl3_get_error() ref u8 = {
     if exo_last_error != none {
         return exo_last_error
     }
-    return SDL_GetError()
+    return trust SDL_GetError()
 }
 
 fn read_f32(base: ref f32, index: usize) f32 = trust {
@@ -687,7 +687,7 @@ fn exo_load_shader(runtime: ref ExoSDL3Runtime, path: ref u8, stage: i32, num_sa
 
 fn exo_create_texture(runtime: ref ExoSDL3Runtime, format: i32, usage: u32, width: u32, height: u32) ref void = {
     val info: mut SDLGPUTextureCreateInfo = @zeroed
-    info.type = SDL_GPU_TEXTURETYPE_2D
+    info.typ = SDL_GPU_TEXTURETYPE_2D
     info.format = format
     info.usage = usage
     info.width = width
@@ -695,7 +695,7 @@ fn exo_create_texture(runtime: ref ExoSDL3Runtime, format: i32, usage: u32, widt
     info.layer_count_or_depth = 1 as u32
     info.num_levels = 1 as u32
     info.sample_count = SDL_GPU_SAMPLECOUNT_1
-    return SDL_CreateGPUTexture(runtime.device, @addr(info))
+    return trust SDL_CreateGPUTexture(runtime.device, @addr(info))
 }
 
 fn exo_release_render_targets(runtime: mut ref ExoSDL3Runtime) void = trust {
@@ -1012,10 +1012,10 @@ fn exo_sdl3_poll_quit() bool = {
     val evt: mut SDLEvent = @zeroed
     val quit: mut bool = false
     for {
-        if !SDL_PollEvent(@addr(evt)) {
+        if !(trust SDL_PollEvent(@addr(evt))) {
             break
         }
-        if evt.type == SDL_EVENT_QUIT || evt.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED {
+        if evt.typ == SDL_EVENT_QUIT || evt.typ == SDL_EVENT_WINDOW_CLOSE_REQUESTED {
             quit = true
         }
     }
@@ -1023,7 +1023,7 @@ fn exo_sdl3_poll_quit() bool = {
 }
 
 fn exo_sdl3_get_ticks() u64 = {
-    return SDL_GetTicks()
+    return trust SDL_GetTicks()
 }
 
 fn exo_sdl3_get_keyboard_state() ref u8 = trust {
@@ -1043,7 +1043,7 @@ fn exo_sdl3_set_relative_mouse_mode(runtime_raw: ref void, enabled: bool) bool =
 }
 
 fn exo_sdl3_get_relative_mouse_state(x: ref f32, y: ref f32) void = {
-    SDL_GetRelativeMouseState(x, y)
+    trust SDL_GetRelativeMouseState(x, y)
 }
 
 fn exo_sdl3_create_mesh(runtime_raw: ref void, vertices: ref void, vertex_bytes: u32, indices: ref void, index_bytes: u32, index_count: u32) ref void = trust {
@@ -1146,7 +1146,7 @@ fn exo_sdl3_destroy_mesh(runtime_raw: ref void, mesh_raw: ref void) void = trust
     @free(mesh_raw)
 }
 
-fn exo_sdl3_begin_frame(runtime_raw: ref void, width: ref u32, height: ref u32) bool = trust {
+fn exo_sdl3_begin_frame(runtime_raw: ref void, width: mut ref u32, height: mut ref u32) bool = trust {
     clear_exo_error()
     if runtime_raw == none {
         return set_exo_error("runtime unavailable")
@@ -1161,7 +1161,7 @@ fn exo_sdl3_begin_frame(runtime_raw: ref void, width: ref u32, height: ref u32) 
     }
     val swap_width: mut u32 = 0 as u32
     val swap_height: mut u32 = 0 as u32
-    if !SDL_WaitAndAcquireGPUSwapchainTexture(runtime.command_buffer, runtime.window, @addr(runtime.swapchain_texture), @addr(swap_width), @addr(swap_height)) {
+    if !(SDL_WaitAndAcquireGPUSwapchainTexture(runtime.command_buffer, runtime.window, @addr(runtime.swapchain_texture), @addr(swap_width), @addr(swap_height))) {
         SDL_CancelGPUCommandBuffer(runtime.command_buffer)
         runtime.command_buffer = none
         return false
@@ -1227,11 +1227,11 @@ fn exo_sdl3_submit_frame(runtime_raw: ref void) bool = trust {
         return set_exo_error("frame not active")
     }
     exo_sdl3_end_pass(runtime_raw)
-    val ok: bool = SDL_SubmitGPUCommandBuffer(runtime.command_buffer)
+    val its_ok: bool = SDL_SubmitGPUCommandBuffer(runtime.command_buffer)
     runtime.command_buffer = none
     runtime.swapchain_texture = none
     runtime.frame_active = false
-    return ok
+    return its_ok
 }
 
 fn exo_sdl3_draw_scene_mesh(
@@ -1254,11 +1254,11 @@ fn exo_sdl3_draw_scene_mesh(
     }
     val runtime: ref ExoSDL3Runtime = runtime_raw as ref ExoSDL3Runtime
     val mesh: ref ExoSDL3Mesh = mesh_raw as ref ExoSDL3Mesh
-    val vu: SceneVertexUniforms = {
+    val vu: mut SceneVertexUniforms = {
         model: transpose_mat4_ptr(model),
         view_proj: transpose_mat4_ptr(view_proj)
     }
-    val fu: SceneFragmentUniforms = {
+    val fu: mut SceneFragmentUniforms = {
         color_reflective: vec4_from_ptr(color, reflective),
         camera_glow: vec4_from_ptr(camera_pos, glow),
         light_pos_intensity: vec4_from_ptr(light_pos, light_intensity),
@@ -1278,12 +1278,12 @@ fn exo_sdl3_draw_floor(runtime_raw: ref void, mesh_raw: ref void, model: ref f32
     }
     val runtime: ref ExoSDL3Runtime = runtime_raw as ref ExoSDL3Runtime
     val mesh: ref ExoSDL3Mesh = mesh_raw as ref ExoSDL3Mesh
-    val vu: FloorVertexUniforms = {
+    val vu: mut FloorVertexUniforms = {
         model: transpose_mat4_ptr(model),
         view_proj: transpose_mat4_ptr(view_proj),
         reflect_view_proj: transpose_mat4_ptr(reflect_view_proj)
     }
-    val fu: FloorFragmentUniforms = {
+    val fu: mut FloorFragmentUniforms = {
         camera_pos: vec4_from_ptr(camera_pos, 0.0 as f32)
     }
     val binding: mut SDLGPUTextureSamplerBinding = @zeroed
@@ -1315,14 +1315,14 @@ fn exo_sdl3_draw_glow(
     }
     val runtime: ref ExoSDL3Runtime = runtime_raw as ref ExoSDL3Runtime
     val mesh: ref ExoSDL3Mesh = mesh_raw as ref ExoSDL3Mesh
-    val vu: GlowVertexUniforms = {
+    val vu: mut GlowVertexUniforms = {
         view_proj: transpose_mat4_ptr(view_proj),
         position: vec4_from_ptr(position, 0.0 as f32),
         size: { x: width, y: height, z: 0.0 as f32, w: 0.0 as f32 },
         camera_right: vec4_from_ptr(camera_right, 0.0 as f32),
         camera_up: vec4_from_ptr(camera_up, 0.0 as f32)
     }
-    val fu: GlowFragmentUniforms = {
+    val fu: mut GlowFragmentUniforms = {
         color_intensity: vec4_from_ptr(color, intensity),
         alpha_pad: { x: alpha, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
     }
@@ -1343,11 +1343,11 @@ fn exo_sdl3_create_audio(wav_path: ref u8, volume: i32) ref void = trust {
         return set_exo_error_ptr("failed to allocate audio")
     }
     @deref(audio) = @zeroed
-    if !SDL_LoadWAV(wav_path, @addr(audio.spec), @addr(audio.buffer), @addr(audio.length)) {
+    if !SDL_LoadWAV(wav_path, @addr(audio.speci), @addr(audio.buffer), @addr(audio.length)) {
         exo_sdl3_destroy_audio(audio as ref void)
         return none as ref void
     }
-    audio.stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, @addr(audio.spec), none as ref void, none as ref void)
+    audio.stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, @addr(audio.speci), none as ref void, none as ref void)
     if audio.stream == none {
         exo_sdl3_destroy_audio(audio as ref void)
         return none as ref void
