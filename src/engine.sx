@@ -70,7 +70,7 @@ val GLB_VERSION: u32 = 2
 val GLB_JSON_CHUNK: u32 = 0x4E4F534A
 val GLB_BIN_CHUNK: u32 = 0x004E4942
 
-pub extern type SDL_Event = {
+pub extern type SDLEvent = {
     type_value: mut u32
     padding: mut [52]u8
 }
@@ -79,7 +79,7 @@ pub extern (C, header) fn sdl_init(flags: u32) i32 = "SDL_Init"
 pub extern (C, header) fn sdl_quit() void = "SDL_Quit"
 pub extern (C, header) fn sdl_create_window(title: ref u8, x: i32, y: i32, w: i32, h: i32, flags: u32) ref void = "SDL_CreateWindow"
 pub extern (C, header) fn sdl_destroy_window(window: ref void) void = "SDL_DestroyWindow"
-pub extern (C, header) fn sdl_poll_event(event: ref SDL_Event) i32 = "SDL_PollEvent"
+pub extern (C, header) fn sdl_poll_event(event: ref SDLEvent) i32 = "SDL_PollEvent"
 pub extern (C, header) fn sdl_get_ticks() u32 = "SDL_GetTicks"
 pub extern (C, header) fn sdl_get_keyboard_state(numkeys: ref i32) ref u8 = "SDL_GetKeyboardState"
 pub extern (C, header) fn sdl_gl_set_attribute(attr: i32, value: i32) i32 = "SDL_GL_SetAttribute"
@@ -1501,7 +1501,7 @@ pub fn run_app(app0: EngineApp) i32 = trust {
         return 1 as i32
     }
 
-    val evt: ref SDL_Event = @alloc(@sizeof(SDL_Event) as usize) as ref SDL_Event
+    val evt: ref SDLEvent = @alloc(@sizeof(SDLEvent) as usize) as ref SDLEvent
     if evt == none {
         destroy_mesh(sphere_mesh)
         destroy_mesh(cube_mesh)
