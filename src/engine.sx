@@ -1327,31 +1327,16 @@ fn draw_billboard(program: u32, mesh: MeshGPU, pos: ecs.Vec3, width: f32, height
     gl_bind_vertex_array(0 as u32)
 }
 
-fn draw_demo_cubes(program: u32, cube_mesh: MeshGPU, scene: ecs.Scene3D, camera: Camera, view_proj: Mat4, time: f32, glow_scale: f32) void = trust {
-    draw_mesh(
-        program,
-        cube_mesh,
-        model_matrix(scene.cube0.position, scene.cube0.size, time * scene.cube0.rotation_speed),
-        view_proj,
-        scene.cube0.color,
-        camera.position,
-        0.08 as f32,
-        glow_scale * (0.02 as f32),
-        1.0 as f32,
-        scene.light
-    )
-    draw_mesh(
-        program,
-        cube_mesh,
-        model_matrix(scene.cube1.position, scene.cube1.size, time * scene.cube1.rotation_speed),
-        view_proj,
-        scene.cube1.color,
-        camera.position,
-        0.10 as f32,
-        glow_scale * (0.02 as f32),
-        1.0 as f32,
-        scene.light
-    )
+fn draw_typed_entities[E: ecs.SceneEntity](program: u32, mesh: MeshGPU, entities: list[E], camera: Camera, view_proj: Mat4, time: f32, glow_scale: f32, light: ecs.PointLight) void = trust {
+    for entity in entities {
+        val mm: Mat4 = model_matrix(E.se_position(entity), E.se_scale(entity), E.se_rotation(entity, time))
+        draw_mesh(program, mesh, mm, view_proj, E.se_color(entity), camera.position, E.se_reflective(entity), glow_scale * (0.025 as f32), 1.0 as f32, light)
+    }
+}
+
+fn draw_scene_entities(program: u32, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, scene: ecs.Scene3D, camera: Camera, view_proj: Mat4, time: f32, glow_scale: f32) void = trust {
+    draw_typed_entities[ecs.SphereEntity](program, sphere_mesh, scene.spheres, camera, view_proj, time, glow_scale, scene.light)
+    draw_typed_entities[ecs.CubeEntity](program, cube_mesh, scene.cubes, camera, view_proj, time, glow_scale, scene.light)
 }
 
 fn draw_floor(program: u32, mesh: MeshGPU, model: Mat4, view_proj: Mat4, reflect_view_proj: Mat4, camera: Camera, reflection_target: RenderTarget) void = trust {
@@ -1369,20 +1354,20 @@ fn draw_floor(program: u32, mesh: MeshGPU, model: Mat4, view_proj: Mat4, reflect
     gl_bind_texture(GL_TEXTURE_2D, 0 as u32)
 }
 
-fn render_reflection_scene(program: u32, cube_mesh: MeshGPU, scene: ecs.Scene3D, camera: Camera, width: i32, height: i32, time: f32, plane_y: f32) void = trust {
+fn render_reflection_scene(program: u32, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, scene: ecs.Scene3D, camera: Camera, width: i32, height: i32, time: f32, plane_y: f32) void = trust {
     val mirrored: Camera = mirrored_camera(camera, plane_y)
     val reflect_vp: Mat4 = view_projection(mirrored, width, height)
     gl_use_program(program)
-    draw_demo_cubes(program, cube_mesh, scene, mirrored, reflect_vp, time, 0.60 as f32)
+    draw_scene_entities(program, cube_mesh, sphere_mesh, scene, mirrored, reflect_vp, time, 0.60 as f32)
 }
 
-fn render_scene(scene_program: u32, floor_program: u32, cube_mesh: MeshGPU, _: MeshGPU, scene: ecs.Scene3D, camera: Camera, width: i32, height: i32, time: f32, reflection_target: RenderTarget) void = trust {
+fn render_scene(scene_program: u32, floor_program: u32, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, scene: ecs.Scene3D, camera: Camera, width: i32, height: i32, time: f32, reflection_target: RenderTarget) void = trust {
     val vp: Mat4 = view_projection(camera, width, height)
     val floor_y: f32 = -0.18 as f32
     val floor_position: ecs.Vec3 = vec3(0.0 as f32, floor_y - (0.08 as f32), -1.45 as f32)
     val floor_scale: ecs.Vec3 = vec3(7.8 as f32, 0.16 as f32, 7.8 as f32)
     val reflect_vp: Mat4 = view_projection(mirrored_camera(camera, floor_y), width, height)
-    draw_demo_cubes(scene_program, cube_mesh, scene, camera, vp, time, 1.00 as f32)
+    draw_scene_entities(scene_program, cube_mesh, sphere_mesh, scene, camera, vp, time, 1.00 as f32)
     gl_enable(GL_BLEND)
     gl_blend_func(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
     draw_floor(
@@ -1569,7 +1554,7 @@ pub fn run_app(app0: ExoApp) i32 = trust {
         gl_viewport(0 as i32, 0 as i32, reflection_target.width, reflection_target.height)
         gl_clear_color(0.05 as f32, 0.08 as f32, 0.14 as f32, 1.0 as f32)
         gl_clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-        render_reflection_scene(scene_program, cube_mesh, app.scene, app.camera, reflection_target.width, reflection_target.height, time_value, -0.18 as f32)
+        render_reflection_scene(scene_program, cube_mesh, sphere_mesh, app.scene, app.camera, reflection_target.width, reflection_target.height, time_value, -0.18 as f32)
 
         gl_bind_framebuffer(GL_FRAMEBUFFER, 0 as u32)
         gl_enable(GL_DEPTH_TEST)
