@@ -1,6 +1,7 @@
-val stdio = use("std/stdio")
-val json  = use("std/json")
-val math  = use("std/math")
+val stdio  = use("std/stdio")
+val json   = use("std/json")
+val math   = use("std/math")
+val string = use("std/string")
 
 extern "SDL.h"
 extern "SDL_opengl.h"
@@ -149,7 +150,6 @@ extern (C) fn fread(buf: ref void, size: usize, count: usize, stream: ref void) 
 extern (C) fn fseek(stream: ref void, offset: i64, whence: i32) i32 = "fseek"
 extern (C) fn ftell(stream: ref void) i64 = "ftell"
 extern (C) fn rewind(stream: ref void) void = "rewind"
-extern (C) fn strlen(s: ref u8) usize = "strlen"
 
 pub type Vec3 = {
     x: f32
@@ -544,7 +544,7 @@ fn dup_cstr(src: ref u8) ref u8 = trust {
     if src == none {
         return none
     }
-    val len: usize = strlen(src)
+    val len: usize = string.len_raw(src) as usize
     val dst: ref u8 = @alloc(len + 1) as ref u8
     if dst == none {
         return none
@@ -707,7 +707,7 @@ pub fn load_glb(path: ref u8) option[GlbModel] = trust {
 
 pub fn build_test_glb_fixture() GlbFixture = trust {
     val json_chunk: ref u8 = \\{"asset":{"version":"2.0"},"buffers":[{"byteLength":36}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":36}],"accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3"}],"meshes":[{"name":"fixture","primitives":[{"attributes":{"POSITION":0}}]}]}
-    val json_len_raw: usize = strlen(json_chunk)
+    val json_len_raw: usize = string.len_raw(json_chunk) as usize
     val json_len: usize = ((json_len_raw + (3 as usize)) / (4 as usize)) * (4 as usize)
     val bin_len: usize = 36 as usize
     val total_len: usize = (12 as usize) + (8 as usize) + json_len + (8 as usize) + bin_len
