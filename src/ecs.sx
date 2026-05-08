@@ -1,0 +1,85 @@
+pub type Vec3 = {
+    x: f32
+    y: f32
+    z: f32
+}
+
+pub type SphereEntity = {
+    position: Vec3
+    color: Vec3
+    radius: f32
+}
+
+pub type CubeEntity = {
+    position: Vec3
+    color: Vec3
+    size: f32
+    rotation_speed: f32
+}
+
+pub type GlbModel = {
+    valid: mut bool
+    byte_length: mut usize
+    json_length: mut usize
+    bin_length: mut usize
+    mesh_name: mut ref u8
+    primitive_count: mut i32
+    vertex_count: mut i32
+    index_count: mut i32
+    has_normals: mut bool
+    has_uvs: mut bool
+}
+
+pub type Scene3D = {
+    sphere0: SphereEntity
+    sphere1: SphereEntity
+    cube0: CubeEntity
+    cube1: CubeEntity
+    model: mut GlbModel
+}
+
+pub fn make_vec3(x: f32, y: f32, z: f32) Vec3 = {
+    return { x: x, y: y, z: z }
+}
+
+pub fn make_sphere(position: Vec3, color: Vec3, radius: f32) SphereEntity = {
+    return {
+        position: position,
+        color: color,
+        radius: radius
+    }
+}
+
+pub fn make_cube(position: Vec3, color: Vec3, size: f32, rotation_speed: f32) CubeEntity = {
+    return {
+        position: position,
+        color: color,
+        size: size,
+        rotation_speed: rotation_speed
+    }
+}
+
+pub fn empty_model() GlbModel = {
+    return {
+        valid: false,
+        byte_length: 0 as usize,
+        json_length: 0 as usize,
+        bin_length: 0 as usize,
+        mesh_name: "",
+        primitive_count: 0 as i32,
+        vertex_count: 0 as i32,
+        index_count: 0 as i32,
+        has_normals: false,
+        has_uvs: false
+    }
+}
+
+pub fn make_scene(sphere0: SphereEntity, sphere1: SphereEntity, cube0: CubeEntity, cube1: CubeEntity) Scene3D = {
+    return {
+        sphere0: sphere0,
+        sphere1: sphere1,
+        cube0: cube0,
+        cube1: cube1,
+        model: empty_model()
+    }
+}
