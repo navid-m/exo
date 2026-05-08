@@ -208,7 +208,7 @@ pub type EngineConfig = {
     height: i32
 }
 
-pub type EngineApp = {
+pub type ExoApp = {
     config: EngineConfig
     scene: mut ecs.Scene3D
     camera: mut Camera
@@ -373,7 +373,7 @@ pub fn default_config() EngineConfig = {
     }
 }
 
-pub fn create_app(config: EngineConfig, scene: ecs.Scene3D, camera: Camera) EngineApp = {
+pub fn create_app(config: EngineConfig, scene: ecs.Scene3D, camera: Camera) ExoApp = {
     return {
         config: config,
         scene: scene,
@@ -1326,8 +1326,8 @@ fn print_sdl_error(prefix: ref u8) void = {
     trust stdio.eprint("{s}: {s}\n", {prefix, sdl_get_error()})
 }
 
-pub fn run_app(app0: EngineApp) i32 = trust {
-    val app: mut EngineApp = app0
+pub fn run_app(app0: ExoApp) i32 = trust {
+    val app: mut ExoApp = app0
 
     if sdl_init(SDL_INIT_VIDEO) != 0 {
         print_sdl_error("SDL_Init failed")

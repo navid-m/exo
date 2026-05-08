@@ -33,13 +33,13 @@ fn build_game_scene() ecs.Scene3D = {
 pub fn main() i32 = {
     val scene: mut ecs.Scene3D = build_game_scene()
     scene.model = trust engine.load_embedded_fixture_model()
-    val app: engine.EngineApp = rendering.create_app(scene)
+    val app: engine.ExoApp = rendering.create_app(scene)
     return trust rendering.run(app)
 }
 
 test {
     val scene = build_game_scene()
-    val app: engine.EngineApp = rendering.create_app(scene)
+    val app: engine.ExoApp = rendering.create_app(scene)
     assert scene.sphere0.radius > (0.5 as f32)
     assert scene.sphere1.radius > (0.5 as f32)
     assert scene.cube0.rotation_speed > (0.5 as f32)
