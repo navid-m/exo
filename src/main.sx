@@ -40,7 +40,22 @@ fn build_game_scene() ecs.Scene3D = {
 pub fn main() i32 = {
     val scene: mut ecs.Scene3D = build_game_scene()
     scene.model = trust engine.load_embedded_fixture_model()
-    val app: engine.ExoApp = rendering.create_app(scene)
+    val input: engine.InputConfig = {
+        keys: rendering.default_key_bindings(),
+        mouse: {
+            enabled:       true,
+            sensitivity_x: 0.0018 as f32,
+            sensitivity_y: 0.0018 as f32,
+            invert_y:      false
+        },
+        quit_key: engine.SDL_SCANCODE_ESCAPE
+    }
+    val app: engine.ExoApp = rendering.create_configured_app(
+        rendering.default_config(),
+        scene,
+        rendering.default_camera(),
+        input
+    )
     return trust rendering.run(app)
 }
 
