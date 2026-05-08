@@ -236,7 +236,7 @@ type RuntimeAudioMixer = {
     sample_audio: mut ref void
 }
 
-type SDLEvent = {
+extern type SDLEvent = {
     typ: mut u32
     p01: mut u32
     p02: mut u32
@@ -271,20 +271,20 @@ type SDLEvent = {
     p31: mut u32
 }
 
-type SDLFColor = {
+extern type SDLFColor = {
     r: mut f32
     g: mut f32
     b: mut f32
     a: mut f32
 }
 
-type SDLAudioSpec = {
+extern type SDLAudioSpec = {
     format: mut i32
     channels: mut i32
     freq: mut i32
 }
 
-type SDLGPUSamplerCreateInfo = {
+extern type SDLGPUSamplerCreateInfo = {
     min_filter: mut i32
     mag_filter: mut i32
     mipmap_mode: mut i32
@@ -303,35 +303,35 @@ type SDLGPUSamplerCreateInfo = {
     props: mut u32
 }
 
-type SDLGPUVertexBufferDescription = {
+extern type SDLGPUVertexBufferDescription = {
     slot: mut u32
     pitch: mut u32
     input_rate: mut i32
     instance_step_rate: mut u32
 }
 
-type SDLGPUVertexAttribute = {
+extern type SDLGPUVertexAttribute = {
     location: mut u32
     buffer_slot: mut u32
     format: mut i32
     offset: mut u32
 }
 
-type SDLGPUVertexInputState = {
+extern type SDLGPUVertexInputState = {
     vertex_buffer_descriptions: mut ref SDLGPUVertexBufferDescription
     num_vertex_buffers: mut u32
     vertex_attributes: mut ref SDLGPUVertexAttribute
     num_vertex_attributes: mut u32
 }
 
-type SDLGPUStencilOpState = {
+extern type SDLGPUStencilOpState = {
     fail_op: mut i32
     pass_op: mut i32
     depth_fail_op: mut i32
     compare_op: mut i32
 }
 
-type SDLGPUColorTargetBlendState = {
+extern type SDLGPUColorTargetBlendState = {
     src_color_blendfactor: mut i32
     dst_color_blendfactor: mut i32
     color_blend_op: mut i32
@@ -345,7 +345,7 @@ type SDLGPUColorTargetBlendState = {
     padding2: mut u8
 }
 
-type SDLGPUShaderCreateInfo = {
+extern type SDLGPUShaderCreateInfo = {
     code_size: mut usize
     code: mut ref u8
     entrypoint: mut ref u8
@@ -358,7 +358,7 @@ type SDLGPUShaderCreateInfo = {
     props: mut u32
 }
 
-type SDLGPUTextureCreateInfo = {
+extern type SDLGPUTextureCreateInfo = {
     typ: mut i32
     format: mut i32
     usage: mut u32
@@ -370,19 +370,19 @@ type SDLGPUTextureCreateInfo = {
     props: mut u32
 }
 
-type SDLGPUBufferCreateInfo = {
+extern type SDLGPUBufferCreateInfo = {
     usage: mut u32
     size: mut u32
     props: mut u32
 }
 
-type SDLGPUTransferBufferCreateInfo = {
+extern type SDLGPUTransferBufferCreateInfo = {
     usage: mut i32
     size: mut u32
     props: mut u32
 }
 
-type SDLGPURasterizerState = {
+extern type SDLGPURasterizerState = {
     fill_mode: mut i32
     cull_mode: mut i32
     front_face: mut i32
@@ -395,7 +395,7 @@ type SDLGPURasterizerState = {
     padding2: mut u8
 }
 
-type SDLGPUMultisampleState = {
+extern type SDLGPUMultisampleState = {
     sample_count: mut i32
     sample_mask: mut u32
     enable_mask: mut bool
@@ -404,7 +404,7 @@ type SDLGPUMultisampleState = {
     padding3: mut u8
 }
 
-type SDLGPUDepthStencilState = {
+extern type SDLGPUDepthStencilState = {
     compare_op: mut i32
     back_stencil_state: mut SDLGPUStencilOpState
     front_stencil_state: mut SDLGPUStencilOpState
@@ -418,12 +418,12 @@ type SDLGPUDepthStencilState = {
     padding3: mut u8
 }
 
-type SDLGPUColorTargetDescription = {
+extern type SDLGPUColorTargetDescription = {
     format: mut i32
     blend_state: mut SDLGPUColorTargetBlendState
 }
 
-type SDLGPUGraphicsPipelineTargetInfo = {
+extern type SDLGPUGraphicsPipelineTargetInfo = {
     color_target_descriptions: mut ref SDLGPUColorTargetDescription
     num_color_targets: mut u32
     depth_stencil_format: mut i32
@@ -433,7 +433,7 @@ type SDLGPUGraphicsPipelineTargetInfo = {
     padding3: mut u8
 }
 
-type SDLGPUGraphicsPipelineCreateInfo = {
+extern type SDLGPUGraphicsPipelineCreateInfo = {
     vertex_shader: mut ref void
     fragment_shader: mut ref void
     vertex_input_state: mut SDLGPUVertexInputState
@@ -445,7 +445,7 @@ type SDLGPUGraphicsPipelineCreateInfo = {
     props: mut u32
 }
 
-type SDLGPUColorTargetInfo = {
+extern type SDLGPUColorTargetInfo = {
     texture: mut ref void
     mip_level: mut u32
     layer_or_depth_plane: mut u32
@@ -461,7 +461,7 @@ type SDLGPUColorTargetInfo = {
     padding2: mut u8
 }
 
-type SDLGPUDepthStencilTargetInfo = {
+extern type SDLGPUDepthStencilTargetInfo = {
     texture: mut ref void
     clear_depth: mut f32
     load_op: mut i32
@@ -474,17 +474,17 @@ type SDLGPUDepthStencilTargetInfo = {
     layer: mut u8
 }
 
-type SDLGPUBufferBinding = {
+extern type SDLGPUBufferBinding = {
     buffer: mut ref void
     offset: mut u32
 }
 
-type SDLGPUTextureSamplerBinding = {
+extern type SDLGPUTextureSamplerBinding = {
     texture: mut ref void
     sampler: mut ref void
 }
 
-type SDLGPUViewport = {
+extern type SDLGPUViewport = {
     x: mut f32
     y: mut f32
     w: mut f32
@@ -493,12 +493,12 @@ type SDLGPUViewport = {
     max_depth: mut f32
 }
 
-type SDLGPUTransferBufferLocation = {
+extern type SDLGPUTransferBufferLocation = {
     transfer_buffer: mut ref void
     offset: mut u32
 }
 
-type SDLGPUBufferRegion = {
+extern type SDLGPUBufferRegion = {
     buffer: mut ref void
     offset: mut u32
     size: mut u32
@@ -821,60 +821,60 @@ fn exo_create_pipeline(
     vertex_attributes.second.buffer_slot = 0 as u32
     vertex_attributes.second.format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3
     vertex_attributes.second.offset = 12 as u32
-    val color_target: mut SDLGPUColorTargetDescription = {
-        format: 0 as i32,
-        blend_state: {
-            src_color_blendfactor: 0 as i32,
-            dst_color_blendfactor: 0 as i32,
-            color_blend_op: 0 as i32,
-            src_alpha_blendfactor: 0 as i32,
-            dst_alpha_blendfactor: 0 as i32,
-            alpha_blend_op: 0 as i32,
-            color_write_mask: 0 as u8,
-            enable_blend: false,
-            enable_color_write_mask: false,
-            padding1: 0 as u8,
-            padding2: 0 as u8
+        val color_target: mut SDLGPUColorTargetDescription = {
+            format: 0 as i32,
+            blend_state: {
+                src_color_blendfactor: 0 as i32,
+                dst_color_blendfactor: 0 as i32,
+                color_blend_op: 0 as i32,
+                src_alpha_blendfactor: 0 as i32,
+                dst_alpha_blendfactor: 0 as i32,
+                alpha_blend_op: 0 as i32,
+                color_write_mask: 0 as u8,
+                enable_blend: false,
+                enable_color_write_mask: false,
+                padding1: 0 as u8,
+                padding2: 0 as u8
+            }
         }
-    }
-    color_target.format = color_format
-    color_target.blend_state.enable_blend = enable_blend
+        color_target.format = color_format
+        color_target.blend_state.enable_blend = enable_blend
     color_target.blend_state.src_color_blendfactor = src_color
     color_target.blend_state.dst_color_blendfactor = dst_color
     color_target.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD
     color_target.blend_state.src_alpha_blendfactor = src_alpha
     color_target.blend_state.dst_alpha_blendfactor = dst_alpha
     color_target.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD
-    val info: mut SDLGPUGraphicsPipelineCreateInfo = {
-        vertex_shader: none as ref void,
-        fragment_shader: none as ref void,
-        vertex_input_state: {
-            vertex_buffer_descriptions: none as ref SDLGPUVertexBufferDescription,
-            num_vertex_buffers: 0 as u32,
-            vertex_attributes: none as ref SDLGPUVertexAttribute,
-            num_vertex_attributes: 0 as u32
-        },
-        primitive_type: 0 as i32,
-        rasterizer_state: {
-            fill_mode: 0 as i32,
-            cull_mode: 0 as i32,
-            front_face: 0 as i32,
-            depth_bias_constant_factor: 0.0 as f32,
-            depth_bias_clamp: 0.0 as f32,
-            depth_bias_slope_factor: 0.0 as f32,
-            enable_depth_bias: false,
-            enable_depth_clip: false,
-            padding1: 0 as u8,
-            padding2: 0 as u8
-        },
-        multisample_state: {
-            sample_count: 0 as i32,
-            sample_mask: 0 as u32,
-            enable_mask: false,
-            enable_alpha_to_coverage: false,
-            padding2: 0 as u8,
-            padding3: 0 as u8
-        },
+        val info: mut SDLGPUGraphicsPipelineCreateInfo = {
+            vertex_shader: none as ref void,
+            fragment_shader: none as ref void,
+            vertex_input_state: {
+                vertex_buffer_descriptions: none as ref SDLGPUVertexBufferDescription,
+                num_vertex_buffers: 0 as u32,
+                vertex_attributes: none as ref SDLGPUVertexAttribute,
+                num_vertex_attributes: 0 as u32
+            },
+            primitive_type: 0 as i32,
+            rasterizer_state: {
+                fill_mode: 0 as i32,
+                cull_mode: 0 as i32,
+                front_face: 0 as i32,
+                depth_bias_constant_factor: 0.0 as f32,
+                depth_bias_clamp: 0.0 as f32,
+                depth_bias_slope_factor: 0.0 as f32,
+                enable_depth_bias: false,
+                enable_depth_clip: false,
+                padding1: 0 as u8,
+                padding2: 0 as u8
+            },
+            multisample_state: {
+                sample_count: 0 as i32,
+                sample_mask: 0 as u32,
+                enable_mask: false,
+                enable_alpha_to_coverage: false,
+                padding2: 0 as u8,
+                padding3: 0 as u8
+            },
         depth_stencil_state: {
             compare_op: 0 as i32,
             back_stencil_state: {
@@ -888,26 +888,26 @@ fn exo_create_pipeline(
                 pass_op: 0 as i32,
                 depth_fail_op: 0 as i32,
                 compare_op: 0 as i32
+                },
+                compare_mask: 0 as u8,
+                write_mask: 0 as u8,
+                enable_depth_test: false,
+                enable_depth_write: false,
+                enable_stencil_test: false,
+                padding1: 0 as u8,
+                padding2: 0 as u8,
+                padding3: 0 as u8
             },
-            compare_mask: 0 as u8,
-            write_mask: 0 as u8,
-            enable_depth_test: false,
-            enable_depth_write: false,
-            enable_stencil_test: false,
-            padding1: 0 as u8,
-            padding2: 0 as u8,
-            padding3: 0 as u8
-        },
-        target_info: {
-            color_target_descriptions: none as ref SDLGPUColorTargetDescription,
-            num_color_targets: 0 as u32,
-            depth_stencil_format: 0 as i32,
-            has_depth_stencil_target: false,
-            padding1: 0 as u8,
-            padding2: 0 as u8,
-            padding3: 0 as u8
-        },
-        props: 0 as u32
+            target_info: {
+                color_target_descriptions: none as ref SDLGPUColorTargetDescription,
+                num_color_targets: 0 as u32,
+                depth_stencil_format: 0 as i32,
+                has_depth_stencil_target: false,
+                padding1: 0 as u8,
+                padding2: 0 as u8,
+                padding3: 0 as u8
+            },
+            props: 0 as u32
     }
     info.vertex_shader = vs
     info.fragment_shader = fs
