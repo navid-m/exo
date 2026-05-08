@@ -1,6 +1,6 @@
-val string = use("std/string")
-val ecs = use("ecs.sx")
-val engine = use("engine.sx")
+val string    = use("std/string")
+val ecs       = use("ecs.sx")
+val engine    = use("engine.sx")
 val rendering = use("rendering.sx")
 
 fn build_game_scene() ecs.Scene3D = {

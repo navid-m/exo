@@ -2,6 +2,7 @@ val stdio  = use("std/stdio")
 val json   = use("std/json")
 val string = use("std/string")
 val math   = use("std/math")
+val bin    = use("std/encoding/binary")
 val mstat  = use("std/math/static")
 val ecs    = use("ecs.sx")
 
@@ -178,7 +179,6 @@ extern (C) fn fread(buf: ref void, size: usize, count: usize, stream: ref void) 
 extern (C) fn fseek(stream: ref void, offset: i64, whence: i32) i32 = "fseek"
 extern (C) fn ftell(stream: ref void) i64 = "ftell"
 extern (C) fn rewind(stream: ref void) void = "rewind"
-extern (C) fn strlen(s: ref u8) usize = "strlen"
 
 type Mat4 = {
     m00: f32
@@ -528,7 +528,7 @@ fn dup_cstr(src: ref u8) ref u8 = trust {
     if src == none {
         return none
     }
-    val len: usize = strlen(src)
+    val len: usize = string.len_raw(src)
     val dst: ref u8 = @alloc(len + 1) as ref u8
     if dst == none {
         return none
@@ -538,21 +538,6 @@ fn dup_cstr(src: ref u8) ref u8 = trust {
     }
     @store8(@ptradd(dst, len), 0)
     return dst
-}
-
-fn read_u32_le(data: ref u8, offset: usize) u32 = trust {
-    val b0: u32 = @load8(@ptradd(data, offset + (0 as usize))) as u32
-    val b1: u32 = @load8(@ptradd(data, offset + (1 as usize))) as u32
-    val b2: u32 = @load8(@ptradd(data, offset + (2 as usize))) as u32
-    val b3: u32 = @load8(@ptradd(data, offset + (3 as usize))) as u32
-    return b0 | (b1 << 8) | (b2 << 16) | (b3 << 24)
-}
-
-fn write_u32_le(data: ref u8, offset: usize, value: u32) void = trust {
-    @store8(@ptradd(data, offset + (0 as usize)), (value & 255) as u8)
-    @store8(@ptradd(data, offset + (1 as usize)), ((value >> 8) & 255) as u8)
-    @store8(@ptradd(data, offset + (2 as usize)), ((value >> 16) & 255) as u8)
-    @store8(@ptradd(data, offset + (3 as usize)), ((value >> 24) & 255) as u8)
 }
 
 fn parse_accessor_count(accessors: ref void, idx: i64) i32 = trust {
@@ -572,9 +557,9 @@ pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
         return none
     }
 
-    val magic: u32 = read_u32_le(data, 0 as usize)
-    val version: u32 = read_u32_le(data, 4 as usize)
-    val total_len: u32 = read_u32_le(data, 8 as usize)
+    val magic: u32 = bin.read_u32_le(data, 0 as usize)
+    val version: u32 = bin.read_u32_le(data, 4 as usize)
+    val total_len: u32 = bin.read_u32_le(data, 8 as usize)
     if magic != GLB_MAGIC || version != GLB_VERSION {
         return none
     }
@@ -582,8 +567,8 @@ pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
         return none
     }
 
-    val json_len: u32 = read_u32_le(data, 12 as usize)
-    val json_type: u32 = read_u32_le(data, 16 as usize)
+    val json_len: u32 = bin.read_u32_le(data, 12 as usize)
+    val json_type: u32 = bin.read_u32_le(data, 16 as usize)
     if json_type != GLB_JSON_CHUNK {
         return none
     }
@@ -607,8 +592,8 @@ pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
         return none
     }
 
-    val bin_len: u32 = read_u32_le(data, bin_header_offset)
-    val bin_type: u32 = read_u32_le(data, bin_header_offset + (4 as usize))
+    val bin_len: u32 = bin.read_u32_le(data, bin_header_offset)
+    val bin_type: u32 = bin.read_u32_le(data, bin_header_offset + (4 as usize))
     if bin_type != GLB_BIN_CHUNK {
         @free(json_buf as ref void)
         return none
@@ -691,23 +676,23 @@ pub fn load_glb(path: ref u8) option[ecs.GlbModel] = trust {
 
 pub fn build_test_glb_fixture() GlbFixture = trust {
     val json_chunk: ref u8 = \\{"asset":{"version":"2.0"},"buffers":[{"byteLength":36}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":36}],"accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3"}],"meshes":[{"name":"fixture","primitives":[{"attributes":{"POSITION":0}}]}]}
-    val json_len_raw: usize = strlen(json_chunk)
+    val json_len_raw: usize = string.len_raw(json_chunk)
     val json_len: usize = ((json_len_raw + (3 as usize)) / (4 as usize)) * (4 as usize)
     val bin_len: usize = 36 as usize
     val total_len: usize = (12 as usize) + (8 as usize) + json_len + (8 as usize) + bin_len
     val ptr: ref u8 = @alloc(total_len + (1 as usize)) as ref u8
     @memset(ptr as ref void, 0, total_len + (1 as usize))
 
-    write_u32_le(ptr, 0 as usize, GLB_MAGIC)
-    write_u32_le(ptr, 4 as usize, GLB_VERSION)
-    write_u32_le(ptr, 8 as usize, total_len as u32)
-    write_u32_le(ptr, 12 as usize, json_len as u32)
-    write_u32_le(ptr, 16 as usize, GLB_JSON_CHUNK)
+    bin.write_u32_le(ptr, 0 as usize, GLB_MAGIC)
+    bin.write_u32_le(ptr, 4 as usize, GLB_VERSION)
+    bin.write_u32_le(ptr, 8 as usize, total_len as u32)
+    bin.write_u32_le(ptr, 12 as usize, json_len as u32)
+    bin.write_u32_le(ptr, 16 as usize, GLB_JSON_CHUNK)
     @memcpy(@ptradd(ptr, 20 as usize) as ref void, json_chunk as ref void, json_len_raw)
 
     val bin_header: usize = (20 as usize) + json_len
-    write_u32_le(ptr, bin_header, bin_len as u32)
-    write_u32_le(ptr, bin_header + (4 as usize), GLB_BIN_CHUNK)
+    bin.write_u32_le(ptr, bin_header, bin_len as u32)
+    bin.write_u32_le(ptr, bin_header + (4 as usize), GLB_BIN_CHUNK)
     @store8(@ptradd(ptr, total_len), 0)
 
     return {
