@@ -1,18 +1,22 @@
-val stdio = use("std/stdio")
-val json  = use("std/json")
-val math  = use("std/math")
-val mstat = use("std/math/static")
-val ecs   = use("ecs.sx")
+val stdio  = use("std/stdio")
+val json   = use("std/json")
+val string = use("std/string")
+val math   = use("std/math")
+val mstat  = use("std/math/static")
+val ecs    = use("ecs.sx")
 
 extern "SDL.h"
 extern "SDL_opengl.h"
+extern "SDL_mixer.h"
 
 link "-lSDL2"
+link "-lSDL2_mixer"
 link "-lGL"
 
 val DEFAULT_SCREEN_WIDTH: i32 = 1440
 val DEFAULT_SCREEN_HEIGHT: i32 = 900
 
+val SDL_INIT_AUDIO: u32 = 0x00000010
 val SDL_INIT_VIDEO: u32 = 0x00000020
 val SDL_WINDOW_OPENGL: u32 = 0x00000002
 val SDL_WINDOW_SHOWN: u32 = 0x00000004
@@ -30,6 +34,8 @@ val SDL_SCANCODE_Q: i32 = 20
 val SDL_SCANCODE_R: i32 = 21
 val SDL_SCANCODE_S: i32 = 22
 val SDL_SCANCODE_W: i32 = 26
+val SDL_SCANCODE_X: i32 = 27
+val SDL_SCANCODE_Y: i32 = 28
 val SDL_SCANCODE_ESCAPE: i32 = 41
 val SDL_SCANCODE_SPACE: i32 = 44
 val SDL_SCANCODE_RIGHT: i32 = 79
@@ -79,6 +85,9 @@ val GLB_VERSION: u32 = 2
 val GLB_JSON_CHUNK: u32 = 0x4E4F534A
 val GLB_BIN_CHUNK: u32 = 0x004E4942
 
+val MIX_INIT_MP3: i32 = 0x00000008
+val AUDIO_S16SYS: u16 = 0x8010
+
 pub extern type SDLEvent = {
     type_value: mut u32
     padding: mut [52]u8
@@ -100,6 +109,15 @@ pub extern (C, header) fn sdl_gl_swap_window(window: ref void) void = "SDL_GL_Sw
 pub extern (C, header) fn sdl_get_error() ref u8 = "SDL_GetError"
 pub extern (C, header) fn sdl_set_relative_mouse_mode(enabled: i32) i32 = "SDL_SetRelativeMouseMode"
 pub extern (C, header) fn sdl_get_relative_mouse_state(x: ref i32, y: ref i32) u32 = "SDL_GetRelativeMouseState"
+pub extern (C, header) fn mix_init(flags: i32) i32 = "Mix_Init"
+pub extern (C, header) fn mix_quit() void = "Mix_Quit"
+pub extern (C, header) fn mix_open_audio(frequency: i32, format: u16, channels: i32, chunksize: i32) i32 = "Mix_OpenAudio"
+pub extern (C, header) fn mix_close_audio() void = "Mix_CloseAudio"
+pub extern (C, header) fn mix_load_music(path: ref u8) ref void = "Mix_LoadMUS"
+pub extern (C, header) fn mix_play_music(music: ref void, loops: i32) i32 = "Mix_PlayMusic"
+pub extern (C, header) fn mix_volume_music(volume: i32) i32 = "Mix_VolumeMusic"
+pub extern (C, header) fn mix_free_music(music: ref void) void = "Mix_FreeMusic"
+pub extern (C, header) fn mix_get_error() ref u8 = "Mix_GetError"
 
 pub extern (C, header) fn gl_create_shader(stage: u32) u32 = "glCreateShader"
 pub extern (C, header) fn gl_shader_source(shader: u32, count: i32, source: ref ref u8, lengths: ref i32) void = "glShaderSource"
@@ -242,11 +260,31 @@ pub type InputConfig = {
     quit_key: i32
 }
 
+pub type AudioClip = {
+    path: ref u8
+    loops: i32
+}
+
+pub type AudioMixerConfig = {
+    trigger_key: i32
+    music_volume: i32
+    sample: AudioClip
+}
+
 pub type ExoApp = {
     config: ExoConfig
     scene: mut ecs.Scene3D
+    scenes: mut list[ecs.Scene3D]
+    active_scene_index: mut usize
+    next_scene_key: i32
     camera: mut Camera
     input: InputConfig
+    audio: AudioMixerConfig
+}
+
+type RuntimeAudioMixer = {
+    initialized: mut bool
+    sample_music: mut ref void
 }
 
 fn vec3(x: f32, y: f32, z: f32) ecs.Vec3 = {
@@ -430,6 +468,17 @@ pub fn default_input_config() InputConfig = {
     }
 }
 
+pub fn default_audio_mixer() AudioMixerConfig = {
+    return {
+        trigger_key: SDL_SCANCODE_Y,
+        music_volume: 96 as i32,
+        sample: {
+            path: "",
+            loops: 0 as i32
+        }
+    }
+}
+
 pub fn default_config() ExoConfig = {
     return {
         title: "exo-engine",
@@ -438,13 +487,41 @@ pub fn default_config() ExoConfig = {
     }
 }
 
-pub fn create_app(config: ExoConfig, scene: ecs.Scene3D, camera: Camera, input: InputConfig) ExoApp = {
+fn fallback_scene() ecs.Scene3D = {
+    return ecs.new_scene(ecs.default_light())
+}
+
+fn first_scene(scenes: list[ecs.Scene3D]) ecs.Scene3D = {
+    if @get(scenes, 0 as usize) is some scene {
+        return scene
+    }
+    return fallback_scene()
+}
+
+pub fn create_scene_app(
+    config: ExoConfig,
+    scenes: list[ecs.Scene3D],
+    camera: Camera,
+    input: InputConfig,
+    next_scene_key: i32,
+    audio: AudioMixerConfig
+) ExoApp = {
     return {
         config: config,
-        scene: scene,
+        scene: first_scene(scenes),
+        scenes: scenes,
+        active_scene_index: 0 as usize,
+        next_scene_key: next_scene_key,
         camera: camera,
-        input: input
+        input: input,
+        audio: audio
     }
+}
+
+pub fn create_app(config: ExoConfig, scene: ecs.Scene3D, camera: Camera, input: InputConfig) ExoApp = {
+    val scenes: mut list[ecs.Scene3D] = []
+    @append(scenes, scene)
+    return create_scene_app(config, scenes, camera, input, SDL_SCANCODE_X, default_audio_mixer())
 }
 
 fn dup_cstr(src: ref u8) ref u8 = trust {
@@ -1456,10 +1533,93 @@ fn print_sdl_error(prefix: ref u8) void = {
     trust stdio.eprint("{s}: {s}\n", {prefix, sdl_get_error()})
 }
 
+fn print_mix_error(prefix: ref u8) void = {
+    trust stdio.eprint("{s}: {s}\n", {prefix, mix_get_error()})
+}
+
+fn audio_enabled(config: AudioMixerConfig) bool = {
+    if config.sample.path == none {
+        return false
+    }
+    return string.len_raw(config.sample.path) > (0 as usize)
+}
+
+fn init_runtime_audio(config: AudioMixerConfig) RuntimeAudioMixer = trust {
+    val runtime: mut RuntimeAudioMixer = {
+        initialized: false,
+        sample_music: none as ref void
+    }
+    if !audio_enabled(config) {
+        return runtime
+    }
+    if ((mix_init(MIX_INIT_MP3) & MIX_INIT_MP3) == 0) {
+        print_mix_error("Mix_Init failed")
+        return runtime
+    }
+    if mix_open_audio(44100 as i32, AUDIO_S16SYS, 2 as i32, 1024 as i32) != 0 {
+        print_mix_error("Mix_OpenAudio failed")
+        mix_quit()
+        return runtime
+    }
+    runtime.initialized = true
+    runtime.sample_music = mix_load_music(config.sample.path)
+    if runtime.sample_music == none {
+        print_mix_error("Mix_LoadMUS failed")
+        mix_close_audio()
+        mix_quit()
+        runtime.initialized = false
+        return runtime
+    }
+    mix_volume_music(config.music_volume)
+    return runtime
+}
+
+fn shutdown_runtime_audio(runtime: RuntimeAudioMixer) void = trust {
+    if runtime.sample_music != none {
+        mix_free_music(runtime.sample_music)
+    }
+    if runtime.initialized {
+        mix_close_audio()
+        mix_quit()
+    }
+}
+
+fn play_runtime_audio(config: AudioMixerConfig, runtime: RuntimeAudioMixer) bool = trust {
+    if !runtime.initialized || runtime.sample_music == none {
+        return false
+    }
+    mix_volume_music(config.music_volume)
+    return mix_play_music(runtime.sample_music, config.sample.loops) == 0
+}
+
+fn set_active_scene(app: mut ExoApp, index: usize) void = {
+    if @get(app.scenes, index) is some scene {
+        app.active_scene_index = index
+        app.scene = scene
+    }
+}
+
+fn cycle_scene(app: mut ExoApp) void = {
+    val count: usize = @len(app.scenes)
+    if count <= (1 as usize) {
+        return
+    }
+    val next_index: usize = app.active_scene_index + (1 as usize)
+    if next_index >= count {
+        set_active_scene(app, 0 as usize)
+        return
+    }
+    set_active_scene(app, next_index)
+}
+
 pub fn run_app(app0: ExoApp) i32 = trust {
     val app: mut ExoApp = app0
+    val sdl_flags: mut u32 = SDL_INIT_VIDEO
+    if audio_enabled(app.audio) {
+        sdl_flags = sdl_flags | SDL_INIT_AUDIO
+    }
 
-    if sdl_init(SDL_INIT_VIDEO) != 0 {
+    if sdl_init(sdl_flags) != 0 {
         print_sdl_error("SDL_Init failed")
         return 1 as i32
     }
@@ -1579,7 +1739,24 @@ pub fn run_app(app0: ExoApp) i32 = trust {
 
     val start_ticks: u32 = sdl_get_ticks()
     val last_ticks: mut u32 = start_ticks
+    val audio_runtime: RuntimeAudioMixer = init_runtime_audio(app.audio)
+    if audio_enabled(app.audio) && (!audio_runtime.initialized || audio_runtime.sample_music == none) {
+        @free(evt as ref void)
+        destroy_mesh(quad_mesh)
+        destroy_mesh(sphere_mesh)
+        destroy_mesh(cube_mesh)
+        destroy_render_target(reflection_target)
+        gl_delete_program(glow_program)
+        gl_delete_program(floor_program)
+        gl_delete_program(scene_program)
+        sdl_gl_delete_context(context)
+        sdl_destroy_window(window)
+        sdl_quit()
+        return 1 as i32
+    }
     val quit: mut bool = false
+    val prev_scene_key: mut u8 = 0 as u8
+    val prev_audio_key: mut u8 = 0 as u8
 
     for !quit {
         for {
@@ -1594,9 +1771,21 @@ pub fn run_app(app0: ExoApp) i32 = trust {
 
         val keys: ref u8 = sdl_get_keyboard_state(none as ref i32)
         val quit_pressed: u8 = @load8(@ptradd(keys, app.input.quit_key as usize))
+        val scene_pressed: u8 = @load8(@ptradd(keys, app.next_scene_key as usize))
+        val audio_pressed: u8 = @load8(@ptradd(keys, app.audio.trigger_key as usize))
         if quit_pressed != 0 {
             quit = true
         }
+        if scene_pressed != 0 && prev_scene_key == 0 {
+            cycle_scene(app)
+        }
+        if audio_pressed != 0 && prev_audio_key == 0 {
+            if !play_runtime_audio(app.audio, audio_runtime) {
+                print_mix_error("Mix_PlayMusic failed")
+            }
+        }
+        prev_scene_key = scene_pressed
+        prev_audio_key = audio_pressed
 
         val mx: mut i32 = 0 as i32
         val my: mut i32 = 0 as i32
@@ -1642,6 +1831,7 @@ pub fn run_app(app0: ExoApp) i32 = trust {
         sdl_gl_swap_window(window)
     }
 
+    shutdown_runtime_audio(audio_runtime)
     @free(evt as ref void)
     destroy_mesh(quad_mesh)
     destroy_mesh(sphere_mesh)
