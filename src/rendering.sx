@@ -1,7 +1,7 @@
 val ecs    = use("ecs.sx")
 val engine = use("engine.sx")
 
-pub fn default_config() engine.EngineConfig = {
+pub fn default_config() engine.ExoConfig = {
     return engine.default_config()
 }
 
@@ -13,7 +13,7 @@ pub fn create_app(scene: ecs.Scene3D) engine.ExoApp = {
     return engine.create_app(default_config(), scene, default_camera())
 }
 
-pub fn create_configured_app(config: engine.EngineConfig, scene: ecs.Scene3D, camera: engine.Camera) engine.ExoApp = {
+pub fn create_configured_app(config: engine.ExoConfig, scene: ecs.Scene3D, camera: engine.Camera) engine.ExoApp = {
     return engine.create_app(config, scene, camera)
 }
 

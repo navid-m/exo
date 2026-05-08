@@ -202,14 +202,14 @@ pub type Camera = {
     turn_speed: f32
 }
 
-pub type EngineConfig = {
+pub type ExoConfig = {
     title: ref u8
     width: i32
     height: i32
 }
 
 pub type ExoApp = {
-    config: EngineConfig
+    config: ExoConfig
     scene: mut ecs.Scene3D
     camera: mut Camera
 }
@@ -365,7 +365,7 @@ pub fn default_camera() Camera = {
     }
 }
 
-pub fn default_config() EngineConfig = {
+pub fn default_config() ExoConfig = {
     return {
         title: "exo-engine",
         width: SCREEN_WIDTH,
@@ -373,7 +373,7 @@ pub fn default_config() EngineConfig = {
     }
 }
 
-pub fn create_app(config: EngineConfig, scene: ecs.Scene3D, camera: Camera) ExoApp = {
+pub fn create_app(config: ExoConfig, scene: ecs.Scene3D, camera: Camera) ExoApp = {
     return {
         config: config,
         scene: scene,
