@@ -184,6 +184,19 @@ pub type ExoConfig = {
     title: ref u8
     width: i32
     height: i32
+    shaders: ExoShaderConfig
+}
+
+pub type ShaderProgramConfig = {
+    vertex_path: ref u8
+    fragment_path: ref u8
+}
+
+pub type ExoShaderConfig = {
+    scene: ShaderProgramConfig
+    floor: ShaderProgramConfig
+    glow: ShaderProgramConfig
+    fxaa: ShaderProgramConfig
 }
 
 pub type KeyBindings = {
@@ -1069,11 +1082,11 @@ fn exo_create_postprocess_pipeline(
     return pipeline
 }
 
-fn exo_create_pipelines(runtime: mut ref ExoSDL3Runtime) bool = trust {
+fn exo_create_pipelines(runtime: mut ref ExoSDL3Runtime, shaders: ExoShaderConfig) bool = trust {
     runtime.scene_pipeline = exo_create_pipeline(
         runtime,
-        "./assets/shaders/scene.vert.spv",
-        "./assets/shaders/scene.frag.spv",
+        shaders.scene.vertex_path,
+        shaders.scene.fragment_path,
         runtime.swapchain_format,
         false,
         SDL_GPU_BLENDFACTOR_ONE,
@@ -1088,8 +1101,8 @@ fn exo_create_pipelines(runtime: mut ref ExoSDL3Runtime) bool = trust {
     }
     runtime.floor_pipeline = exo_create_pipeline(
         runtime,
-        "./assets/shaders/floor.vert.spv",
-        "./assets/shaders/floor.frag.spv",
+        shaders.floor.vertex_path,
+        shaders.floor.fragment_path,
         runtime.swapchain_format,
         true,
         SDL_GPU_BLENDFACTOR_SRC_ALPHA,
@@ -1104,8 +1117,8 @@ fn exo_create_pipelines(runtime: mut ref ExoSDL3Runtime) bool = trust {
     }
     runtime.glow_pipeline = exo_create_pipeline(
         runtime,
-        "./assets/shaders/glow.vert.spv",
-        "./assets/shaders/glow.frag.spv",
+        shaders.glow.vertex_path,
+        shaders.glow.fragment_path,
         runtime.swapchain_format,
         true,
         SDL_GPU_BLENDFACTOR_SRC_ALPHA,
@@ -1120,8 +1133,8 @@ fn exo_create_pipelines(runtime: mut ref ExoSDL3Runtime) bool = trust {
     }
     runtime.fxaa_pipeline = exo_create_postprocess_pipeline(
         runtime,
-        "./assets/shaders/fxaa.vert.spv",
-        "./assets/shaders/fxaa.frag.spv",
+        shaders.fxaa.vertex_path,
+        shaders.fxaa.fragment_path,
         runtime.swapchain_format,
         1 as u32,
         1 as u32
@@ -1292,7 +1305,7 @@ fn exo_destroy_runtime_resources(runtime: mut ref ExoSDL3Runtime) void = trust {
     exo_destroy_pipelines(runtime)
 }
 
-fn exo_sdl3_create_runtime(title: ref u8, width: i32, height: i32) ref void = trust {
+fn exo_sdl3_create_runtime(title: ref u8, width: i32, height: i32, shaders: ExoShaderConfig) ref void = trust {
     clear_exo_error()
     if !SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) {
         return none as ref void
@@ -1317,7 +1330,7 @@ fn exo_sdl3_create_runtime(title: ref u8, width: i32, height: i32) ref void = tr
         return none as ref void
     }
     runtime.swapchain_format = SDL_GetGPUSwapchainTextureFormat(runtime.device, runtime.window)
-    if !exo_create_pipelines(runtime) {
+    if !exo_create_pipelines(runtime, shaders) {
         exo_sdl3_destroy_runtime(runtime as ref void)
         return none as ref void
     }
@@ -2016,11 +2029,33 @@ pub fn default_audio_mixer() AudioMixerConfig = {
     }
 }
 
+pub fn default_shader_config() ExoShaderConfig = {
+    return {
+        scene: {
+            vertex_path: "./assets/shaders/scene.vert.spv",
+            fragment_path: "./assets/shaders/scene.frag.spv"
+        },
+        floor: {
+            vertex_path: "./assets/shaders/floor.vert.spv",
+            fragment_path: "./assets/shaders/floor.frag.spv"
+        },
+        glow: {
+            vertex_path: "./assets/shaders/glow.vert.spv",
+            fragment_path: "./assets/shaders/glow.frag.spv"
+        },
+        fxaa: {
+            vertex_path: "./assets/shaders/fxaa.vert.spv",
+            fragment_path: "./assets/shaders/fxaa.frag.spv"
+        }
+    }
+}
+
 pub fn default_config() ExoConfig = {
     return {
         title: "exo-engine",
         width: DEFAULT_SCREEN_WIDTH,
-        height: DEFAULT_SCREEN_HEIGHT
+        height: DEFAULT_SCREEN_HEIGHT,
+        shaders: default_shader_config()
     }
 }
 
@@ -2648,7 +2683,7 @@ fn cycle_scene(app: mut ExoApp) void = {
 
 pub fn run_app(app0: ExoApp) i32 = trust {
     val app: mut ExoApp = app0
-    val runtime: ref void = exo_sdl3_create_runtime(app.config.title, app.config.width, app.config.height)
+    val runtime: ref void = exo_sdl3_create_runtime(app.config.title, app.config.width, app.config.height, app.config.shaders)
     if runtime == none {
         print_sdl_error("SDL3 runtime init failed")
         return 1 as i32

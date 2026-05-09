@@ -13,6 +13,10 @@ pub fn default_input_config() engine.InputConfig = {
     return engine.default_input_config()
 }
 
+pub fn default_shader_config() engine.ExoShaderConfig = {
+    return engine.default_shader_config()
+}
+
 pub fn default_key_bindings() engine.KeyBindings = {
     return engine.default_key_bindings()
 }
