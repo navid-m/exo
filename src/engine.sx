@@ -113,6 +113,7 @@ extern (C) fn SDL_BindGPUVertexBuffers(render_pass: ref void, first_slot: u32, b
 extern (C) fn SDL_BindGPUIndexBuffer(render_pass: ref void, binding: ref SDLGPUBufferBinding, index_element_size: i32) void = "SDL_BindGPUIndexBuffer"
 extern (C) fn SDL_BindGPUFragmentSamplers(render_pass: ref void, first_slot: u32, texture_sampler_bindings: ref SDLGPUTextureSamplerBinding, num_bindings: u32) void = "SDL_BindGPUFragmentSamplers"
 extern (C) fn SDL_DrawGPUIndexedPrimitives(render_pass: ref void, num_indices: u32, num_instances: u32, first_index: u32, vertex_offset: i32, first_instance: u32) void = "SDL_DrawGPUIndexedPrimitives"
+extern (C) fn SDL_DrawGPUPrimitives(render_pass: ref void, num_vertices: u32, num_instances: u32, first_vertex: u32, first_instance: u32) void = "SDL_DrawGPUPrimitives"
 extern (C) fn SDL_EndGPURenderPass(render_pass: ref void) void = "SDL_EndGPURenderPass"
 extern (C) fn SDL_MapGPUTransferBuffer(device: ref void, transfer_buffer: ref void, cycle: bool) ref void = "SDL_MapGPUTransferBuffer"
 extern (C) fn SDL_UnmapGPUTransferBuffer(device: ref void, transfer_buffer: ref void) void = "SDL_UnmapGPUTransferBuffer"
@@ -547,6 +548,10 @@ type GlowFragmentUniforms = {
     alpha_pad: mut Vec4f
 }
 
+type FxaaFragmentUniforms = {
+    texel_size: mut Vec4f
+}
+
 type ExoSDL3Mesh = {
     vertex_buffer: mut ref void
     index_buffer: mut ref void
@@ -559,9 +564,11 @@ type ExoSDL3Runtime = {
     scene_pipeline: mut ref void
     floor_pipeline: mut ref void
     glow_pipeline: mut ref void
+    fxaa_pipeline: mut ref void
     linear_sampler: mut ref void
     reflection_color: mut ref void
     reflection_depth: mut ref void
+    scene_color: mut ref void
     scene_depth: mut ref void
     swapchain_texture: mut ref void
     command_buffer: mut ref void
@@ -724,6 +731,10 @@ fn exo_release_render_targets(runtime: mut ref ExoSDL3Runtime) void = trust {
         SDL_ReleaseGPUTexture(runtime.device, runtime.scene_depth)
         runtime.scene_depth = none
     }
+    if runtime.scene_color != none {
+        SDL_ReleaseGPUTexture(runtime.device, runtime.scene_color)
+        runtime.scene_color = none
+    }
     if runtime.reflection_depth != none {
         SDL_ReleaseGPUTexture(runtime.device, runtime.reflection_depth)
         runtime.reflection_depth = none
@@ -765,7 +776,17 @@ fn exo_recreate_render_targets(runtime: mut ref ExoSDL3Runtime, width: u32, heig
         width,
         height
     )
-    return runtime.scene_depth != none
+    if runtime.scene_depth == none {
+        return false
+    }
+    runtime.scene_color = exo_create_texture(
+        runtime,
+        runtime.swapchain_format,
+        SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER,
+        width,
+        height
+    )
+    return runtime.scene_color != none
 }
 
 fn exo_create_pipeline(
@@ -934,6 +955,120 @@ fn exo_create_pipeline(
     return pipeline
 }
 
+fn exo_create_postprocess_pipeline(
+    runtime: ref ExoSDL3Runtime,
+    vs_path: ref u8,
+    fs_path: ref u8,
+    color_format: i32,
+    fragment_samplers: u32,
+    fragment_uniforms: u32
+) ref void = trust {
+    val vs: ref void = exo_load_shader(runtime, vs_path, SDL_GPU_SHADERSTAGE_VERTEX, 0 as u32, 0 as u32)
+    if vs == none {
+        return none as ref void
+    }
+    val fs: ref void = exo_load_shader(runtime, fs_path, SDL_GPU_SHADERSTAGE_FRAGMENT, fragment_samplers, fragment_uniforms)
+    if fs == none {
+        SDL_ReleaseGPUShader(runtime.device, vs)
+        return none as ref void
+    }
+    val color_target: mut SDLGPUColorTargetDescription = {
+        format: 0 as i32,
+        blend_state: {
+            src_color_blendfactor: 0 as i32,
+            dst_color_blendfactor: 0 as i32,
+            color_blend_op: 0 as i32,
+            src_alpha_blendfactor: 0 as i32,
+            dst_alpha_blendfactor: 0 as i32,
+            alpha_blend_op: 0 as i32,
+            color_write_mask: 0 as u8,
+            enable_blend: false,
+            enable_color_write_mask: false,
+            padding1: 0 as u8,
+            padding2: 0 as u8
+        }
+    }
+    color_target.format = color_format
+    val info: mut SDLGPUGraphicsPipelineCreateInfo = {
+        vertex_shader: none as ref void,
+        fragment_shader: none as ref void,
+        vertex_input_state: {
+            vertex_buffer_descriptions: none as ref SDLGPUVertexBufferDescription,
+            num_vertex_buffers: 0 as u32,
+            vertex_attributes: none as ref SDLGPUVertexAttribute,
+            num_vertex_attributes: 0 as u32
+        },
+        primitive_type: 0 as i32,
+        rasterizer_state: {
+            fill_mode: 0 as i32,
+            cull_mode: 0 as i32,
+            front_face: 0 as i32,
+            depth_bias_constant_factor: 0.0 as f32,
+            depth_bias_clamp: 0.0 as f32,
+            depth_bias_slope_factor: 0.0 as f32,
+            enable_depth_bias: false,
+            enable_depth_clip: false,
+            padding1: 0 as u8,
+            padding2: 0 as u8
+        },
+        multisample_state: {
+            sample_count: 0 as i32,
+            sample_mask: 0 as u32,
+            enable_mask: false,
+            enable_alpha_to_coverage: false,
+            padding2: 0 as u8,
+            padding3: 0 as u8
+        },
+        depth_stencil_state: {
+            compare_op: 0 as i32,
+            back_stencil_state: {
+                fail_op: 0 as i32,
+                pass_op: 0 as i32,
+                depth_fail_op: 0 as i32,
+                compare_op: 0 as i32
+            },
+            front_stencil_state: {
+                fail_op: 0 as i32,
+                pass_op: 0 as i32,
+                depth_fail_op: 0 as i32,
+                compare_op: 0 as i32
+            },
+            compare_mask: 0 as u8,
+            write_mask: 0 as u8,
+            enable_depth_test: false,
+            enable_depth_write: false,
+            enable_stencil_test: false,
+            padding1: 0 as u8,
+            padding2: 0 as u8,
+            padding3: 0 as u8
+        },
+        target_info: {
+            color_target_descriptions: none as ref SDLGPUColorTargetDescription,
+            num_color_targets: 0 as u32,
+            depth_stencil_format: 0 as i32,
+            has_depth_stencil_target: false,
+            padding1: 0 as u8,
+            padding2: 0 as u8,
+            padding3: 0 as u8
+        },
+        props: 0 as u32
+    }
+    info.vertex_shader = vs
+    info.fragment_shader = fs
+    info.primitive_type = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST
+    info.rasterizer_state.fill_mode = SDL_GPU_FILLMODE_FILL
+    info.rasterizer_state.cull_mode = SDL_GPU_CULLMODE_NONE
+    info.rasterizer_state.front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE
+    info.multisample_state.sample_count = SDL_GPU_SAMPLECOUNT_1
+    info.target_info.color_target_descriptions = @addr(color_target)
+    info.target_info.num_color_targets = 1 as u32
+    info.target_info.has_depth_stencil_target = false
+    val pipeline: ref void = SDL_CreateGPUGraphicsPipeline(runtime.device, @addr(info))
+    SDL_ReleaseGPUShader(runtime.device, fs)
+    SDL_ReleaseGPUShader(runtime.device, vs)
+    return pipeline
+}
+
 fn exo_create_pipelines(runtime: mut ref ExoSDL3Runtime) bool = trust {
     runtime.scene_pipeline = exo_create_pipeline(
         runtime,
@@ -980,10 +1115,25 @@ fn exo_create_pipelines(runtime: mut ref ExoSDL3Runtime) bool = trust {
         false,
         0 as u32
     )
-    return runtime.glow_pipeline != none
+    if runtime.glow_pipeline == none {
+        return false
+    }
+    runtime.fxaa_pipeline = exo_create_postprocess_pipeline(
+        runtime,
+        "./assets/shaders/fxaa.vert.spv",
+        "./assets/shaders/fxaa.frag.spv",
+        runtime.swapchain_format,
+        1 as u32,
+        1 as u32
+    )
+    return runtime.fxaa_pipeline != none
 }
 
 fn exo_destroy_pipelines(runtime: mut ref ExoSDL3Runtime) void = trust {
+    if runtime.fxaa_pipeline != none {
+        SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.fxaa_pipeline)
+        runtime.fxaa_pipeline = none
+    }
     if runtime.glow_pipeline != none {
         SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.glow_pipeline)
         runtime.glow_pipeline = none
@@ -1048,6 +1198,55 @@ fn exo_begin_pass(runtime: mut ref ExoSDL3Runtime, color_target: ref void, depth
     depth_info.stencil_load_op = SDL_GPU_LOADOP_DONT_CARE
     depth_info.stencil_store_op = SDL_GPU_STOREOP_DONT_CARE
     runtime.current_pass = SDL_BeginGPURenderPass(runtime.command_buffer, @addr(color_info), 1 as u32, @addr(depth_info))
+    if runtime.current_pass == none {
+        return false
+    }
+    val viewport: mut SDLGPUViewport = {
+        x: 0.0 as f32,
+        y: 0.0 as f32,
+        w: 0.0 as f32,
+        h: 0.0 as f32,
+        min_depth: 0.0 as f32,
+        max_depth: 0.0 as f32
+    }
+    viewport.x = 0.0 as f32
+    viewport.y = 0.0 as f32
+    viewport.w = runtime.render_width as f32
+    viewport.h = runtime.render_height as f32
+    viewport.min_depth = 0.0 as f32
+    viewport.max_depth = 1.0 as f32
+    SDL_SetGPUViewport(runtime.current_pass, @addr(viewport))
+    return true
+}
+
+fn exo_begin_pass_no_depth(runtime: mut ref ExoSDL3Runtime, color_target: ref void) bool = trust {
+    clear_exo_error()
+    if !runtime.frame_active || runtime.command_buffer == none {
+        return set_exo_error("no active frame")
+    }
+    if runtime.current_pass != none {
+        SDL_EndGPURenderPass(runtime.current_pass)
+        runtime.current_pass = none
+    }
+    val color_info: mut SDLGPUColorTargetInfo = {
+        texture: none as ref void,
+        mip_level: 0 as u32,
+        layer_or_depth_plane: 0 as u32,
+        clear_color: { r: 0.0 as f32, g: 0.0 as f32, b: 0.0 as f32, a: 0.0 as f32 },
+        load_op: 0 as i32,
+        store_op: 0 as i32,
+        resolve_texture: none as ref void,
+        resolve_mip_level: 0 as u32,
+        resolve_layer: 0 as u32,
+        cycle: false,
+        cycle_resolve_texture: false,
+        padding1: 0 as u8,
+        padding2: 0 as u8
+    }
+    color_info.texture = color_target
+    color_info.load_op = SDL_GPU_LOADOP_DONT_CARE
+    color_info.store_op = SDL_GPU_STOREOP_STORE
+    runtime.current_pass = SDL_BeginGPURenderPass(runtime.command_buffer, @addr(color_info), 1 as u32, none as ref SDLGPUDepthStencilTargetInfo)
     if runtime.current_pass == none {
         return false
     }
@@ -1404,7 +1603,7 @@ fn exo_sdl3_begin_scene_pass(runtime_raw: ref void, r: f32, g: f32, b: f32, a: f
         return set_exo_error("runtime unavailable")
     }
     val runtime: mut ref ExoSDL3Runtime = runtime_raw as mut ref ExoSDL3Runtime
-    return exo_begin_pass(runtime, runtime.swapchain_texture, runtime.scene_depth, r, g, b, a)
+    return exo_begin_pass(runtime, runtime.scene_color, runtime.scene_depth, r, g, b, a)
 }
 
 fn exo_sdl3_end_pass(runtime_raw: ref void) void = trust {
@@ -1416,6 +1615,34 @@ fn exo_sdl3_end_pass(runtime_raw: ref void) void = trust {
         SDL_EndGPURenderPass(runtime.current_pass)
         runtime.current_pass = none
     }
+}
+
+fn exo_sdl3_apply_fxaa(runtime_raw: ref void) bool = trust {
+    if runtime_raw == none {
+        clear_exo_error()
+        return set_exo_error("runtime unavailable")
+    }
+    val runtime: mut ref ExoSDL3Runtime = runtime_raw as mut ref ExoSDL3Runtime
+    if !exo_begin_pass_no_depth(runtime, runtime.swapchain_texture) {
+        return false
+    }
+    SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.fxaa_pipeline)
+    val binding: mut SDLGPUTextureSamplerBinding = {
+        texture: runtime.scene_color,
+        sampler: runtime.linear_sampler
+    }
+    SDL_BindGPUFragmentSamplers(runtime.current_pass, 0 as u32, @addr(binding), 1 as u32)
+    val fu: mut FxaaFragmentUniforms = {
+        texel_size: {
+            x: (1.0 as f32) / (runtime.render_width as f32),
+            y: (1.0 as f32) / (runtime.render_height as f32),
+            z: runtime.render_width as f32,
+            w: runtime.render_height as f32
+        }
+    }
+    SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(FxaaFragmentUniforms) as u32)
+    SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
+    return true
 }
 
 fn exo_sdl3_submit_frame(runtime_raw: ref void) bool = trust {
@@ -2510,6 +2737,11 @@ pub fn run_app(app0: ExoApp) i32 = trust {
             break
         }
         render_scene(runtime, cube_mesh, sphere_mesh, quad_mesh, app.scene, app.camera, frame_w as i32, frame_h as i32, time_value)
+        if !exo_sdl3_apply_fxaa(runtime) {
+            print_sdl_error("SDL3 FXAA pass failed")
+            exit_code = 1 as i32
+            break
+        }
         exo_sdl3_end_pass(runtime)
         if !exo_sdl3_submit_frame(runtime) {
             print_sdl_error("SDL3 submit frame failed")
