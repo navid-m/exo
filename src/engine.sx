@@ -245,6 +245,16 @@ pub type ExoApp = {
     audio: AudioMixerConfig
 }
 
+pub spec SceneUpdater = {
+    pub fn su_update(u: mut self, scene: mut ecs.Scene3D, dt: f32, time: f32) void
+}
+
+type (SceneUpdater) NoSceneUpdater = {
+    _unused: u8
+}
+
+pub fn (NoSceneUpdater) su_update(_: mut self, _: mut ecs.Scene3D, _: f32, _: f32) void = {}
+
 type RuntimeAudioMixer = {
     initialized: mut bool
     sample_audio: mut ref void
@@ -2681,8 +2691,9 @@ fn cycle_scene(app: mut ExoApp) void = {
     set_active_scene(app, next_index)
 }
 
-pub fn run_app(app0: ExoApp) i32 = trust {
+fn run_app_internal[U: SceneUpdater](app0: ExoApp, updater0: U) i32 = trust {
     val app: mut ExoApp = app0
+    val updater: U = updater0
     val runtime: ref void = exo_sdl3_create_runtime(app.config.title, app.config.width, app.config.height, app.config.shaders)
     if runtime == none {
         print_sdl_error("SDL3 runtime init failed")
@@ -2752,6 +2763,7 @@ pub fn run_app(app0: ExoApp) i32 = trust {
         val time_value: f32 = ((now_ticks - start_ticks) as f32) / (1000.0 as f32)
         last_ticks = now_ticks
         update_camera(app.camera, app.input, dt, keys, mx, my)
+        U.su_update(updater, app.scene, dt, time_value)
 
         val frame_w: mut u32 = app.config.width as u32
         val frame_h: mut u32 = app.config.height as u32
@@ -2790,4 +2802,15 @@ pub fn run_app(app0: ExoApp) i32 = trust {
     destroy_mesh(runtime, cube_mesh)
     exo_sdl3_destroy_runtime(runtime)
     return exit_code
+}
+
+pub fn run_app_with_scene_updater[U: SceneUpdater](app: ExoApp, updater: U) i32 = trust {
+    return run_app_internal[U](app, updater)
+}
+
+pub fn run_app(app0: ExoApp) i32 = trust {
+    val updater: NoSceneUpdater = {
+        _unused: 0 as u8
+    }
+    return run_app_internal[NoSceneUpdater](app0, updater)
 }
