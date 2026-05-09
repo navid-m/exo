@@ -2,6 +2,13 @@ val string    = use("std/string")
 val ecs       = use("ecs.sx")
 val engine    = use("engine.sx")
 val rendering = use("rendering.sx")
+val physics   = use("physics.sx")
+
+type (engine.SceneUpdater) PhysicsUpdater = {}
+
+pub fn (PhysicsUpdater) su_update(_: mut self, scene: ecs.Scene3D, dt: f32, _: f32) void = {
+    physics.update_physics(scene, dt)
+}
 
 fn build_game_scene() ecs.Scene3D = {
     val scene: mut ecs.Scene3D = ecs.new_scene(
@@ -12,6 +19,7 @@ fn build_game_scene() ecs.Scene3D = {
             7.0 as f32
         )
     )
+    scene.gravity = 9.8 as f32
     @append(scene.cubes, ecs.make_cube(
         ecs.make_vec3(-1.55 as f32, 0.82 as f32, -0.65 as f32),
         ecs.make_vec3(0.20 as f32, 0.36 as f32, 0.82 as f32),
@@ -36,6 +44,7 @@ fn build_feature_scene() ecs.Scene3D = {
             8.5 as f32
         )
     )
+    scene.gravity = 0.0 as f32
     @append(scene.spheres, ecs.make_sphere(
         ecs.make_vec3(-1.20 as f32, 0.10 as f32, -0.25 as f32),
         ecs.make_vec3(1.00 as f32, 0.58 as f32, 0.24 as f32),
@@ -124,7 +133,8 @@ pub fn main() i32 = {
         engine.SDL_SCANCODE_X,
         audio
     )
-    return trust rendering.run(app)
+    val su: PhysicsUpdater = {}
+    return trust engine.run_app_with_scene_updater[PhysicsUpdater](app, su)
 }
 
 test {
