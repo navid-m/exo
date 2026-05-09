@@ -4,6 +4,9 @@ val ecs = use("ecs.sx")
 // gravity > 0  => pulls entities downward (Y axis)
 // gravity == 0 => no force, entities float
 // gravity < 0  => pushes entities upward
+//
+// If scene.floor is set, entities collide with the floor plane at floor.y.
+// restitution 0.0 = dead stop, 1.0 = full elastic bounce.
 pub fn update_physics(scene: mut ecs.Scene3D, dt: f32) void = {
     val g: f32 = scene.gravity
     val si: mut usize = 0 as usize
@@ -16,6 +19,13 @@ pub fn update_physics(scene: mut ecs.Scene3D, dt: f32) void = {
             s.position.x = s.position.x + s.velocity.x * dt
             s.position.y = s.position.y + s.velocity.y * dt
             s.position.z = s.position.z + s.velocity.z * dt
+            if scene.floor is some floor {
+                val contact_y: f32 = floor.y + s.radius
+                if s.position.y < contact_y {
+                    s.position.y = contact_y
+                    s.velocity.y = -(s.velocity.y * floor.restitution)
+                }
+            }
             @set(scene.spheres, si, s)
         }
         si += (1 as usize)
@@ -23,7 +33,7 @@ pub fn update_physics(scene: mut ecs.Scene3D, dt: f32) void = {
 
     val ci: mut usize = 0 as usize
     val clen: usize = @len(scene.cubes)
-    
+
     for ci < clen {
         if @get(scene.cubes, ci) is some cube {
             val c: mut ecs.CubeEntity = cube
@@ -31,6 +41,13 @@ pub fn update_physics(scene: mut ecs.Scene3D, dt: f32) void = {
             c.position.x = c.position.x + c.velocity.x * dt
             c.position.y = c.position.y + c.velocity.y * dt
             c.position.z = c.position.z + c.velocity.z * dt
+            if scene.floor is some floor {
+                val contact_y: f32 = floor.y + c.size * (0.5 as f32)
+                if c.position.y < contact_y {
+                    c.position.y = contact_y
+                    c.velocity.y = -(c.velocity.y * floor.restitution)
+                }
+            }
             @set(scene.cubes, ci, c)
         }
         ci += (1 as usize)

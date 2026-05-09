@@ -62,12 +62,24 @@ pub type GlbModel = {
     has_uvs: mut bool
 }
 
+// A flat infinite floor at a given Y height that entities collide with.
+// restitution: 0.0 = entities stop dead, 1.0 = perfectly elastic bounce.
+pub type FloorCollider = {
+    y:           f32
+    restitution: f32
+}
+
 pub type Scene3D = {
     spheres: mut list[SphereEntity]
-    cubes: mut list[CubeEntity]
-    model: mut GlbModel
-    light: PointLight
+    cubes:   mut list[CubeEntity]
+    model:   mut GlbModel
+    light:   PointLight
     gravity: mut f32
+    floor:   mut option[FloorCollider]
+}
+
+pub fn make_floor(y: f32, restitution: f32) FloorCollider = {
+    return { y: y, restitution: restitution }
 }
 
 pub fn make_vec3(x: f32, y: f32, z: f32) Vec3 = {
@@ -124,9 +136,10 @@ pub fn empty_model() GlbModel = {
 pub fn new_scene(light: PointLight) Scene3D = {
     return {
         spheres: [],
-        cubes: [],
-        model: empty_model(),
-        light: light,
-        gravity: 9.8 as f32
+        cubes:   [],
+        model:   empty_model(),
+        light:   light,
+        gravity: 9.8 as f32,
+        floor:   none
     }
 }
