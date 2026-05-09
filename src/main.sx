@@ -81,7 +81,6 @@ fn build_water_scene() ecs.Scene3D = {
         )
     )
     scene.gravity = 0.0 as f32
-    // Animated water sitting inside the pond container
     scene.water = some ecs.make_water(
         0.05 as f32,
         5.5 as f32,
