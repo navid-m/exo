@@ -19,11 +19,13 @@ vec3 sky_color(vec3 direction_value) {
 void main() {
     vec3 normal_value = normalize(vWorldNormal);
     vec3 view_dir = normalize(uCameraPos.xyz - vWorldPos);
-    vec2 uv = vReflectClip.xy / max(vReflectClip.w, 0.0001);
-    uv = uv * 0.5 + 0.5;
     vec3 reflection = sky_color(reflect(-view_dir, normal_value));
-    if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) {
-        reflection = texture(uReflectionTex, uv).rgb;
+    if (vReflectClip.w > 0.0001) {
+        vec2 uv = (vReflectClip.xy / vReflectClip.w) * 0.5 + 0.5;
+        uv.y = 1.0 - uv.y;
+        if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0) {
+            reflection = texture(uReflectionTex, uv).rgb;
+        }
     }
     float fresnel = pow(1.0 - max(dot(view_dir, normal_value), 0.0), 5.0);
     vec3 tint = vec3(0.03, 0.06, 0.08);
