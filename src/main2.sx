@@ -11,7 +11,7 @@ val SNOW_MAX_Z: f32 = -0.2
 val SNOW_RESPAWN_Y: f32 = 3.9
 val SNOW_FLOOR_Y: f32 = -0.2 
 
-type (SceneUpdater) SnowUpdater = {}
+type (engine.SceneUpdater) SnowUpdater = {}
 
 fn wrap_range(value: f32, min_v: f32, max_v: f32) f32 = {
     val span: f32 = max_v - min_v
