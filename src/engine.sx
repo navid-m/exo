@@ -2823,8 +2823,8 @@ fn camera_forward(camera: Camera) ecs.Vec3 = {
 }
 
 fn update_camera(camera: mut Camera, input: InputConfig, dt: f32, keys: ref u8, mouse_dx: f32, mouse_dy: f32) void = trust {
-    val yaw_step: f32 = camera.turn_speed * dt
-    val move_step: f32 = camera.move_speed * dt
+    val yaw_step:   f32 = camera.turn_speed * dt
+    val move_step:  f32 = camera.move_speed * dt
     val key_fwd:    u8 = @load8(@ptradd(keys, input.keys.move_forward as usize))
     val key_back:   u8 = @load8(@ptradd(keys, input.keys.move_back    as usize))
     val key_left:   u8 = @load8(@ptradd(keys, input.keys.move_left    as usize))
@@ -2833,10 +2833,10 @@ fn update_camera(camera: mut Camera, input: InputConfig, dt: f32, keys: ref u8, 
     val key_tright: u8 = @load8(@ptradd(keys, input.keys.turn_right   as usize))
     val key_up:     u8 = @load8(@ptradd(keys, input.keys.look_up      as usize))
     val key_down:   u8 = @load8(@ptradd(keys, input.keys.look_down    as usize))
-    if key_tleft != 0 { camera.yaw = camera.yaw + yaw_step }
+    if key_tleft  != 0 { camera.yaw = camera.yaw + yaw_step }
     if key_tright != 0 { camera.yaw = camera.yaw - yaw_step }
-    if key_up != 0 { camera.pitch = camera.pitch + yaw_step * (0.70 as f32) }
-    if key_down != 0 { camera.pitch = camera.pitch - yaw_step * (0.70 as f32) }
+    if key_up     != 0 { camera.pitch = camera.pitch + yaw_step * (0.70 as f32) }
+    if key_down   != 0 { camera.pitch = camera.pitch - yaw_step * (0.70 as f32) }
     if input.mouse.enabled {
         camera.yaw = camera.yaw - mouse_dx * input.mouse.sensitivity_x
         if input.mouse.invert_y {
