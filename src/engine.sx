@@ -1659,8 +1659,8 @@ fn exo_sdl3_apply_fxaa(runtime_raw: ref void) bool = trust {
         texel_size: {
             x: (1.0 as f32) / (runtime.render_width as f32),
             y: (1.0 as f32) / (runtime.render_height as f32),
-            z: runtime.render_width as f32,
-            w: runtime.render_height as f32
+            z: 1.05 as f32,
+            w: 0.85 as f32
         }
     }
     SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(FxaaFragmentUniforms) as u32)

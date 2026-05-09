@@ -9,46 +9,42 @@ layout(set = 3, binding = 0, std140) uniform FxaaUniforms {
     vec4 uTexelSize;
 };
 
-float luma(vec3 c) {
-    return dot(c, vec3(0.299, 0.587, 0.114));
+vec3 sample_hdr(vec2 uv) {
+    return texture(uSceneTex, uv).rgb;
+}
+
+vec3 aces_tonemap(vec3 x) {
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+
+vec3 bloom_sample(vec2 uv, vec2 texel) {
+    vec3 bloom = vec3(0.0);
+    bloom += max(sample_hdr(uv + vec2(-2.0 * texel.x, 0.0)) - vec3(1.0), vec3(0.0)) * 0.06136;
+    bloom += max(sample_hdr(uv + vec2(-1.0 * texel.x, 0.0)) - vec3(1.0), vec3(0.0)) * 0.24477;
+    bloom += max(sample_hdr(uv) - vec3(1.0), vec3(0.0)) * 0.38774;
+    bloom += max(sample_hdr(uv + vec2(1.0 * texel.x, 0.0)) - vec3(1.0), vec3(0.0)) * 0.24477;
+    bloom += max(sample_hdr(uv + vec2(2.0 * texel.x, 0.0)) - vec3(1.0), vec3(0.0)) * 0.06136;
+    bloom += max(sample_hdr(uv + vec2(0.0, -2.0 * texel.y)) - vec3(1.0), vec3(0.0)) * 0.06136;
+    bloom += max(sample_hdr(uv + vec2(0.0, -1.0 * texel.y)) - vec3(1.0), vec3(0.0)) * 0.24477;
+    bloom += max(sample_hdr(uv + vec2(0.0, 1.0 * texel.y)) - vec3(1.0), vec3(0.0)) * 0.24477;
+    bloom += max(sample_hdr(uv + vec2(0.0, 2.0 * texel.y)) - vec3(1.0), vec3(0.0)) * 0.06136;
+    return bloom * 0.5;
 }
 
 void main() {
     vec2 texel = uTexelSize.xy;
+    float exposure = uTexelSize.z;
+    float bloom_intensity = uTexelSize.w;
 
-    vec3 center = texture(uSceneTex, vTexCoord).rgb;
+    vec3 hdr_color = sample_hdr(vTexCoord);
+    vec3 bloom = bloom_sample(vTexCoord, texel) * bloom_intensity;
+    vec3 mapped = aces_tonemap((hdr_color + bloom) * exposure);
+    vec3 gamma_corrected = pow(mapped, vec3(1.0 / 2.2));
 
-    float lC  = luma(center);
-    float lN  = luma(texture(uSceneTex, vTexCoord + vec2(0.0,        texel.y)).rgb);
-    float lS  = luma(texture(uSceneTex, vTexCoord + vec2(0.0,       -texel.y)).rgb);
-    float lE  = luma(texture(uSceneTex, vTexCoord + vec2( texel.x,  0.0     )).rgb);
-    float lW  = luma(texture(uSceneTex, vTexCoord + vec2(-texel.x,  0.0     )).rgb);
-
-    float lMax   = max(lC, max(max(lN, lS), max(lE, lW)));
-    float lMin   = min(lC, min(min(lN, lS), min(lE, lW)));
-    float lRange = lMax - lMin;
-
-    if (lRange < max(0.0312, lMax * 0.125)) {
-        FragColor = vec4(center, 1.0);
-        return;
-    }
-
-    float lNE = luma(texture(uSceneTex, vTexCoord + vec2( texel.x,  texel.y)).rgb);
-    float lNW = luma(texture(uSceneTex, vTexCoord + vec2(-texel.x,  texel.y)).rgb);
-    float lSE = luma(texture(uSceneTex, vTexCoord + vec2( texel.x, -texel.y)).rgb);
-    float lSW = luma(texture(uSceneTex, vTexCoord + vec2(-texel.x, -texel.y)).rgb);
-
-    float hEdge = abs(lNW + 2.0 * lN + lNE - lSW - 2.0 * lS - lSE);
-    float vEdge = abs(lNW + 2.0 * lW + lSW - lNE - 2.0 * lE - lSE);
-    bool horizontal = hEdge >= vEdge;
-
-    float lPos      = horizontal ? lN : lE;
-    float lNeg      = horizontal ? lS : lW;
-    float gradient  = abs(lPos - lC);
-    float blend     = smoothstep(0.0, 1.0, min(gradient / lRange * 0.75, 1.0));
-    float stepDir   = sign(lPos - lC);
-    vec2  blendDir  = horizontal ? vec2(0.0, stepDir * texel.y)
-                                 : vec2(stepDir * texel.x, 0.0);
-
-    FragColor = vec4(mix(center, texture(uSceneTex, vTexCoord + blendDir * blend).rgb, blend), 1.0);
+    FragColor = vec4(gamma_corrected, 1.0);
 }
