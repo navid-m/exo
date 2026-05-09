@@ -9,6 +9,8 @@ val ecs    = use("ecs.sx")
 link "-lSDL3"
 link "-L/usr/local/lib"
 link "-Wl,-rpath,/usr/local/lib"
+link "./src/stb_image_shim.o"
+link "-lm"
 
 val DEFAULT_SCREEN_WIDTH: i32 = 1440
 val DEFAULT_SCREEN_HEIGHT: i32 = 900
@@ -69,6 +71,7 @@ val SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA: i32 = 8
 val SDL_GPU_FILTER_LINEAR: i32 = 1
 val SDL_GPU_SAMPLERMIPMAPMODE_LINEAR: i32 = 1
 val SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE: i32 = 2
+val SDL_GPU_SAMPLERADDRESSMODE_REPEAT: i32 = 0
 val SDL_GPU_LOADOP_CLEAR: i32 = 1
 val SDL_GPU_LOADOP_DONT_CARE: i32 = 2
 val SDL_GPU_STOREOP_STORE: i32 = 0
@@ -140,6 +143,13 @@ extern (C) fn fseek(stream: ref void, offset: i64, whence: i32) i32 = "fseek"
 extern (C) fn ftell(stream: ref void) i64 = "ftell"
 extern (C) fn rewind(stream: ref void) void = "rewind"
 
+extern (C) fn stbi_load_from_memory(buf: ref u8, len: i32, x: ref i32, y: ref i32, channels: ref i32, desired: i32) ref u8 = "stbi_load_from_memory"
+extern (C) fn stbi_image_free(ptr: ref void) void = "stbi_image_free"
+
+extern (C) fn SDL_UploadToGPUTexture(copy_pass: ref void, source: ref SDLGPUTextureTransferInfo, destination: ref SDLGPUTextureRegion, cycle: bool) void = "SDL_UploadToGPUTexture"
+
+val SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM: i32 = 4
+
 type Mat4 = {
     m00: f32
     m01: f32
@@ -197,6 +207,7 @@ pub type ExoShaderConfig = {
     floor: ShaderProgramConfig
     glow: ShaderProgramConfig
     fxaa: ShaderProgramConfig
+    water: ShaderProgramConfig
 }
 
 pub type KeyBindings = {
@@ -528,6 +539,25 @@ extern type SDLGPUBufferRegion = {
     size: mut u32
 }
 
+extern type SDLGPUTextureTransferInfo = {
+    transfer_buffer: mut ref void
+    offset: mut u32
+    pixels_per_row: mut u32
+    rows_per_layer: mut u32
+}
+
+extern type SDLGPUTextureRegion = {
+    texture: mut ref void
+    mip_level: mut u32
+    layer: mut u32
+    x: mut u32
+    y: mut u32
+    z: mut u32
+    w: mut u32
+    h: mut u32
+    d: mut u32
+}
+
 type Vec4f = {
     x: mut f32
     y: mut f32
@@ -575,6 +605,19 @@ type FxaaFragmentUniforms = {
     texel_size: mut Vec4f
 }
 
+type WaterVertexUniforms = {
+    model:       mut Mat4
+    view_proj:   mut Mat4
+    reflect_vp:  mut Mat4
+    time_wave:   mut Vec4f
+}
+
+type WaterFragmentUniforms = {
+    camera_pos:  mut Vec4f
+    water_color: mut Vec4f
+    light_dir:   mut Vec4f
+}
+
 type ExoSDL3Mesh = {
     vertex_buffer: mut ref void
     index_buffer: mut ref void
@@ -588,7 +631,10 @@ type ExoSDL3Runtime = {
     floor_pipeline: mut ref void
     glow_pipeline: mut ref void
     fxaa_pipeline: mut ref void
+    water_pipeline: mut ref void
+    normal_map_texture: mut ref void
     linear_sampler: mut ref void
+    repeat_sampler: mut ref void
     reflection_color: mut ref void
     reflection_depth: mut ref void
     scene_color: mut ref void
@@ -1092,6 +1138,81 @@ fn exo_create_postprocess_pipeline(
     return pipeline
 }
 
+fn load_png_texture(runtime: ref ExoSDL3Runtime, path: ref u8) ref void = trust {
+    if load_binary_file(path) is some blob {
+        val w: mut i32 = 0 as i32
+        val h: mut i32 = 0 as i32
+        val ch: mut i32 = 0 as i32
+        val pixels: ref u8 = stbi_load_from_memory(blob.data, blob.len as i32, @addr(w), @addr(h), @addr(ch), 4 as i32)
+        @free(blob.data as ref void)
+        if pixels == none {
+            return none as ref void
+        }
+        val tex_info: mut SDLGPUTextureCreateInfo = {
+            typ: 0 as i32, format: 0 as i32, usage: 0 as u32,
+            width: 0 as u32, height: 0 as u32, layer_count_or_depth: 0 as u32,
+            num_levels: 0 as u32, sample_count: 0 as i32, props: 0 as u32
+        }
+        tex_info.typ = SDL_GPU_TEXTURETYPE_2D
+        tex_info.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
+        tex_info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER
+        tex_info.width = w as u32
+        tex_info.height = h as u32
+        tex_info.layer_count_or_depth = 1 as u32
+        tex_info.num_levels = 1 as u32
+        tex_info.sample_count = SDL_GPU_SAMPLECOUNT_1
+        val texture: ref void = SDL_CreateGPUTexture(runtime.device, @addr(tex_info))
+        if texture == none {
+            stbi_image_free(pixels as ref void)
+            return none as ref void
+        }
+        val byte_size: u32 = (w as u32) * (h as u32) * (4 as u32)
+        val tbuf_info: mut SDLGPUTransferBufferCreateInfo = {
+            usage: 0 as i32, size: 0 as u32, props: 0 as u32
+        }
+        tbuf_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
+        tbuf_info.size = byte_size
+        val tbuf: ref void = SDL_CreateGPUTransferBuffer(runtime.device, @addr(tbuf_info))
+        if tbuf == none {
+            SDL_ReleaseGPUTexture(runtime.device, texture)
+            stbi_image_free(pixels as ref void)
+            return none as ref void
+        }
+        val mapped: ref void = SDL_MapGPUTransferBuffer(runtime.device, tbuf, false)
+        if mapped == none {
+            SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
+            SDL_ReleaseGPUTexture(runtime.device, texture)
+            stbi_image_free(pixels as ref void)
+            return none as ref void
+        }
+        @memcpy(mapped, pixels as ref void, byte_size as usize)
+        SDL_UnmapGPUTransferBuffer(runtime.device, tbuf)
+        stbi_image_free(pixels as ref void)
+        val cmd: ref void = SDL_AcquireGPUCommandBuffer(runtime.device)
+        if cmd == none {
+            SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
+            SDL_ReleaseGPUTexture(runtime.device, texture)
+            return none as ref void
+        }
+        val copy_pass: ref void = SDL_BeginGPUCopyPass(cmd)
+        val src: mut SDLGPUTextureTransferInfo = {
+            transfer_buffer: tbuf, offset: 0 as u32,
+            pixels_per_row: w as u32, rows_per_layer: h as u32
+        }
+        val dst: mut SDLGPUTextureRegion = {
+            texture: texture, mip_level: 0 as u32, layer: 0 as u32,
+            x: 0 as u32, y: 0 as u32, z: 0 as u32,
+            w: w as u32, h: h as u32, d: 1 as u32
+        }
+        SDL_UploadToGPUTexture(copy_pass, @addr(src), @addr(dst), false)
+        SDL_EndGPUCopyPass(copy_pass)
+        SDL_SubmitGPUCommandBuffer(cmd)
+        SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
+        return texture
+    }
+    return none as ref void
+}
+
 fn exo_create_pipelines(runtime: mut ref ExoSDL3Runtime, shaders: ExoShaderConfig) bool = trust {
     runtime.scene_pipeline = exo_create_pipeline(
         runtime,
@@ -1149,13 +1270,33 @@ fn exo_create_pipelines(runtime: mut ref ExoSDL3Runtime, shaders: ExoShaderConfi
         1 as u32,
         1 as u32
     )
-    return runtime.fxaa_pipeline != none
+    if runtime.fxaa_pipeline == none {
+        return false
+    }
+    runtime.water_pipeline = exo_create_pipeline(
+        runtime,
+        shaders.water.vertex_path,
+        shaders.water.fragment_path,
+        runtime.swapchain_format,
+        true,
+        SDL_GPU_BLENDFACTOR_SRC_ALPHA,
+        SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+        SDL_GPU_BLENDFACTOR_ONE,
+        SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+        false,
+        2 as u32
+    )
+    return runtime.water_pipeline != none
 }
 
 fn exo_destroy_pipelines(runtime: mut ref ExoSDL3Runtime) void = trust {
     if runtime.fxaa_pipeline != none {
         SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.fxaa_pipeline)
         runtime.fxaa_pipeline = none
+    }
+    if runtime.water_pipeline != none {
+        SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.water_pipeline)
+        runtime.water_pipeline = none
     }
     if runtime.glow_pipeline != none {
         SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.glow_pipeline)
@@ -1308,6 +1449,14 @@ fn exo_bind_mesh(runtime: ref ExoSDL3Runtime, mesh: ref ExoSDL3Mesh) void = trus
 
 fn exo_destroy_runtime_resources(runtime: mut ref ExoSDL3Runtime) void = trust {
     exo_release_render_targets(runtime)
+    if runtime.normal_map_texture != none {
+        SDL_ReleaseGPUTexture(runtime.device, runtime.normal_map_texture)
+        runtime.normal_map_texture = none
+    }
+    if runtime.repeat_sampler != none {
+        SDL_ReleaseGPUSampler(runtime.device, runtime.repeat_sampler)
+        runtime.repeat_sampler = none
+    }
     if runtime.linear_sampler != none {
         SDL_ReleaseGPUSampler(runtime.device, runtime.linear_sampler)
         runtime.linear_sampler = none
@@ -1374,10 +1523,31 @@ fn exo_sdl3_create_runtime(title: ref u8, width: i32, height: i32, shaders: ExoS
         exo_sdl3_destroy_runtime(runtime as ref void)
         return none as ref void
     }
+    val repeat_info: mut SDLGPUSamplerCreateInfo = {
+        min_filter: 0 as i32, mag_filter: 0 as i32, mipmap_mode: 0 as i32,
+        address_mode_u: 0 as i32, address_mode_v: 0 as i32, address_mode_w: 0 as i32,
+        mip_lod_bias: 0.0 as f32, max_anisotropy: 0.0 as f32, compare_op: 0 as i32,
+        min_lod: 0.0 as f32, max_lod: 0.0 as f32,
+        enable_anisotropy: false, enable_compare: false,
+        padding1: 0 as u8, padding2: 0 as u8, props: 0 as u32
+    }
+    repeat_info.min_filter = SDL_GPU_FILTER_LINEAR
+    repeat_info.mag_filter = SDL_GPU_FILTER_LINEAR
+    repeat_info.mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_LINEAR
+    repeat_info.address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_REPEAT
+    repeat_info.address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_REPEAT
+    repeat_info.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_REPEAT
+    repeat_info.max_lod = 1.0 as f32
+    runtime.repeat_sampler = SDL_CreateGPUSampler(runtime.device, @addr(repeat_info))
+    if runtime.repeat_sampler == none {
+        exo_sdl3_destroy_runtime(runtime as ref void)
+        return none as ref void
+    }
     if !exo_recreate_render_targets(runtime, width as u32, height as u32) {
         exo_sdl3_destroy_runtime(runtime as ref void)
         return none as ref void
     }
+    runtime.normal_map_texture = load_png_texture(runtime, "./assets/normal_map.png")
     return runtime as ref void
 }
 
@@ -2056,6 +2226,10 @@ pub fn default_shader_config() ExoShaderConfig = {
         fxaa: {
             vertex_path: "./assets/shaders/fxaa.vert.spv",
             fragment_path: "./assets/shaders/fxaa.frag.spv"
+        },
+        water: {
+            vertex_path: "./assets/shaders/water.vert.spv",
+            fragment_path: "./assets/shaders/water.frag.spv"
         }
     }
 }
@@ -2129,6 +2303,154 @@ fn parse_accessor_count(accessors: ref void, idx: i64) i32 = trust {
         }
     }
     return 0 as i32
+}
+
+fn parse_accessor_offset(accessors: ref void, buffer_views: ref void, idx: i64) usize = trust {
+    val offset: mut usize = 0 as usize
+    if json.arr_get(accessors, idx as usize) is some accessor {
+        if json.obj_get_int(accessor, "byteOffset") is some acc_off {
+            offset = offset + (acc_off as usize)
+        }
+        if json.obj_get_int(accessor, "bufferView") is some bv_idx {
+            if json.arr_get(buffer_views, bv_idx as usize) is some bv {
+                if json.obj_get_int(bv, "byteOffset") is some bv_off {
+                    offset = offset + (bv_off as usize)
+                }
+            }
+        }
+    }
+    return offset
+}
+
+/// Upload a parsed GlbModel's binary geometry to the GPU.
+/// If the model has no normals, synthesises a flat up-normal.
+fn upload_glb_model(runtime: ref void, model: ecs.GlbModel) MeshGPU = trust {
+    if !model.valid || model.vertex_count <= (0 as i32) || model.raw_bytes == none || model.bin_length == (0 as usize) {
+        return { raw: none as ref void, index_count: 0 as i32 }
+    }
+    val data: ref u8 = model.raw_bytes
+    val json_offset: usize = 20 as usize
+    val json_len: u32 = bin.read_u32_le(data, 12 as usize)
+    val json_buf: ref u8 = @alloc((json_len as usize) + (1 as usize)) as ref u8
+    if json_buf == none {
+        return { raw: none as ref void, index_count: 0 as i32 }
+    }
+    @memcpy(json_buf as ref void, @ptradd(data, json_offset) as ref void, json_len as usize)
+    @store8(@ptradd(json_buf, json_len as usize), 0)
+    val result: mut MeshGPU = { raw: none as ref void, index_count: 0 as i32 }
+    if json.parse(json_buf) is some doc {
+        val root: ref void = json.doc_root(doc)
+        val vc: usize = model.vertex_count as usize
+        val ic: usize = model.index_count as usize
+        val vertex_float_count: usize = vc * (6 as usize)
+        val vertices: ref void = @alloc(vertex_float_count * (@sizeof(f32) as usize))
+        val actual_ic: mut usize = vc 
+
+        if ic > (0 as usize) { actual_ic = ic }
+
+        val indices: ref void = @alloc(actual_ic * (@sizeof(u32) as usize))
+        if vertices != none && indices != none {
+            val bin_base: ref void = @ptradd(data, (json_offset + (json_len as usize) + (8 as usize)) as usize)
+            val pos_offset: mut usize = 0 as usize
+            val nrm_offset: mut usize = 0 as usize
+            val idx_offset: mut usize = 0 as usize
+            val has_nrm: mut bool = false
+            if json.obj_get(root, "accessors") is some accessors {
+                if json.obj_get(root, "bufferViews") is some buffer_views {
+                    if json.obj_get(root, "meshes") is some meshes {
+                        if json.arr_get(meshes, 0 as usize) is some mesh {
+                            if json.obj_get(mesh, "primitives") is some primitives {
+                                if json.arr_get(primitives, 0 as usize) is some prim {
+                                    if json.obj_get(prim, "attributes") is some attrs {
+                                        if json.obj_get_int(attrs, "POSITION") is some pi {
+                                            pos_offset = parse_accessor_offset(accessors, buffer_views, pi)
+                                        }
+                                        if json.obj_get_int(attrs, "NORMAL") is some ni {
+                                            nrm_offset = parse_accessor_offset(accessors, buffer_views, ni)
+                                            has_nrm = true
+                                        }
+                                    }
+                                    if json.obj_get_int(prim, "indices") is some ii {
+                                        idx_offset = parse_accessor_offset(accessors, buffer_views, ii)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            val vi: mut usize = 0 as usize
+            for vi < vc {
+                val p: ref f32 = @ptradd(bin_base, pos_offset + vi * (12 as usize)) as ref f32
+                val px: f32 = read_f32(p, 0 as usize)
+                val py: f32 = read_f32(p, 1 as usize)
+                val pz: f32 = read_f32(p, 2 as usize)
+                val nx: mut f32 = 0.0 as f32
+                val ny: mut f32 = 1.0 as f32
+                val nz: mut f32 = 0.0 as f32
+                if has_nrm {
+                    val n: ref f32 = @ptradd(bin_base, nrm_offset + vi * (12 as usize)) as ref f32
+                    nx = read_f32(n, 0 as usize)
+                    ny = read_f32(n, 1 as usize)
+                    nz = read_f32(n, 2 as usize)
+                }
+                write_vertex(vertices, vi, vec3(px, py, pz), vec3(nx, ny, nz))
+                vi = vi + (1 as usize)
+            }
+            val use_u16: mut bool = false
+            if json.parse(json_buf) is some doc2 {
+                val root2: ref void = json.doc_root(doc2)
+                if json.obj_get(root2, "accessors") is some accessors2 {
+                    if json.obj_get(root2, "meshes") is some meshes2 {
+                        if json.arr_get(meshes2, 0 as usize) is some mesh2 {
+                            if json.obj_get(mesh2, "primitives") is some prims2 {
+                                if json.arr_get(prims2, 0 as usize) is some prim2 {
+                                    if json.obj_get_int(prim2, "indices") is some ii2 {
+                                        if json.arr_get(accessors2, ii2 as usize) is some acc {
+                                            if json.obj_get_int(acc, "componentType") is some ct {
+                                                if ct == (5123 as i64) {
+                                                    use_u16 = true
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                json.doc_free(doc2)
+            }
+            val ii: mut usize = 0 as usize
+            if ic > (0 as usize) {
+                for ii < ic {
+                    val idx_val: mut u32 = 0 as u32
+                    if use_u16 {
+                        val slot: ref void = @ptradd(bin_base, idx_offset + ii * (2 as usize))
+                        val lo: u8 = @load8(slot as ref u8)
+                        val hi: u8 = @load8(@ptradd(slot, 1 as usize) as ref u8)
+                        idx_val = (lo as u32) | ((hi as u32) << (8 as u32))
+                    } else {
+                        val slot: ref void = @ptradd(bin_base, idx_offset + ii * (4 as usize))
+                        idx_val = bin.read_u32_le(slot as ref u8, 0 as usize)
+                    }
+                    store_u32(indices, ii, idx_val)
+                    ii = ii + (1 as usize)
+                }
+            } else {
+                for ii < vc {
+                    store_u32(indices, ii, ii as u32)
+                    ii = ii + (1 as usize)
+                }
+            }
+            result = upload_mesh(runtime, vertices, vertex_float_count, indices, actual_ic as i32)
+        }
+        if vertices != none { @free(vertices) }
+        if indices != none { @free(indices) }
+        json.doc_free(doc)
+    }
+    @free(json_buf as ref void)
+    return result
 }
 
 pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
@@ -2213,6 +2535,12 @@ pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
         }
         json.doc_free(doc)
         @free(json_buf as ref void)
+        val raw_copy: ref u8 = @alloc(len) as ref u8
+        if raw_copy != none {
+            @memcpy(raw_copy as ref void, data as ref void, len)
+            model.raw_bytes = raw_copy
+            model.raw_bytes_len = len
+        }
         return some model
     }
     @free(json_buf as ref void)
@@ -2241,7 +2569,7 @@ pub fn load_glb(path: ref u8) option[ecs.GlbModel] = trust {
     fclose(file)
     val model = parse_glb_bytes(buf, size as usize)
     @free(buf as ref void)
-    return some model
+    return model
 }
 
 pub fn build_test_glb_fixture() GlbFixture = trust {
@@ -2608,17 +2936,43 @@ fn draw_floor(runtime: ref void, mesh: MeshGPU, model: Mat4, view_proj: Mat4, re
     exo_sdl3_draw_floor(runtime, mesh.raw, @addr(model.m00), @addr(view_proj.m00), @addr(reflect_view_proj.m00), @addr(camera.position.x))
 }
 
-fn draw_water(runtime: ref void, mesh: MeshGPU, model: Mat4, view_proj: Mat4, reflect_view_proj: Mat4, camera: Camera, _: ecs.Vec3, wave_offset: f32, wave_amplitude: f32, wave_frequency: f32) void = trust {
-    val bob: f32 = (math.sin((wave_offset * wave_frequency) as f64) as f32) * wave_amplitude
-    val animated_model: Mat4 = mat_mul(mat_translation(vec3(0.0 as f32, bob, 0.0 as f32)), model)
-    val tinted_camera: Camera = {
-        position: vec3(camera.position.x, camera.position.y, camera.position.z),
-        yaw: camera.yaw,
-        pitch: camera.pitch,
-        move_speed: camera.move_speed,
-        turn_speed: camera.turn_speed
+fn draw_water(runtime: ref void, mesh: MeshGPU, model: Mat4, view_proj: Mat4, reflect_view_proj: Mat4, camera: Camera, color: ecs.Vec3, wave_offset: f32, wave_amplitude: f32, wave_frequency: f32, light: ecs.PointLight) void = trust {
+    if runtime == none || mesh.raw == none {
+        return
     }
-    exo_sdl3_draw_floor(runtime, mesh.raw, @addr(animated_model.m00), @addr(view_proj.m00), @addr(reflect_view_proj.m00), @addr(tinted_camera.position.x))
+    val rt: ref ExoSDL3Runtime = runtime as ref ExoSDL3Runtime
+    if rt.water_pipeline == none {
+        return
+    }
+    val vu: mut WaterVertexUniforms = {
+        model:      transpose_mat4_ptr(@addr(model.m00)),
+        view_proj:  transpose_mat4_ptr(@addr(view_proj.m00)),
+        reflect_vp: transpose_mat4_ptr(@addr(reflect_view_proj.m00)),
+        time_wave:  { x: wave_offset, y: wave_amplitude, z: wave_frequency, w: 0.0 as f32 }
+    }
+    val light_dir: ecs.Vec3 = vec3_normalize(vec3_sub(light.position, vec3(0.0 as f32, 0.0 as f32, 0.0 as f32)))
+    val fu: mut WaterFragmentUniforms = {
+        camera_pos:  { x: camera.position.x, y: camera.position.y, z: camera.position.z, w: wave_offset },
+        water_color: { x: color.x, y: color.y, z: color.z, w: 0.0 as f32 },
+        light_dir:   { x: light_dir.x, y: light_dir.y, z: light_dir.z, w: light.intensity }
+    }
+    SDL_BindGPUGraphicsPipeline(rt.current_pass, rt.water_pipeline)
+    SDL_PushGPUVertexUniformData(rt.command_buffer, 0 as u32, @addr(vu) as ref void, @sizeof(WaterVertexUniforms) as u32)
+    SDL_PushGPUFragmentUniformData(rt.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(WaterFragmentUniforms) as u32)
+    val normal_tex: mut ref void = rt.reflection_color
+    
+    if rt.normal_map_texture != none { normal_tex = rt.normal_map_texture }
+    val bindings_raw: ref void = @alloc(2 as usize * @sizeof(SDLGPUTextureSamplerBinding) as usize)
+    val b0: mut ref SDLGPUTextureSamplerBinding = bindings_raw as mut ref SDLGPUTextureSamplerBinding
+    val b1: mut ref SDLGPUTextureSamplerBinding = @ptradd(bindings_raw, @sizeof(SDLGPUTextureSamplerBinding) as usize) as mut ref SDLGPUTextureSamplerBinding
+    b0.texture = rt.reflection_color
+    b0.sampler = rt.linear_sampler
+    b1.texture = normal_tex
+    b1.sampler = rt.repeat_sampler
+    SDL_BindGPUFragmentSamplers(rt.current_pass, 0 as u32, bindings_raw as ref SDLGPUTextureSamplerBinding, 2 as u32)
+    @free(bindings_raw)
+    exo_bind_mesh(rt, mesh.raw as ref ExoSDL3Mesh)
+    SDL_DrawGPUIndexedPrimitives(rt.current_pass, mesh.index_count as u32, 1 as u32, 0 as u32, 0 as i32, 0 as u32)
 }
 
 fn render_reflection_scene(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, scene: ecs.Scene3D, camera: Camera, width: i32, height: i32, time: f32, plane_y: f32) void = trust {
@@ -2629,13 +2983,18 @@ fn render_reflection_scene(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: M
     draw_scene_entities(runtime, cube_mesh, sphere_mesh, scene, mirrored, reflect_vp, time, 0.60 as f32)
 }
 
-fn render_scene(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, quad_mesh: MeshGPU, scene: ecs.Scene3D, camera: Camera, width: i32, height: i32, time: f32) void = trust {
+fn render_scene(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, quad_mesh: MeshGPU, glb_mesh: MeshGPU, scene: ecs.Scene3D, camera: Camera, width: i32, height: i32, time: f32) void = trust {
     val vp: Mat4 = view_projection(camera, width, height)
     val floor_y: f32 = -0.18 as f32
     val floor_position: ecs.Vec3 = vec3(0.0 as f32, floor_y - (0.08 as f32), -1.45 as f32)
     val floor_scale: ecs.Vec3 = vec3(7.8 as f32, 0.16 as f32, 7.8 as f32)
     val reflect_vp: Mat4 = view_projection(mirrored_camera(camera, floor_y), width, height)
     draw_scene_entities(runtime, cube_mesh, sphere_mesh, scene, camera, vp, time, 1.00 as f32)
+    // Draw the scene's GLB model if one is loaded
+    if mesh_valid(glb_mesh) {
+        val glb_mm: Mat4 = model_matrix(vec3(0.0 as f32, 0.0 as f32, 0.0 as f32), 1.0 as f32, 0.0 as f32)
+        draw_mesh(runtime, glb_mesh, glb_mm, vp, scene.light.color, camera.position, 0.05 as f32, 0.0 as f32, 1.0 as f32, scene.light)
+    }
     draw_floor(runtime, cube_mesh, model_matrix_scaled(floor_position, floor_scale, 0.0 as f32), vp, reflect_vp, camera)
     if scene.water is some water {
         val wave_offset: f32 = time * water.wave_speed
@@ -2643,7 +3002,7 @@ fn render_scene(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, qua
         val water_scale: ecs.Vec3 = vec3(water.size_x, 0.04 as f32, water.size_z)
         val water_model: Mat4 = model_matrix_scaled(water_position, water_scale, 0.0 as f32)
         val reflect_water_vp: Mat4 = view_projection(mirrored_camera(camera, water.y), width, height)
-        draw_water(runtime, cube_mesh, water_model, vp, reflect_water_vp, camera, water.color, wave_offset, water.wave_amplitude, water.wave_frequency)
+        draw_water(runtime, cube_mesh, water_model, vp, reflect_water_vp, camera, water.color, wave_offset, water.wave_amplitude, water.wave_frequency, scene.light)
     }
     val light_pos: ecs.Vec3 = scene.light.position
     val light_color: ecs.Vec3 = scene.light.color
@@ -2739,6 +3098,12 @@ fn run_app_internal[U: SceneUpdater](app0: ExoApp, updater0: U) i32 = trust {
         exo_sdl3_destroy_runtime(runtime)
         return 1 as i32
     }
+    // Upload GLB model for the initial scene
+    val glb_mesh: mut MeshGPU = { raw: none as ref void, index_count: 0 as i32 }
+    if app.scene.model.valid && app.scene.model.raw_bytes != none && app.scene.model.bin_length > (0 as usize) {
+        glb_mesh = upload_glb_model(runtime, app.scene.model)
+    }
+    val last_scene_index: mut usize = app.active_scene_index
     val audio_runtime: RuntimeAudioMixer = init_runtime_audio(app.audio)
     if audio_enabled(app.audio) && !audio_runtime.initialized {
         print_sdl_error("SDL3 audio init failed")
@@ -2767,6 +3132,15 @@ fn run_app_internal[U: SceneUpdater](app0: ExoApp, updater0: U) i32 = trust {
         }
         if scene_pressed != 0 && prev_scene_key == 0 {
             cycle_scene(app)
+            // Re-upload GLB mesh when scene changes
+            if app.active_scene_index != last_scene_index {
+                destroy_mesh(runtime, glb_mesh)
+                glb_mesh = { raw: none as ref void, index_count: 0 as i32 }
+                if app.scene.model.valid && app.scene.model.raw_bytes != none && app.scene.model.bin_length > (0 as usize) {
+                    glb_mesh = upload_glb_model(runtime, app.scene.model)
+                }
+                last_scene_index = app.active_scene_index
+            }
         }
         if audio_pressed != 0 && prev_audio_key == 0 {
             if !play_runtime_audio(app.audio, audio_runtime) {
@@ -2806,7 +3180,7 @@ fn run_app_internal[U: SceneUpdater](app0: ExoApp, updater0: U) i32 = trust {
             exit_code = 1 as i32
             break
         }
-        render_scene(runtime, cube_mesh, sphere_mesh, quad_mesh, app.scene, app.camera, frame_w as i32, frame_h as i32, time_value)
+        render_scene(runtime, cube_mesh, sphere_mesh, quad_mesh, glb_mesh, app.scene, app.camera, frame_w as i32, frame_h as i32, time_value)
         if !exo_sdl3_apply_fxaa(runtime) {
             print_sdl_error("SDL3 FXAA pass failed")
             exit_code = 1 as i32
@@ -2820,6 +3194,7 @@ fn run_app_internal[U: SceneUpdater](app0: ExoApp, updater0: U) i32 = trust {
         }
     }
     shutdown_runtime_audio(audio_runtime)
+    destroy_mesh(runtime, glb_mesh)
     destroy_mesh(runtime, quad_mesh)
     destroy_mesh(runtime, sphere_mesh)
     destroy_mesh(runtime, cube_mesh)

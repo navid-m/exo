@@ -60,6 +60,8 @@ pub type GlbModel = {
     index_count: mut i32
     has_normals: mut bool
     has_uvs: mut bool
+    raw_bytes: mut ref u8
+    raw_bytes_len: mut usize
 }
 
 // A flat infinite floor at a given Y height that entities collide with.
@@ -157,7 +159,9 @@ pub fn empty_model() GlbModel = {
         vertex_count: 0 as i32,
         index_count: 0 as i32,
         has_normals: false,
-        has_uvs: false
+        has_uvs: false,
+        raw_bytes: none as ref u8,
+        raw_bytes_len: 0 as usize
     }
 }
 
