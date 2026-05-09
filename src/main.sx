@@ -127,28 +127,7 @@ pub fn main() i32 = {
         title: "exo-engine",
         width:  1280 as i32,
         height:  720 as i32,
-        shaders: {
-            scene: {
-                vertex_path: "./assets/shaders/scene.vert.spv",
-                fragment_path: "./assets/shaders/scene.frag.spv"
-            },
-            floor: {
-                vertex_path: "./assets/shaders/floor.vert.spv",
-                fragment_path: "./assets/shaders/floor.frag.spv"
-            },
-            glow: {
-                vertex_path: "./assets/shaders/glow.vert.spv",
-                fragment_path: "./assets/shaders/glow.frag.spv"
-            },
-            fxaa: {
-                vertex_path: "./assets/shaders/fxaa.vert.spv",
-                fragment_path: "./assets/shaders/fxaa.frag.spv"
-            },
-            water: {
-                vertex_path: "./assets/shaders/water.vert.spv",
-                fragment_path: "./assets/shaders/water.frag.spv"
-            }
-        }
+        shaders: engine.default_shader_config()
     }
     val audio: engine.AudioMixerConfig = {
         trigger_key: engine.SDL_SCANCODE_Y,
