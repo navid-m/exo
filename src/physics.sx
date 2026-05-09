@@ -1,0 +1,38 @@
+val ecs = use("ecs.sx")
+
+// Applies gravity to all entities in the scene.
+// gravity > 0  => pulls entities downward (Y axis)
+// gravity == 0 => no force, entities float
+// gravity < 0  => pushes entities upward
+pub fn update_physics(scene: mut ecs.Scene3D, dt: f32) void = {
+    val g: f32 = scene.gravity
+    val si: mut usize = 0 as usize
+    val slen: usize = @len(scene.spheres)
+
+    for si < slen {
+        if @get(scene.spheres, si) is some sphere {
+            val s: mut ecs.SphereEntity = sphere
+            s.velocity.y = s.velocity.y - g * dt
+            s.position.x = s.position.x + s.velocity.x * dt
+            s.position.y = s.position.y + s.velocity.y * dt
+            s.position.z = s.position.z + s.velocity.z * dt
+            @set(scene.spheres, si, s)
+        }
+        si += (1 as usize)
+    }
+
+    val ci: mut usize = 0 as usize
+    val clen: usize = @len(scene.cubes)
+    
+    for ci < clen {
+        if @get(scene.cubes, ci) is some cube {
+            val c: mut ecs.CubeEntity = cube
+            c.velocity.y = c.velocity.y - g * dt
+            c.position.x = c.position.x + c.velocity.x * dt
+            c.position.y = c.position.y + c.velocity.y * dt
+            c.position.z = c.position.z + c.velocity.z * dt
+            @set(scene.cubes, ci, c)
+        }
+        ci += (1 as usize)
+    }
+}
