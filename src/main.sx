@@ -71,6 +71,29 @@ fn build_feature_scene() ecs.Scene3D = {
     return scene
 }
 
+fn build_water_scene() ecs.Scene3D = {
+    val scene: mut ecs.Scene3D = ecs.new_scene(
+        ecs.make_light(
+            ecs.make_vec3(0.0 as f32, 4.5 as f32, 0.5 as f32),
+            ecs.make_vec3(0.72 as f32, 0.88 as f32, 1.00 as f32),
+            2.0 as f32,
+            10.0 as f32
+        )
+    )
+    scene.gravity = 0.0 as f32
+    // Animated water sitting inside the pond container
+    scene.water = some ecs.make_water(
+        0.05 as f32,
+        2.2 as f32,
+        2.2 as f32,
+        ecs.make_vec3(0.18 as f32, 0.52 as f32, 0.82 as f32),
+        1.4 as f32,
+        0.018 as f32,
+        2.8 as f32
+    )
+    return scene
+}
+
 fn build_scenes() list[ecs.Scene3D] = {
     val scenes: mut list[ecs.Scene3D] = []
     val intro_scene: mut ecs.Scene3D = build_game_scene()
@@ -80,6 +103,12 @@ fn build_scenes() list[ecs.Scene3D] = {
     val feature_scene: mut ecs.Scene3D = build_feature_scene()
     feature_scene.model = trust engine.load_embedded_fixture_model()
     @append(scenes, feature_scene)
+
+    val water_scene: mut ecs.Scene3D = build_water_scene()
+    if trust engine.load_glb("./assets/pond.glb") is some pond_model {
+        water_scene.model = pond_model
+    }
+    @append(scenes, water_scene)
     return scenes
 }
 

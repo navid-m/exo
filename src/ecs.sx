@@ -69,6 +69,21 @@ pub type FloorCollider = {
     restitution: f32
 }
 
+// A flat animated water surface rendered at a given Y height.
+// wave_speed:     how fast the wave pattern scrolls
+// wave_amplitude: vertical displacement scale (visual only, via shader uniforms)
+// wave_frequency: spatial frequency of the wave pattern
+// size_x / size_z: extent of the water plane in world units
+pub type WaterSurface = {
+    y:              f32
+    wave_speed:     f32
+    wave_amplitude: f32
+    wave_frequency: f32
+    size_x:         f32
+    size_z:         f32
+    color:          Vec3
+}
+
 pub type Scene3D = {
     spheres: mut list[SphereEntity]
     cubes:   mut list[CubeEntity]
@@ -76,6 +91,19 @@ pub type Scene3D = {
     light:   PointLight
     gravity: mut f32
     floor:   mut option[FloorCollider]
+    water:   mut option[WaterSurface]
+}
+
+pub fn make_water(y: f32, size_x: f32, size_z: f32, color: Vec3, wave_speed: f32, wave_amplitude: f32, wave_frequency: f32) WaterSurface = {
+    return {
+        y:              y,
+        wave_speed:     wave_speed,
+        wave_amplitude: wave_amplitude,
+        wave_frequency: wave_frequency,
+        size_x:         size_x,
+        size_z:         size_z,
+        color:          color
+    }
 }
 
 pub fn make_floor(y: f32, restitution: f32) FloorCollider = {
@@ -140,6 +168,7 @@ pub fn new_scene(light: PointLight) Scene3D = {
         model:   empty_model(),
         light:   light,
         gravity: 9.8 as f32,
-        floor:   none
+        floor:   none,
+        water:   none
     }
 }

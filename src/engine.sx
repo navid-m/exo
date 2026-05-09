@@ -2241,7 +2241,7 @@ pub fn load_glb(path: ref u8) option[ecs.GlbModel] = trust {
     fclose(file)
     val model = parse_glb_bytes(buf, size as usize)
     @free(buf as ref void)
-    return model
+    return some model
 }
 
 pub fn build_test_glb_fixture() GlbFixture = trust {
@@ -2608,8 +2608,23 @@ fn draw_floor(runtime: ref void, mesh: MeshGPU, model: Mat4, view_proj: Mat4, re
     exo_sdl3_draw_floor(runtime, mesh.raw, @addr(model.m00), @addr(view_proj.m00), @addr(reflect_view_proj.m00), @addr(camera.position.x))
 }
 
+fn draw_water(runtime: ref void, mesh: MeshGPU, model: Mat4, view_proj: Mat4, reflect_view_proj: Mat4, camera: Camera, _: ecs.Vec3, wave_offset: f32, wave_amplitude: f32, wave_frequency: f32) void = trust {
+    val bob: f32 = (math.sin((wave_offset * wave_frequency) as f64) as f32) * wave_amplitude
+    val animated_model: Mat4 = mat_mul(mat_translation(vec3(0.0 as f32, bob, 0.0 as f32)), model)
+    val tinted_camera: Camera = {
+        position: vec3(camera.position.x, camera.position.y, camera.position.z),
+        yaw: camera.yaw,
+        pitch: camera.pitch,
+        move_speed: camera.move_speed,
+        turn_speed: camera.turn_speed
+    }
+    exo_sdl3_draw_floor(runtime, mesh.raw, @addr(animated_model.m00), @addr(view_proj.m00), @addr(reflect_view_proj.m00), @addr(tinted_camera.position.x))
+}
+
 fn render_reflection_scene(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, scene: ecs.Scene3D, camera: Camera, width: i32, height: i32, time: f32, plane_y: f32) void = trust {
-    val mirrored: Camera = mirrored_camera(camera, plane_y)
+    val mirror_y: mut f32 = plane_y
+    if scene.water is some water { mirror_y = water.y }
+    val mirrored: Camera = mirrored_camera(camera, mirror_y)
     val reflect_vp: Mat4 = view_projection(mirrored, width, height)
     draw_scene_entities(runtime, cube_mesh, sphere_mesh, scene, mirrored, reflect_vp, time, 0.60 as f32)
 }
@@ -2622,6 +2637,14 @@ fn render_scene(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, qua
     val reflect_vp: Mat4 = view_projection(mirrored_camera(camera, floor_y), width, height)
     draw_scene_entities(runtime, cube_mesh, sphere_mesh, scene, camera, vp, time, 1.00 as f32)
     draw_floor(runtime, cube_mesh, model_matrix_scaled(floor_position, floor_scale, 0.0 as f32), vp, reflect_vp, camera)
+    if scene.water is some water {
+        val wave_offset: f32 = time * water.wave_speed
+        val water_position: ecs.Vec3 = vec3(0.0 as f32, water.y, 0.0 as f32)
+        val water_scale: ecs.Vec3 = vec3(water.size_x, 0.04 as f32, water.size_z)
+        val water_model: Mat4 = model_matrix_scaled(water_position, water_scale, 0.0 as f32)
+        val reflect_water_vp: Mat4 = view_projection(mirrored_camera(camera, water.y), width, height)
+        draw_water(runtime, cube_mesh, water_model, vp, reflect_water_vp, camera, water.color, wave_offset, water.wave_amplitude, water.wave_frequency)
+    }
     val light_pos: ecs.Vec3 = scene.light.position
     val light_color: ecs.Vec3 = scene.light.color
     val cam_fwd: ecs.Vec3 = camera_forward(camera)
