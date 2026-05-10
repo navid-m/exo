@@ -62,6 +62,12 @@ pub type GlbModel = {
     has_uvs: mut bool
     raw_bytes: mut ref u8
     raw_bytes_len: mut usize
+    bounds_min_x: mut f32
+    bounds_max_x: mut f32
+    bounds_min_y: mut f32
+    bounds_max_y: mut f32
+    bounds_min_z: mut f32
+    bounds_max_z: mut f32
 }
 
 // A flat infinite floor at a given Y height that entities collide with.
@@ -78,11 +84,14 @@ pub type FloorCollider = {
 // size_x / size_z: extent of the water plane in world units
 pub type WaterSurface = {
     y:              f32
+    offset_x:       f32
+    offset_z:       f32
     wave_speed:     f32
     wave_amplitude: f32
     wave_frequency: f32
     size_x:         f32
     size_z:         f32
+    fit_scale:      f32
     color:          Vec3
     corner_radius:  f32
 }
@@ -98,14 +107,17 @@ pub type Scene3D = {
     water:       mut option[WaterSurface]
 }
 
-pub fn make_water(y: f32, size_x: f32, size_z: f32, color: Vec3, wave_speed: f32, wave_amplitude: f32, wave_frequency: f32, corner_radius: f32) WaterSurface = {
+pub fn make_water(y: f32, offset_x: f32, offset_z: f32, size_x: f32, size_z: f32, color: Vec3, wave_speed: f32, wave_amplitude: f32, wave_frequency: f32, corner_radius: f32) WaterSurface = {
     return {
         y:              y,
+        offset_x:       offset_x,
+        offset_z:       offset_z,
         wave_speed:     wave_speed,
         wave_amplitude: wave_amplitude,
         wave_frequency: wave_frequency,
         size_x:         size_x,
         size_z:         size_z,
+        fit_scale:      1.0 as f32,
         color:          color,
         corner_radius:  corner_radius
     }
@@ -164,7 +176,13 @@ pub fn empty_model() GlbModel = {
         has_normals: false,
         has_uvs: false,
         raw_bytes: none as ref u8,
-        raw_bytes_len: 0 as usize
+        raw_bytes_len: 0 as usize,
+        bounds_min_x: 0.0 as f32,
+        bounds_max_x: 0.0 as f32,
+        bounds_min_y: 0.0 as f32,
+        bounds_max_y: 0.0 as f32,
+        bounds_min_z: 0.0 as f32,
+        bounds_max_z: 0.0 as f32
     }
 }
 

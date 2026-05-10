@@ -2404,6 +2404,71 @@ fn parse_accessor_offset(accessors: ref void, buffer_views: ref void, idx: i64) 
     return offset
 }
 
+/// Walk the raw GLB position data and compute XYZ bounding box, storing results on the model.
+pub fn compute_glb_bounds(model: mut ref ecs.GlbModel) void = trust {
+    if !model.valid || model.vertex_count <= (0 as i32) || model.raw_bytes == none || model.bin_length == (0 as usize) {
+        return
+    }
+    val data: ref u8 = model.raw_bytes
+    val json_offset: usize = 20 as usize
+    val json_len: u32 = bin.read_u32_le(data, 12 as usize)
+    val json_buf: ref u8 = @alloc((json_len as usize) + (1 as usize)) as ref u8
+    if json_buf == none { return }
+    @memcpy(json_buf as ref void, @ptradd(data, json_offset) as ref void, json_len as usize)
+    @store8(@ptradd(json_buf, json_len as usize), 0)
+    if json.parse(json_buf) is some doc {
+        val root: ref void = json.doc_root(doc)
+        val vc: usize = model.vertex_count as usize
+        val pos_offset: mut usize = 0 as usize
+        if json.obj_get(root, "accessors") is some accessors {
+            if json.obj_get(root, "bufferViews") is some buffer_views {
+                if json.obj_get(root, "meshes") is some meshes {
+                    if json.arr_get(meshes, 0 as usize) is some mesh {
+                        if json.obj_get(mesh, "primitives") is some primitives {
+                            if json.arr_get(primitives, 0 as usize) is some prim {
+                                if json.obj_get(prim, "attributes") is some attrs {
+                                    if json.obj_get_int(attrs, "POSITION") is some pi {
+                                        pos_offset = parse_accessor_offset(accessors, buffer_views, pi)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        val bin_base: ref void = @ptradd(data, (json_offset + (json_len as usize) + (8 as usize)) as usize)
+        val vi: mut usize = 0 as usize
+        val min_x: mut f32 = 1e30 as f32
+        val max_x: mut f32 = -1e30 as f32
+        val min_y: mut f32 = 1e30 as f32
+        val max_y: mut f32 = -1e30 as f32
+        val min_z: mut f32 = 1e30 as f32
+        val max_z: mut f32 = -1e30 as f32
+        for vi < vc {
+            val p: ref f32 = @ptradd(bin_base, pos_offset + vi * (12 as usize)) as ref f32
+            val px: f32 = read_f32(p, 0 as usize)
+            val py: f32 = read_f32(p, 1 as usize)
+            val pz: f32 = read_f32(p, 2 as usize)
+            if px < min_x { min_x = px }
+            if px > max_x { max_x = px }
+            if py < min_y { min_y = py }
+            if py > max_y { max_y = py }
+            if pz < min_z { min_z = pz }
+            if pz > max_z { max_z = pz }
+            vi = vi + (1 as usize)
+        }
+        model.bounds_min_x = min_x
+        model.bounds_max_x = max_x
+        model.bounds_min_y = min_y
+        model.bounds_max_y = max_y
+        model.bounds_min_z = min_z
+        model.bounds_max_z = max_z
+        json.doc_free(doc)
+    }
+    @free(json_buf as ref void)
+}
+
 /// Upload a parsed GlbModel's binary geometry to the GPU.
 /// If the model has no normals, synthesises a flat up-normal.
 fn upload_glb_model(runtime: ref void, model: ecs.GlbModel) MeshGPU = trust {
@@ -3078,14 +3143,30 @@ fn render_scene(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, qua
         val glb_mm: Mat4 = model_matrix(vec3(0.0 as f32, 0.0 as f32, 0.0 as f32), scene.model_scale, 0.0 as f32)
         draw_mesh(runtime, glb_mesh, glb_mm, vp, scene.light.color, camera.position, 0.05 as f32, 0.0 as f32, 1.0 as f32, scene.light)
     }
-    draw_floor(runtime, cube_mesh, model_matrix_scaled(floor_position, floor_scale, 0.0 as f32), vp, reflect_vp, camera)
+    if scene.floor is some _ {
+        draw_floor(runtime, cube_mesh, model_matrix_scaled(floor_position, floor_scale, 0.0 as f32), vp, reflect_vp, camera)
+    }
     if scene.water is some water {
         val wave_offset: f32 = time * water.wave_speed
-        val water_position: ecs.Vec3 = vec3(0.0 as f32, water.y, 0.0 as f32)
-        val water_scale: ecs.Vec3 = vec3(water.size_x, 0.04 as f32, water.size_z)
+        // Auto-fit: if size_x/size_z are 0, derive from model bounds scaled by model_scale
+        val fit_x: mut f32 = water.size_x
+        val fit_z: mut f32 = water.size_z
+        val fit_ox: mut f32 = water.offset_x
+        val fit_oz: mut f32 = water.offset_z
+        val fit_y: mut f32 = water.y
+        if fit_x == (0.0 as f32) && fit_z == (0.0 as f32) && scene.model.valid {
+            val s: f32 = scene.model_scale
+            fit_x  = (scene.model.bounds_max_x - scene.model.bounds_min_x) * s * water.fit_scale
+            fit_z  = (scene.model.bounds_max_z - scene.model.bounds_min_z) * s * water.fit_scale
+            fit_ox = ((scene.model.bounds_min_x + scene.model.bounds_max_x) * 0.5 as f32) * s
+            fit_oz = ((scene.model.bounds_min_z + scene.model.bounds_max_z) * 0.5 as f32) * s
+            fit_y  = scene.model.bounds_max_y * s + water.y
+        }
+        val water_position: ecs.Vec3 = vec3(fit_ox, fit_y, fit_oz)
+        val water_scale: ecs.Vec3 = vec3(fit_x, 0.04 as f32, fit_z)
         val water_model: Mat4 = model_matrix_scaled(water_position, water_scale, 0.0 as f32)
-        val reflect_water_vp: Mat4 = view_projection(mirrored_camera(camera, water.y), width, height)
-        draw_water(runtime, cube_mesh, water_model, vp, reflect_water_vp, camera, water.color, wave_offset, water.wave_amplitude, water.wave_frequency, scene.light, water.corner_radius, water.size_x, water.size_z)
+        val reflect_water_vp: Mat4 = view_projection(mirrored_camera(camera, fit_y), width, height)
+        draw_water(runtime, cube_mesh, water_model, vp, reflect_water_vp, camera, water.color, wave_offset, water.wave_amplitude, water.wave_frequency, scene.light, water.corner_radius, fit_x, fit_z)
     }
     val light_pos: ecs.Vec3 = scene.light.position
     val light_color: ecs.Vec3 = scene.light.color
