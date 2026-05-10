@@ -84,6 +84,7 @@ pub type WaterSurface = {
     size_x:         f32
     size_z:         f32
     color:          Vec3
+    corner_radius:  f32
 }
 
 pub type Scene3D = {
@@ -96,7 +97,7 @@ pub type Scene3D = {
     water:   mut option[WaterSurface]
 }
 
-pub fn make_water(y: f32, size_x: f32, size_z: f32, color: Vec3, wave_speed: f32, wave_amplitude: f32, wave_frequency: f32) WaterSurface = {
+pub fn make_water(y: f32, size_x: f32, size_z: f32, color: Vec3, wave_speed: f32, wave_amplitude: f32, wave_frequency: f32, corner_radius: f32) WaterSurface = {
     return {
         y:              y,
         wave_speed:     wave_speed,
@@ -104,7 +105,8 @@ pub fn make_water(y: f32, size_x: f32, size_z: f32, color: Vec3, wave_speed: f32
         wave_frequency: wave_frequency,
         size_x:         size_x,
         size_z:         size_z,
-        color:          color
+        color:          color,
+        corner_radius:  corner_radius
     }
 }
 

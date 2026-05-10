@@ -616,6 +616,7 @@ type WaterFragmentUniforms = {
     camera_pos:  mut Vec4f
     water_color: mut Vec4f
     light_dir:   mut Vec4f
+    water_params: mut Vec4f
 }
 
 type ExoSDL3Mesh = {
@@ -3017,7 +3018,7 @@ fn draw_floor(runtime: ref void, mesh: MeshGPU, model: Mat4, view_proj: Mat4, re
     exo_sdl3_draw_floor(runtime, mesh.raw, @addr(model.m00), @addr(view_proj.m00), @addr(reflect_view_proj.m00), @addr(camera.position.x))
 }
 
-fn draw_water(runtime: ref void, mesh: MeshGPU, model: Mat4, view_proj: Mat4, reflect_view_proj: Mat4, camera: Camera, color: ecs.Vec3, wave_offset: f32, wave_amplitude: f32, wave_frequency: f32, light: ecs.PointLight) void = trust {
+fn draw_water(runtime: ref void, mesh: MeshGPU, model: Mat4, view_proj: Mat4, reflect_view_proj: Mat4, camera: Camera, color: ecs.Vec3, wave_offset: f32, wave_amplitude: f32, wave_frequency: f32, light: ecs.PointLight, corner_radius: f32, size_x: f32, size_z: f32) void = trust {
     if runtime == none || mesh.raw == none {
         return
     }
@@ -3033,9 +3034,10 @@ fn draw_water(runtime: ref void, mesh: MeshGPU, model: Mat4, view_proj: Mat4, re
     }
     val light_dir: ecs.Vec3 = vec3_normalize(vec3_sub(light.position, vec3(0.0 as f32, 0.0 as f32, 0.0 as f32)))
     val fu: mut WaterFragmentUniforms = {
-        camera_pos:  { x: camera.position.x, y: camera.position.y, z: camera.position.z, w: wave_offset },
-        water_color: { x: color.x, y: color.y, z: color.z, w: 0.0 as f32 },
-        light_dir:   { x: light_dir.x, y: light_dir.y, z: light_dir.z, w: light.intensity }
+        camera_pos:   { x: camera.position.x, y: camera.position.y, z: camera.position.z, w: wave_offset },
+        water_color:  { x: color.x, y: color.y, z: color.z, w: 0.0 as f32 },
+        light_dir:    { x: light_dir.x, y: light_dir.y, z: light_dir.z, w: light.intensity },
+        water_params: { x: corner_radius, y: size_x, z: size_z, w: 0.0 as f32 }
     }
     SDL_BindGPUGraphicsPipeline(rt.current_pass, rt.water_pipeline)
     SDL_PushGPUVertexUniformData(rt.command_buffer, 0 as u32, @addr(vu) as ref void, @sizeof(WaterVertexUniforms) as u32)
@@ -3083,7 +3085,7 @@ fn render_scene(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, qua
         val water_scale: ecs.Vec3 = vec3(water.size_x, 0.04 as f32, water.size_z)
         val water_model: Mat4 = model_matrix_scaled(water_position, water_scale, 0.0 as f32)
         val reflect_water_vp: Mat4 = view_projection(mirrored_camera(camera, water.y), width, height)
-        draw_water(runtime, cube_mesh, water_model, vp, reflect_water_vp, camera, water.color, wave_offset, water.wave_amplitude, water.wave_frequency, scene.light)
+        draw_water(runtime, cube_mesh, water_model, vp, reflect_water_vp, camera, water.color, wave_offset, water.wave_amplitude, water.wave_frequency, scene.light, water.corner_radius, water.size_x, water.size_z)
     }
     val light_pos: ecs.Vec3 = scene.light.position
     val light_color: ecs.Vec3 = scene.light.color

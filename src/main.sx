@@ -88,7 +88,8 @@ fn build_water_scene() ecs.Scene3D = {
         ecs.make_vec3(0.18 as f32, 0.52 as f32, 0.82 as f32),
         1.4 as f32,
         0.018 as f32,
-        2.8 as f32
+        2.8 as f32,
+        0.35 as f32
     )
     return scene
 }
