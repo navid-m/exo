@@ -3075,7 +3075,7 @@ fn render_scene(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, qua
     draw_scene_entities(runtime, cube_mesh, sphere_mesh, scene, camera, vp, time, 1.00 as f32)
     // Draw the scene's GLB model if one is loaded
     if mesh_valid(glb_mesh) {
-        val glb_mm: Mat4 = model_matrix(vec3(0.0 as f32, 0.0 as f32, 0.0 as f32), 1.0 as f32, 0.0 as f32)
+        val glb_mm: Mat4 = model_matrix(vec3(0.0 as f32, 0.0 as f32, 0.0 as f32), scene.model_scale, 0.0 as f32)
         draw_mesh(runtime, glb_mesh, glb_mm, vp, scene.light.color, camera.position, 0.05 as f32, 0.0 as f32, 1.0 as f32, scene.light)
     }
     draw_floor(runtime, cube_mesh, model_matrix_scaled(floor_position, floor_scale, 0.0 as f32), vp, reflect_vp, camera)

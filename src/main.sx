@@ -105,6 +105,7 @@ fn build_scenes() list[ecs.Scene3D] = {
     @append(scenes, feature_scene)
 
     val water_scene: mut ecs.Scene3D = build_water_scene()
+    water_scene.model_scale = 0.1 as f32
     if trust engine.load_glb("./assets/pond.glb") is some pond_model {
         water_scene.model = pond_model
     }

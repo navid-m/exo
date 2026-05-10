@@ -88,13 +88,14 @@ pub type WaterSurface = {
 }
 
 pub type Scene3D = {
-    spheres: mut list[SphereEntity]
-    cubes:   mut list[CubeEntity]
-    model:   mut GlbModel
-    light:   PointLight
-    gravity: mut f32
-    floor:   mut option[FloorCollider]
-    water:   mut option[WaterSurface]
+    spheres:     mut list[SphereEntity]
+    cubes:       mut list[CubeEntity]
+    model:       mut GlbModel
+    model_scale: mut f32
+    light:       PointLight
+    gravity:     mut f32
+    floor:       mut option[FloorCollider]
+    water:       mut option[WaterSurface]
 }
 
 pub fn make_water(y: f32, size_x: f32, size_z: f32, color: Vec3, wave_speed: f32, wave_amplitude: f32, wave_frequency: f32, corner_radius: f32) WaterSurface = {
@@ -169,12 +170,13 @@ pub fn empty_model() GlbModel = {
 
 pub fn new_scene(light: PointLight) Scene3D = {
     return {
-        spheres: [],
-        cubes:   [],
-        model:   empty_model(),
-        light:   light,
-        gravity: 9.8 as f32,
-        floor:   none,
-        water:   none
+        spheres:     [],
+        cubes:       [],
+        model:       empty_model(),
+        model_scale: 1.0 as f32,
+        light:       light,
+        gravity:     9.8 as f32,
+        floor:       none,
+        water:       none
     }
 }
