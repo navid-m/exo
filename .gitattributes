@@ -1,0 +1,5 @@
+*.c linguist-generated
+*.h linguist-generated
+*.sh linguist-generated
+*.ll linguist-generated
+*.ps1 linguist-generated

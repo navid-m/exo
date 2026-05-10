@@ -2977,13 +2977,15 @@ fn store_u32(base: ref void, index: usize, value: u32) void = trust {
 }
 
 fn write_vertex(base: ref void, vertex_index: usize, position: ecs.Vec3, normal: ecs.Vec3) void = trust {
-    val offset: usize = vertex_index * (6 as usize)
+    val offset: usize = vertex_index * (8 as usize)
     store_f32(base, offset + (0 as usize), position.x)
     store_f32(base, offset + (1 as usize), position.y)
     store_f32(base, offset + (2 as usize), position.z)
     store_f32(base, offset + (3 as usize), normal.x)
     store_f32(base, offset + (4 as usize), normal.y)
     store_f32(base, offset + (5 as usize), normal.z)
+    store_f32(base, offset + (6 as usize), 0.0 as f32)
+    store_f32(base, offset + (7 as usize), 0.0 as f32)
 }
 
 fn write_vertex_uv(base: ref void, vertex_index: usize, position: ecs.Vec3, normal: ecs.Vec3, u: f32, v: f32) void = trust {
@@ -3041,7 +3043,7 @@ fn cube_face(
 }
 
 fn build_cube_mesh(runtime: ref void) MeshGPU = trust {
-    val vertex_float_count: usize = 24 as usize * 6 as usize
+    val vertex_float_count: usize = 24 as usize * 8 as usize
     val index_count: i32 = 36 as i32
     val vertices: ref void = @alloc(vertex_float_count * (@sizeof(f32) as usize))
     val indices: ref void = @alloc((index_count as usize) * (@sizeof(u32) as usize))
@@ -3107,7 +3109,7 @@ fn build_cube_mesh(runtime: ref void) MeshGPU = trust {
 fn build_sphere_mesh(runtime: ref void, lat_segments: i32, lon_segments: i32) MeshGPU = trust {
     val vertex_count: i32 = (lat_segments + 1 as i32) * (lon_segments + 1 as i32)
     val index_count: i32 = lat_segments * lon_segments * 6 as i32
-    val vertex_float_count: usize = (vertex_count as usize) * (6 as usize)
+    val vertex_float_count: usize = (vertex_count as usize) * (8 as usize)
     val vertices: ref void = @alloc(vertex_float_count * (@sizeof(f32) as usize))
     val indices: ref void = @alloc((index_count as usize) * (@sizeof(u32) as usize))
     if vertices == none || indices == none {
@@ -3153,7 +3155,7 @@ fn build_sphere_mesh(runtime: ref void, lat_segments: i32, lon_segments: i32) Me
 }
 
 fn build_quad_mesh(runtime: ref void) MeshGPU = trust {
-    val vertex_float_count: usize = (4 as usize) * (6 as usize)
+    val vertex_float_count: usize = (4 as usize) * (8 as usize)
     val index_count: i32 = 6 as i32
     val vertices: ref void = @alloc(vertex_float_count * (@sizeof(f32) as usize))
     val indices: ref void = @alloc((index_count as usize) * (@sizeof(u32) as usize))
