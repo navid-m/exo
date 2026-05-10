@@ -1,6 +1,8 @@
 # Exo
 
-A simple 3D game engine for designed for ease of use.
+A simple 3D game engine for designed for ease of use and performance.
+
+Built on the <a href="https://github.com/spectrelang/spectre">Spectre</a> programming language.
 
 Currently supports:
 
