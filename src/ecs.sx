@@ -72,17 +72,20 @@ pub type GlbModel = {
     texture_length: mut usize
 }
 
-// A flat infinite floor at a given Y height that entities collide with.
-// restitution: 0.0 = entities stop dead, 1.0 = perfectly elastic bounce.
+/// A flat infinite floor at a given Y height that entities collide with.
+///
+///    - restitution: 0.0 = entities stop dead
+///    - 1.0 = perfectly elastic bounce.
 pub type FloorCollider = {
     y:           f32
     restitution: f32
 }
 
 // A flat animated water surface rendered at a given Y height.
-// wave_speed:     how fast the wave pattern scrolls
-// wave_amplitude: vertical displacement scale (visual only, via shader uniforms)
-// wave_frequency: spatial frequency of the wave pattern
+//
+// wave_speed:      how fast the wave pattern scrolls
+// wave_amplitude:  vertical displacement scale (visual only, via shader uniforms)
+// wave_frequency:  spatial frequency of the wave pattern
 // size_x / size_z: extent of the water plane in world units
 pub type WaterSurface = {
     y:              f32
