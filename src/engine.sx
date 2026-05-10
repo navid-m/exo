@@ -895,7 +895,7 @@ fn exo_create_pipeline(
         instance_step_rate: 0 as u32
     }
     vertex_buffer_desc.slot = 0 as u32
-    vertex_buffer_desc.pitch = 24 as u32
+    vertex_buffer_desc.pitch = 32 as u32
     vertex_buffer_desc.input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX
     val vertex_attributes: mut VertexAttributePair = {
         first: {
