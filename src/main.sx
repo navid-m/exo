@@ -133,6 +133,7 @@ pub fn main() i32 = {
     }
     
     val app_builder: mut engine.ExoAppBuilder = engine.new_app()
+
     engine.with_title(app_builder, "exo-engine")
     engine.with_resolution(app_builder, 1280 as i32, 720 as i32)
     engine.with_shaders(app_builder, engine.default_shader_config())
@@ -141,6 +142,7 @@ pub fn main() i32 = {
     engine.with_input(app_builder, input)
     engine.with_next_scene_key(app_builder, engine.SDL_SCANCODE_X)
     engine.with_audio(app_builder, audio)
+    
     val app: engine.ExoApp = engine.build_app(app_builder)
     val su: PhysicsUpdater = {}
 
