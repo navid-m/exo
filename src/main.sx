@@ -123,12 +123,6 @@ pub fn main() i32 = {
         },
         quit_key: engine.SDL_SCANCODE_ESCAPE
     }
-    val config: engine.ExoConfig = {
-        title: "exo-engine",
-        width:  1280 as i32,
-        height:  720 as i32,
-        shaders: engine.default_shader_config()
-    }
     val audio: engine.AudioMixerConfig = {
         trigger_key: engine.SDL_SCANCODE_Y,
         music_volume: 96 as i32,
@@ -137,15 +131,19 @@ pub fn main() i32 = {
             loops: 0 as i32
         }
     }
-    val app: engine.ExoApp = engine.create_scene_app(
-        config,
-        scenes,
-        rendering.default_camera(),
-        input,
-        engine.SDL_SCANCODE_X,
-        audio
-    )
+    
+    val app_builder: mut engine.ExoAppBuilder = engine.new_app()
+    engine.with_title(app_builder, "exo-engine")
+    engine.with_resolution(app_builder, 1280 as i32, 720 as i32)
+    engine.with_shaders(app_builder, engine.default_shader_config())
+    engine.with_scene_list(app_builder, scenes)
+    engine.with_default_camera(app_builder)
+    engine.with_input(app_builder, input)
+    engine.with_next_scene_key(app_builder, engine.SDL_SCANCODE_X)
+    engine.with_audio(app_builder, audio)
+    val app: engine.ExoApp = engine.build_app(app_builder)
     val su: PhysicsUpdater = {}
+
     return trust engine.run_app_with_scene_updater[PhysicsUpdater](app, su)
 }
 
@@ -155,21 +153,20 @@ test {
     val scenes: mut list[ecs.Scene3D] = []
     @append(scenes, scene0)
     @append(scenes, scene1)
-    val app: engine.ExoApp = engine.create_scene_app(
-        rendering.default_config(),
-        scenes,
-        rendering.default_camera(),
-        rendering.default_input_config(),
-        engine.SDL_SCANCODE_X,
-        {
-            trigger_key: engine.SDL_SCANCODE_Y,
-            music_volume: 96 as i32,
-            sample: {
-                path: "./example_sound.mp3",
-                loops: 0 as i32
-            }
+    val app_builder: mut engine.ExoAppBuilder = engine.new_app()
+    engine.with_scene_list(app_builder, scenes)
+    engine.with_default_camera(app_builder)
+    engine.with_input(app_builder, rendering.default_input_config())
+    engine.with_next_scene_key(app_builder, engine.SDL_SCANCODE_X)
+    engine.with_audio(app_builder, {
+        trigger_key: engine.SDL_SCANCODE_Y,
+        music_volume: 96 as i32,
+        sample: {
+            path: "./example_sound.mp3",
+            loops: 0 as i32
         }
-    )
+    })
+    val app: engine.ExoApp = engine.build_app(app_builder)
     assert @len(scene0.spheres) == (0 as usize)
     assert @len(scene0.cubes) == (2 as usize)
     assert @len(scene1.spheres) == (2 as usize)

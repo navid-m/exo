@@ -714,7 +714,7 @@ fn vec4_from_ptr(src: ref f32, w: f32) Vec4f = trust {
 fn load_binary_file(path: ref u8) option[BinaryBlob] = trust {
     val file: ref void = fopen(path, "rb")
     if file == none {
-        set_exo_error("failed to open file")
+        set_exo_error(path)
         return none
     }
     fseek(file, 0, 2 as i32)
@@ -2278,6 +2278,87 @@ pub fn create_app(config: ExoConfig, scene: ecs.Scene3D, camera: Camera, input: 
     val scenes: mut list[ecs.Scene3D] = []
     @append(scenes, scene)
     return create_scene_app(config, scenes, camera, input, SDL_SCANCODE_X, default_audio_mixer())
+}
+
+pub type ExoAppBuilder = {
+    title: mut ref u8
+    width: mut i32
+    height: mut i32
+    shaders: mut ExoShaderConfig
+    scenes: mut list[ecs.Scene3D]
+    camera: mut Camera
+    input: mut InputConfig
+    next_scene_key: mut i32
+    audio: mut AudioMixerConfig
+}
+
+pub fn new_app() ExoAppBuilder = {
+    val cfg: ExoConfig = default_config()
+    return {
+        title: cfg.title,
+        width: cfg.width,
+        height: cfg.height,
+        shaders: cfg.shaders,
+        scenes: [],
+        camera: default_camera(),
+        input: default_input_config(),
+        next_scene_key: SDL_SCANCODE_X,
+        audio: default_audio_mixer()
+    }
+}
+
+pub fn build_app(builder: ExoAppBuilder) ExoApp = {
+    val config: ExoConfig = {
+        title: builder.title,
+        width: builder.width,
+        height: builder.height,
+        shaders: builder.shaders
+    }
+    return create_scene_app(
+        config,
+        builder.scenes,
+        builder.camera,
+        builder.input,
+        builder.next_scene_key,
+        builder.audio
+    )
+}
+
+pub fn with_title(app: mut ExoAppBuilder, title: ref u8) void = {
+    app.title = title
+}
+
+pub fn with_resolution(app: mut ExoAppBuilder, width: i32, height: i32) void = {
+    app.width = width
+    app.height = height
+}
+
+pub fn with_shaders(app: mut ExoAppBuilder, shaders: ExoShaderConfig) void = {
+    app.shaders = shaders
+}
+
+pub fn with_scene_list(app: mut ExoAppBuilder, scenes: list[ecs.Scene3D]) void = {
+    app.scenes = scenes
+}
+
+pub fn with_camera(app: mut ExoAppBuilder, camera: Camera) void = {
+    app.camera = camera
+}
+
+pub fn with_default_camera(app: mut ExoAppBuilder) void = {
+    app.camera = default_camera()
+}
+
+pub fn with_input(app: mut ExoAppBuilder, input: InputConfig) void = {
+    app.input = input
+}
+
+pub fn with_next_scene_key(app: mut ExoAppBuilder, key: i32) void = {
+    app.next_scene_key = key
+}
+
+pub fn with_audio(app: mut ExoAppBuilder, audio: AudioMixerConfig) void = {
+    app.audio = audio
 }
 
 fn dup_cstr(src: ref u8) ref u8 = trust {
