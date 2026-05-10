@@ -2525,6 +2525,18 @@ pub fn with_input(app: mut ExoAppBuilder, input: InputConfig) void = {
     app.input = input
 }
 
+pub fn with_key_bindings(app: mut ExoAppBuilder, keys: KeyBindings) void = {
+    app.input.keys = keys
+}
+
+pub fn with_mouse_config(app: mut ExoAppBuilder, mouse: MouseConfig) void = {
+    app.input.mouse = mouse
+}
+
+pub fn with_quit_key(app: mut ExoAppBuilder, key: i32) void = {
+    app.input.quit_key = key
+}
+
 pub fn with_next_scene_key(app: mut ExoAppBuilder, key: i32) void = {
     app.next_scene_key = key
 }
@@ -3196,17 +3208,24 @@ fn camera_forward(camera: Camera) ecs.Vec3 = {
     )
 }
 
+fn safe_key(keys: ref u8, scancode: i32) u8 = trust {
+    if scancode <= (0 as i32) || scancode >= (512 as i32) {
+        return 0 as u8
+    }
+    return @load8(@ptradd(keys, scancode as usize))
+}
+
 fn update_camera(camera: mut Camera, input: InputConfig, dt: f32, keys: ref u8, mouse_dx: f32, mouse_dy: f32) void = trust {
     val yaw_step:   f32 = camera.turn_speed * dt
     val move_step:  f32 = camera.move_speed * dt
-    val key_fwd:    u8 = @load8(@ptradd(keys, input.keys.move_forward as usize))
-    val key_back:   u8 = @load8(@ptradd(keys, input.keys.move_back    as usize))
-    val key_left:   u8 = @load8(@ptradd(keys, input.keys.move_left    as usize))
-    val key_right:  u8 = @load8(@ptradd(keys, input.keys.move_right   as usize))
-    val key_tleft:  u8 = @load8(@ptradd(keys, input.keys.turn_left    as usize))
-    val key_tright: u8 = @load8(@ptradd(keys, input.keys.turn_right   as usize))
-    val key_up:     u8 = @load8(@ptradd(keys, input.keys.look_up      as usize))
-    val key_down:   u8 = @load8(@ptradd(keys, input.keys.look_down    as usize))
+    val key_fwd:    u8 = safe_key(keys, input.keys.move_forward)
+    val key_back:   u8 = safe_key(keys, input.keys.move_back)
+    val key_left:   u8 = safe_key(keys, input.keys.move_left)
+    val key_right:  u8 = safe_key(keys, input.keys.move_right)
+    val key_tleft:  u8 = safe_key(keys, input.keys.turn_left)
+    val key_tright: u8 = safe_key(keys, input.keys.turn_right)
+    val key_up:     u8 = safe_key(keys, input.keys.look_up)
+    val key_down:   u8 = safe_key(keys, input.keys.look_down)
     if key_tleft  != 0 { camera.yaw = camera.yaw + yaw_step }
     if key_tright != 0 { camera.yaw = camera.yaw - yaw_step }
     if key_up     != 0 { camera.pitch = camera.pitch + yaw_step * (0.70 as f32) }
