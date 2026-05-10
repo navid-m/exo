@@ -2,7 +2,9 @@
 
 layout(location = 0) in vec3 vWorldPos;
 layout(location = 1) in vec3 vWorldNormal;
+layout(location = 2) in vec2 vTexCoord;
 layout(location = 0) out vec4 FragColor;
+layout(set = 2, binding = 0) uniform sampler2D uAlbedo;
 
 layout(set = 3, binding = 0, std140) uniform SceneFragmentUniforms {
     vec4 uColorReflective;
@@ -27,9 +29,12 @@ void main() {
     vec3 half_vec = normalize(light_dir + view_dir);
     float spec = pow(max(dot(normal_value, half_vec), 0.0), 36.0);
     vec3 ambient = mix(vec3(0.07, 0.09, 0.13), sky_color(vec3(0.0, hemi * 2.0 - 1.0, 0.0)) * 0.28, hemi);
-    vec3 base_color = uColorReflective.xyz;
     float reflective = uColorReflective.w;
     float glow = uCameraGlow.w;
+    float has_texture = uAlphaPad.y;
+
+    vec3 tex_color = texture(uAlbedo, vTexCoord).rgb;
+    vec3 base_color = mix(uColorReflective.xyz, tex_color, has_texture);
     vec3 base = base_color * (0.30 + diff * 0.68) + ambient * 0.35;
     vec3 highlight = vec3(1.0, 0.98, 0.94) * spec * (0.06 + reflective * 0.12);
     vec3 glow_value = base_color * glow * 0.10;

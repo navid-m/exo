@@ -634,6 +634,7 @@ type ExoSDL3Runtime = {
     fxaa_pipeline: mut ref void
     water_pipeline: mut ref void
     normal_map_texture: mut ref void
+    glb_texture: mut ref void
     linear_sampler: mut ref void
     repeat_sampler: mut ref void
     reflection_color: mut ref void
@@ -659,6 +660,12 @@ type ExoSDL3Audio = {
 type VertexAttributePair = {
     first: mut SDLGPUVertexAttribute
     second: mut SDLGPUVertexAttribute
+}
+
+type VertexAttributeTriple = {
+    first: mut SDLGPUVertexAttribute
+    second: mut SDLGPUVertexAttribute
+    third: mut SDLGPUVertexAttribute
 }
 
 type BinaryBlob = {
@@ -1025,6 +1032,85 @@ fn exo_create_pipeline(
     return pipeline
 }
 
+/// Scene pipeline variant: stride=32 (pos+normal+uv), 3 vertex attributes, 1 fragment sampler.
+fn exo_create_scene_pipeline(
+    runtime: ref ExoSDL3Runtime,
+    vs_path: ref u8,
+    fs_path: ref u8,
+    color_format: i32
+) ref void = trust {
+    val vs: ref void = exo_load_shader(runtime, vs_path, SDL_GPU_SHADERSTAGE_VERTEX, 0 as u32, 1 as u32)
+    if vs == none { return none as ref void }
+    val fs: ref void = exo_load_shader(runtime, fs_path, SDL_GPU_SHADERSTAGE_FRAGMENT, 1 as u32, 1 as u32)
+    if fs == none {
+        SDL_ReleaseGPUShader(runtime.device, vs)
+        return none as ref void
+    }
+    val vbd: mut SDLGPUVertexBufferDescription = {
+        slot: 0 as u32, pitch: 32 as u32,
+        input_rate: SDL_GPU_VERTEXINPUTRATE_VERTEX, instance_step_rate: 0 as u32
+    }
+    val attrs: mut VertexAttributeTriple = {
+        first:  { location: 0 as u32, buffer_slot: 0 as u32, format: SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, offset: 0 as u32 },
+        second: { location: 1 as u32, buffer_slot: 0 as u32, format: SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, offset: 12 as u32 },
+        third:  { location: 2 as u32, buffer_slot: 0 as u32, format: SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, offset: 24 as u32 }
+    }
+    val color_target: mut SDLGPUColorTargetDescription = {
+        format: color_format,
+        blend_state: {
+            src_color_blendfactor: 0 as i32, dst_color_blendfactor: 0 as i32,
+            color_blend_op: 0 as i32, src_alpha_blendfactor: 0 as i32,
+            dst_alpha_blendfactor: 0 as i32, alpha_blend_op: 0 as i32,
+            color_write_mask: 0 as u8, enable_blend: false,
+            enable_color_write_mask: false, padding1: 0 as u8, padding2: 0 as u8
+        }
+    }
+    val info: mut SDLGPUGraphicsPipelineCreateInfo = {
+        vertex_shader: vs, fragment_shader: fs,
+        vertex_input_state: {
+            vertex_buffer_descriptions: @addr(vbd),
+            num_vertex_buffers: 1 as u32,
+            vertex_attributes: @addr(attrs.first),
+            num_vertex_attributes: 3 as u32
+        },
+        primitive_type: SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
+        rasterizer_state: {
+            fill_mode: SDL_GPU_FILLMODE_FILL, cull_mode: SDL_GPU_CULLMODE_NONE,
+            front_face: SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE,
+            depth_bias_constant_factor: 0.0 as f32, depth_bias_clamp: 0.0 as f32,
+            depth_bias_slope_factor: 0.0 as f32,
+            enable_depth_bias: false, enable_depth_clip: true,
+            padding1: 0 as u8, padding2: 0 as u8
+        },
+        multisample_state: {
+            sample_count: SDL_GPU_SAMPLECOUNT_1, sample_mask: 0 as u32,
+            enable_mask: false, enable_alpha_to_coverage: false,
+            padding2: 0 as u8, padding3: 0 as u8
+        },
+        depth_stencil_state: {
+            compare_op: SDL_GPU_COMPAREOP_LESS_OR_EQUAL,
+            back_stencil_state:  { fail_op: 0 as i32, pass_op: 0 as i32, depth_fail_op: 0 as i32, compare_op: 0 as i32 },
+            front_stencil_state: { fail_op: 0 as i32, pass_op: 0 as i32, depth_fail_op: 0 as i32, compare_op: 0 as i32 },
+            compare_mask: 0 as u8, write_mask: 0 as u8,
+            enable_depth_test: true, enable_depth_write: true,
+            enable_stencil_test: false,
+            padding1: 0 as u8, padding2: 0 as u8, padding3: 0 as u8
+        },
+        target_info: {
+            color_target_descriptions: @addr(color_target),
+            num_color_targets: 1 as u32,
+            depth_stencil_format: SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
+            has_depth_stencil_target: true,
+            padding1: 0 as u8, padding2: 0 as u8, padding3: 0 as u8
+        },
+        props: 0 as u32
+    }
+    val pipeline: ref void = SDL_CreateGPUGraphicsPipeline(runtime.device, @addr(info))
+    SDL_ReleaseGPUShader(runtime.device, fs)
+    SDL_ReleaseGPUShader(runtime.device, vs)
+    return pipeline
+}
+
 fn exo_create_postprocess_pipeline(
     runtime: ref ExoSDL3Runtime,
     vs_path: ref u8,
@@ -1215,18 +1301,11 @@ fn load_png_texture(runtime: ref ExoSDL3Runtime, path: ref u8) ref void = trust 
 }
 
 fn exo_create_pipelines(runtime: mut ref ExoSDL3Runtime, shaders: ExoShaderConfig) bool = trust {
-    runtime.scene_pipeline = exo_create_pipeline(
+    runtime.scene_pipeline = exo_create_scene_pipeline(
         runtime,
         shaders.scene.vertex_path,
         shaders.scene.fragment_path,
-        runtime.swapchain_format,
-        false,
-        SDL_GPU_BLENDFACTOR_ONE,
-        SDL_GPU_BLENDFACTOR_ZERO,
-        SDL_GPU_BLENDFACTOR_ONE,
-        SDL_GPU_BLENDFACTOR_ZERO,
-        true,
-        0 as u32
+        runtime.swapchain_format
     )
     if runtime.scene_pipeline == none {
         return false
@@ -1450,6 +1529,10 @@ fn exo_bind_mesh(runtime: ref ExoSDL3Runtime, mesh: ref ExoSDL3Mesh) void = trus
 
 fn exo_destroy_runtime_resources(runtime: mut ref ExoSDL3Runtime) void = trust {
     exo_release_render_targets(runtime)
+    if runtime.glb_texture != none {
+        SDL_ReleaseGPUTexture(runtime.device, runtime.glb_texture)
+        runtime.glb_texture = none
+    }
     if runtime.normal_map_texture != none {
         SDL_ReleaseGPUTexture(runtime.device, runtime.normal_map_texture)
         runtime.normal_map_texture = none
@@ -1463,6 +1546,82 @@ fn exo_destroy_runtime_resources(runtime: mut ref ExoSDL3Runtime) void = trust {
         runtime.linear_sampler = none
     }
     exo_destroy_pipelines(runtime)
+}
+
+/// Upload an embedded GLB image (PNG/JPEG bytes in the BIN chunk) as a GPU texture.
+fn upload_glb_texture(runtime: mut ref ExoSDL3Runtime, model: ecs.GlbModel) void = trust {
+    if runtime.glb_texture != none {
+        SDL_ReleaseGPUTexture(runtime.device, runtime.glb_texture)
+        runtime.glb_texture = none
+    }
+    if model.texture_length == (0 as usize) || model.raw_bytes == none {
+        return
+    }
+    val img_ptr: ref u8 = @ptradd(model.raw_bytes, model.texture_offset) as ref u8
+    val w: mut i32 = 0 as i32
+    val h: mut i32 = 0 as i32
+    val ch: mut i32 = 0 as i32
+    val pixels: ref u8 = stbi_load_from_memory(img_ptr, model.texture_length as i32, @addr(w), @addr(h), @addr(ch), 4 as i32)
+    if pixels == none { return }
+    val tex_info: mut SDLGPUTextureCreateInfo = {
+        typ: 0 as i32, format: 0 as i32, usage: 0 as u32,
+        width: 0 as u32, height: 0 as u32, layer_count_or_depth: 0 as u32,
+        num_levels: 0 as u32, sample_count: 0 as i32, props: 0 as u32
+    }
+    tex_info.typ    = SDL_GPU_TEXTURETYPE_2D
+    tex_info.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM
+    tex_info.usage  = SDL_GPU_TEXTUREUSAGE_SAMPLER
+    tex_info.width  = w as u32
+    tex_info.height = h as u32
+    tex_info.layer_count_or_depth = 1 as u32
+    tex_info.num_levels   = 1 as u32
+    tex_info.sample_count = SDL_GPU_SAMPLECOUNT_1
+    val texture: ref void = SDL_CreateGPUTexture(runtime.device, @addr(tex_info))
+    if texture == none {
+        stbi_image_free(pixels as ref void)
+        return
+    }
+    val byte_size: u32 = (w as u32) * (h as u32) * (4 as u32)
+    val tbuf_info: mut SDLGPUTransferBufferCreateInfo = { usage: 0 as i32, size: 0 as u32, props: 0 as u32 }
+    tbuf_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
+    tbuf_info.size  = byte_size
+    val tbuf: ref void = SDL_CreateGPUTransferBuffer(runtime.device, @addr(tbuf_info))
+    if tbuf == none {
+        SDL_ReleaseGPUTexture(runtime.device, texture)
+        stbi_image_free(pixels as ref void)
+        return
+    }
+    val mapped: ref void = SDL_MapGPUTransferBuffer(runtime.device, tbuf, false)
+    if mapped == none {
+        SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
+        SDL_ReleaseGPUTexture(runtime.device, texture)
+        stbi_image_free(pixels as ref void)
+        return
+    }
+    @memcpy(mapped, pixels as ref void, byte_size as usize)
+    SDL_UnmapGPUTransferBuffer(runtime.device, tbuf)
+    stbi_image_free(pixels as ref void)
+    val cmd: ref void = SDL_AcquireGPUCommandBuffer(runtime.device)
+    if cmd == none {
+        SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
+        SDL_ReleaseGPUTexture(runtime.device, texture)
+        return
+    }
+    val copy_pass: ref void = SDL_BeginGPUCopyPass(cmd)
+    val src: mut SDLGPUTextureTransferInfo = {
+        transfer_buffer: tbuf, offset: 0 as u32,
+        pixels_per_row: w as u32, rows_per_layer: h as u32
+    }
+    val dst: mut SDLGPUTextureRegion = {
+        texture: texture, mip_level: 0 as u32, layer: 0 as u32,
+        x: 0 as u32, y: 0 as u32, z: 0 as u32,
+        w: w as u32, h: h as u32, d: 1 as u32
+    }
+    SDL_UploadToGPUTexture(copy_pass, @addr(src), @addr(dst), false)
+    SDL_EndGPUCopyPass(copy_pass)
+    SDL_SubmitGPUCommandBuffer(cmd)
+    SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
+    runtime.glb_texture = texture
 }
 
 fn exo_sdl3_create_runtime(title: ref u8, width: i32, height: i32, shaders: ExoShaderConfig) ref void = trust {
@@ -1887,9 +2046,21 @@ fn exo_sdl3_draw_scene_mesh(
         light_color_radius: vec4_from_ptr(light_color, light_radius),
         alpha_pad: { x: alpha, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
     }
+    val has_tex: mut f32 = 0.0 as f32
+    val tex_to_bind: mut ref void = runtime.reflection_color
+    if runtime.glb_texture != none {
+        tex_to_bind = runtime.glb_texture
+        has_tex = 1.0 as f32
+        fu.alpha_pad.y = has_tex
+    }
+    val tex_binding: mut SDLGPUTextureSamplerBinding = {
+        texture: tex_to_bind,
+        sampler: runtime.linear_sampler
+    }
     SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.scene_pipeline)
     SDL_PushGPUVertexUniformData(runtime.command_buffer, 0 as u32, @addr(vu) as ref void, @sizeof(SceneVertexUniforms) as u32)
     SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(SceneFragmentUniforms) as u32)
+    SDL_BindGPUFragmentSamplers(runtime.current_pass, 0 as u32, @addr(tex_binding), 1 as u32)
     exo_bind_mesh(runtime, mesh)
     SDL_DrawGPUIndexedPrimitives(runtime.current_pass, mesh.index_count, 1 as u32, 0 as u32, 0 as i32, 0 as u32)
 }
@@ -2489,7 +2660,7 @@ fn upload_glb_model(runtime: ref void, model: ecs.GlbModel) MeshGPU = trust {
         val root: ref void = json.doc_root(doc)
         val vc: usize = model.vertex_count as usize
         val ic: usize = model.index_count as usize
-        val vertex_float_count: usize = vc * (6 as usize)
+        val vertex_float_count: usize = vc * (8 as usize)
         val vertices: ref void = @alloc(vertex_float_count * (@sizeof(f32) as usize))
         val actual_ic: mut usize = vc 
 
@@ -2500,8 +2671,10 @@ fn upload_glb_model(runtime: ref void, model: ecs.GlbModel) MeshGPU = trust {
             val bin_base: ref void = @ptradd(data, (json_offset + (json_len as usize) + (8 as usize)) as usize)
             val pos_offset: mut usize = 0 as usize
             val nrm_offset: mut usize = 0 as usize
+            val uv_offset:  mut usize = 0 as usize
             val idx_offset: mut usize = 0 as usize
             val has_nrm: mut bool = false
+            val has_uv:  mut bool = false
             if json.obj_get(root, "accessors") is some accessors {
                 if json.obj_get(root, "bufferViews") is some buffer_views {
                     if json.obj_get(root, "meshes") is some meshes {
@@ -2515,6 +2688,10 @@ fn upload_glb_model(runtime: ref void, model: ecs.GlbModel) MeshGPU = trust {
                                         if json.obj_get_int(attrs, "NORMAL") is some ni {
                                             nrm_offset = parse_accessor_offset(accessors, buffer_views, ni)
                                             has_nrm = true
+                                        }
+                                        if json.obj_get_int(attrs, "TEXCOORD_0") is some ti {
+                                            uv_offset = parse_accessor_offset(accessors, buffer_views, ti)
+                                            has_uv = true
                                         }
                                     }
                                     if json.obj_get_int(prim, "indices") is some ii {
@@ -2541,7 +2718,14 @@ fn upload_glb_model(runtime: ref void, model: ecs.GlbModel) MeshGPU = trust {
                     ny = read_f32(n, 1 as usize)
                     nz = read_f32(n, 2 as usize)
                 }
-                write_vertex(vertices, vi, vec3(px, py, pz), vec3(nx, ny, nz))
+                val tu: mut f32 = 0.0 as f32
+                val tv: mut f32 = 0.0 as f32
+                if has_uv {
+                    val t: ref f32 = @ptradd(bin_base, uv_offset + vi * (8 as usize)) as ref f32
+                    tu = read_f32(t, 0 as usize)
+                    tv = read_f32(t, 1 as usize)
+                }
+                write_vertex_uv(vertices, vi, vec3(px, py, pz), vec3(nx, ny, nz), tu, tv)
                 vi = vi + (1 as usize)
             }
             val use_u16: mut bool = false
@@ -2688,6 +2872,35 @@ pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
             model.raw_bytes = raw_copy
             model.raw_bytes_len = len
         }
+        val json_buf2: ref u8 = @alloc((json_len as usize) + (1 as usize)) as ref u8
+        if json_buf2 != none {
+            @memcpy(json_buf2 as ref void, @ptradd(data, json_offset) as ref void, json_len as usize)
+            @store8(@ptradd(json_buf2, json_len as usize), 0)
+            if json.parse(json_buf2) is some doc2 {
+                val root2: ref void = json.doc_root(doc2)
+                val bin_data_offset: usize = json_end + (8 as usize)
+                if json.obj_get(root2, "images") is some images {
+                    if json.arr_get(images, 0 as usize) is some img {
+                        if json.obj_get_int(img, "bufferView") is some bv_idx {
+                            if json.obj_get(root2, "bufferViews") is some bvs {
+                                if json.arr_get(bvs, bv_idx as usize) is some bv {
+                                    val img_off: mut i64 = 0
+                                    val img_len: mut i64 = 0
+                                    if json.obj_get_int(bv, "byteOffset") is some o { img_off = o }
+                                    if json.obj_get_int(bv, "byteLength") is some l { img_len = l }
+                                    if img_len > (0 as i64) {
+                                        model.texture_offset = bin_data_offset + (img_off as usize)
+                                        model.texture_length = img_len as usize
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                json.doc_free(doc2)
+            }
+            @free(json_buf2 as ref void)
+        }
         return some model
     }
     @free(json_buf as ref void)
@@ -2771,6 +2984,18 @@ fn write_vertex(base: ref void, vertex_index: usize, position: ecs.Vec3, normal:
     store_f32(base, offset + (3 as usize), normal.x)
     store_f32(base, offset + (4 as usize), normal.y)
     store_f32(base, offset + (5 as usize), normal.z)
+}
+
+fn write_vertex_uv(base: ref void, vertex_index: usize, position: ecs.Vec3, normal: ecs.Vec3, u: f32, v: f32) void = trust {
+    val offset: usize = vertex_index * (8 as usize)
+    store_f32(base, offset + (0 as usize), position.x)
+    store_f32(base, offset + (1 as usize), position.y)
+    store_f32(base, offset + (2 as usize), position.z)
+    store_f32(base, offset + (3 as usize), normal.x)
+    store_f32(base, offset + (4 as usize), normal.y)
+    store_f32(base, offset + (5 as usize), normal.z)
+    store_f32(base, offset + (6 as usize), u)
+    store_f32(base, offset + (7 as usize), v)
 }
 
 fn upload_mesh(runtime: ref void, vertices: ref void, vertex_float_count: usize, indices: ref void, index_count: i32) MeshGPU = trust {
@@ -3138,7 +3363,6 @@ fn render_scene(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, qua
     val floor_scale: ecs.Vec3 = vec3(7.8 as f32, 0.16 as f32, 7.8 as f32)
     val reflect_vp: Mat4 = view_projection(mirrored_camera(camera, floor_y), width, height)
     draw_scene_entities(runtime, cube_mesh, sphere_mesh, scene, camera, vp, time, 1.00 as f32)
-    // Draw the scene's GLB model if one is loaded
     if mesh_valid(glb_mesh) {
         val glb_mm: Mat4 = model_matrix(vec3(0.0 as f32, 0.0 as f32, 0.0 as f32), scene.model_scale, 0.0 as f32)
         draw_mesh(runtime, glb_mesh, glb_mm, vp, scene.light.color, camera.position, 0.05 as f32, 0.0 as f32, 1.0 as f32, scene.light)
@@ -3148,7 +3372,6 @@ fn render_scene(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, qua
     }
     if scene.water is some water {
         val wave_offset: f32 = time * water.wave_speed
-        // Auto-fit: if size_x/size_z are 0, derive from model bounds scaled by model_scale
         val fit_x: mut f32 = water.size_x
         val fit_z: mut f32 = water.size_z
         val fit_ox: mut f32 = water.offset_x
@@ -3262,10 +3485,11 @@ fn run_app_internal[U: SceneUpdater](app0: ExoApp, updater0: U) i32 = trust {
         exo_sdl3_destroy_runtime(runtime)
         return 1 as i32
     }
-    // Upload GLB model for the initial scene
     val glb_mesh: mut MeshGPU = { raw: none as ref void, index_count: 0 as i32 }
     if app.scene.model.valid && app.scene.model.raw_bytes != none && app.scene.model.bin_length > (0 as usize) {
         glb_mesh = upload_glb_model(runtime, app.scene.model)
+        val rt: mut ref ExoSDL3Runtime = runtime as mut ref ExoSDL3Runtime
+        upload_glb_texture(rt, app.scene.model)
     }
     val last_scene_index: mut usize = app.active_scene_index
     val audio_runtime: RuntimeAudioMixer = init_runtime_audio(app.audio)
@@ -3302,6 +3526,14 @@ fn run_app_internal[U: SceneUpdater](app0: ExoApp, updater0: U) i32 = trust {
                 glb_mesh = { raw: none as ref void, index_count: 0 as i32 }
                 if app.scene.model.valid && app.scene.model.raw_bytes != none && app.scene.model.bin_length > (0 as usize) {
                     glb_mesh = upload_glb_model(runtime, app.scene.model)
+                    val rt2: mut ref ExoSDL3Runtime = runtime as mut ref ExoSDL3Runtime
+                    upload_glb_texture(rt2, app.scene.model)
+                } else {
+                    val rt2: mut ref ExoSDL3Runtime = runtime as mut ref ExoSDL3Runtime
+                    if rt2.glb_texture != none {
+                        SDL_ReleaseGPUTexture(rt2.device, rt2.glb_texture)
+                        rt2.glb_texture = none
+                    }
                 }
                 last_scene_index = app.active_scene_index
             }
