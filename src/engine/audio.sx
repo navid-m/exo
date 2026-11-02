@@ -41,6 +41,7 @@ pub fn create_audio(wav_path: ref u8, volume: i32) ref void = trust {
     if audio == none {
         return exoerr.set_ptr("failed to allocate audio")
     }
+    @memset(audio as ref void, 0, @sizeof(ExoSDL3Audio))
     if !sdl.SDL_LoadWAV(wav_path, @addr(audio.speci), @addr(audio.buffer), @addr(audio.length)) {
         destroy_audio(audio as ref void)
         return none as ref void
