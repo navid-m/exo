@@ -177,6 +177,7 @@ pub type RenderSettings = {
     clear_bottom: math.Vec3
     reflection_plane: f32
     enable_reflections: bool
+    reflect_models: bool
     enable_fxaa: bool
     enable_light_glow: bool
     ambient: f32
@@ -316,6 +317,7 @@ pub fn default_render_settings() RenderSettings = {
         clear_bottom: math.vec3(0.09 as f32, 0.15 as f32, 0.30 as f32),
         reflection_plane: -0.18 as f32,
         enable_reflections: true,
+        reflect_models: false,
         enable_fxaa: true,
         enable_light_glow: true,
         ambient: 0.30 as f32

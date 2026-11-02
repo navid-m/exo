@@ -1920,12 +1920,14 @@ pub fn draw_custom_meshes(runtime: ref void, resources: SceneMeshes, scene: ecs.
     }
 }
 
-pub fn draw_scene_entities(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, camera: cam.Camera, view_proj: math.Mat4, time: f32, glow_scale: f32) void = trust {
+pub fn draw_scene_entities(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, camera: cam.Camera, view_proj: math.Mat4, time: f32, glow_scale: f32, include_models: bool) void = trust {
     val light: ecs.PointLight = primary_light(scene)
     draw_typed_entities[ecs.SphereEntity](runtime, resources.sphere, scene.spheres, camera, view_proj, time, glow_scale, light)
     draw_typed_entities[ecs.CubeEntity](runtime, resources.cube, scene.cubes, camera, view_proj, time, glow_scale, light)
-    draw_models(runtime, resources, scene, camera, view_proj, glow_scale)
-    draw_custom_meshes(runtime, resources, scene, camera, view_proj, glow_scale)
+    if include_models {
+        draw_models(runtime, resources, scene, camera, view_proj, glow_scale)
+        draw_custom_meshes(runtime, resources, scene, camera, view_proj, glow_scale)
+    }
 }
 
 pub fn draw_floor(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj: math.Mat4, reflect_view_proj: math.Mat4, camera: cam.Camera, color: math.Vec3) void = trust {
@@ -1981,12 +1983,12 @@ pub fn render_reflection_scene(runtime: ref void, resources: SceneMeshes, scene:
     }
     val mirrored: cam.Camera = cam.mirrored_camera(camera, mirror_y)
     val reflect_vp: math.Mat4 = cam.view_projection(mirrored, width, height)
-    draw_scene_entities(runtime, resources, scene, mirrored, reflect_vp, time, 0.60 as f32)
+    draw_scene_entities(runtime, resources, scene, mirrored, reflect_vp, time, 0.60 as f32, scene.render.reflect_models)
 }
 
 pub fn render_scene(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, camera: cam.Camera, width: i32, height: i32, time: f32) void = trust {
     val vp: math.Mat4 = cam.view_projection(camera, width, height)
-    draw_scene_entities(runtime, resources, scene, camera, vp, time, 1.00 as f32)
+    draw_scene_entities(runtime, resources, scene, camera, vp, time, 1.00 as f32, true)
     for floor in scene.floors {
         val floor_position: math.Vec3 = math.vec3(floor.center_x, floor.y - (0.08 as f32), floor.center_z)
         val floor_scale: math.Vec3 = math.vec3(floor.size_x, 0.16 as f32, floor.size_z)
