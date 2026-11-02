@@ -13,7 +13,7 @@ val SNOW_MAX_Z: f32 = -0.2
 val SNOW_RESPAWN_Y: f32 = 3.9
 val SNOW_FLOOR_Y: f32 = -0.2
 
-type (engine.AppEvents) SnowUpdater = {}
+type (engine.AppEvents) SnowEvents = {}
 
 fn wrap_range(value: f32, min_v: f32, max_v: f32) f32 = {
     val span: f32 = max_v - min_v
@@ -42,9 +42,11 @@ fn respawn_z(index: i32, time: f32) f32 = {
     return SNOW_MIN_Z + norm * (SNOW_MAX_Z - SNOW_MIN_Z)
 }
 
-pub fn (SnowUpdater) on_start(_: mut self, _: mut engine.ExoApp) void = {}
+pub fn (SnowEvents) on_start(_: mut self, _: mut engine.ExoApp) void = {}
 
-pub fn (SnowUpdater) on_update(_: mut self, app: mut engine.ExoApp, dt: f32, time: f32) void = {
+pub fn (SnowEvents) on_fixed_update(_: mut self, _: mut engine.ExoApp, _: f32) void = {}
+
+pub fn (SnowEvents) on_update(_: mut self, app: mut engine.ExoApp, dt: f32, time: f32) void = {
     val next_spheres: mut list[ecs.SphereEntity] = []
     val index: mut i32 = 0 as i32
     for sphere in app.scene.spheres {
@@ -79,20 +81,26 @@ pub fn (SnowUpdater) on_update(_: mut self, app: mut engine.ExoApp, dt: f32, tim
     app.scene.spheres = next_spheres
 }
 
-pub fn (SnowUpdater) on_key_down(_: mut self, _: mut engine.ExoApp, _: i32) void = {}
-pub fn (SnowUpdater) on_key_up(_: mut self, _: mut engine.ExoApp, _: i32) void = {}
-pub fn (SnowUpdater) on_mouse_move(_: mut self, _: mut engine.ExoApp, _: f32, _: f32) void = {}
-pub fn (SnowUpdater) on_shutdown(_: mut self, _: mut engine.ExoApp) void = {}
+pub fn (SnowEvents) on_key_down(_: mut self, _: mut engine.ExoApp, _: i32, _: bool, _: u16) void = {}
+pub fn (SnowEvents) on_key_up(_: mut self, _: mut engine.ExoApp, _: i32, _: u16) void = {}
+pub fn (SnowEvents) on_mouse_move(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+pub fn (SnowEvents) on_mouse_button(_: mut self, _: mut engine.ExoApp, _: u8, _: bool, _: u8, _: f32, _: f32) void = {}
+pub fn (SnowEvents) on_mouse_wheel(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+pub fn (SnowEvents) on_text_input(_: mut self, _: mut engine.ExoApp, _: ref u8) void = {}
+pub fn (SnowEvents) on_window_resize(_: mut self, _: mut engine.ExoApp, _: i32, _: i32) void = {}
+pub fn (SnowEvents) on_focus_changed(_: mut self, _: mut engine.ExoApp, _: bool) void = {}
+pub fn (SnowEvents) on_gamepad_button(_: mut self, _: mut engine.ExoApp, _: i32, _: bool) void = {}
+pub fn (SnowEvents) on_gamepad_axis(_: mut self, _: mut engine.ExoApp, _: i32, _: f32) void = {}
+pub fn (SnowEvents) on_shutdown(_: mut self, _: mut engine.ExoApp) void = {}
 
 fn build_snow_scene() ecs.Scene3D = {
-    val scene: mut ecs.Scene3D = ecs.new_scene(
-        ecs.make_light(
-            ecs.make_vec3(-1.2 as f32, 4.5 as f32, 1.8 as f32),
-            ecs.make_vec3(0.96 as f32, 0.98 as f32, 1.00 as f32),
-            2.2 as f32,
-            10.0 as f32
-        )
-    )
+    val scene: mut ecs.Scene3D = ecs.new_scene()
+    ecs.add_light(scene, ecs.make_light(
+        ecs.make_vec3(-1.2 as f32, 4.5 as f32, 1.8 as f32),
+        ecs.make_vec3(0.96 as f32, 0.98 as f32, 1.00 as f32),
+        2.2 as f32,
+        10.0 as f32
+    ))
 
     @append(scene.cubes, ecs.make_cube(
             ecs.make_vec3(0.0 as f32, -4.4 as f32, -1.8 as f32),
@@ -140,7 +148,16 @@ fn build_snow_scene() ecs.Scene3D = {
 
 pub fn main() i32 = {
     val scene: mut ecs.Scene3D = build_snow_scene()
-    scene.model = trust engine.load_embedded_fixture_model()
+    val model = trust engine.load_embedded_fixture_model()
+    if model.valid {
+        ecs.add_model(scene, ecs.make_model(
+            model,
+            ecs.make_vec3(0.0 as f32, 0.0 as f32, 0.0 as f32),
+            0.0 as f32,
+            1.0 as f32,
+            ecs.make_vec3(1.0 as f32, 1.0 as f32, 1.0 as f32)
+        ))
+    }
 
     val input_cfg: input.InputConfig = {
         keys: rendering.default_key_bindings(),
@@ -150,14 +167,16 @@ pub fn main() i32 = {
             sensitivity_y: 0.0018 as f32,
             invert_y: false
         },
-        quit_key: sdl.SDL_SCANCODE_ESCAPE
+        text_input: false,
+        gamepad: true
     }
     val config: mut engine.ExoConfig = rendering.default_config()
     config.title = "exo-snow"
     config.width = 1280 as i32
     config.height = 720 as i32
+    config.quit_key = sdl.SDL_SCANCODE_ESCAPE
 
-    val app: engine.ExoApp = engine.create_app(config, scene, rendering.default_camera(), input_cfg)
-    val su: SnowUpdater = {}
-    return trust engine.run_app_with_events[SnowUpdater](app, su)
+    val app: engine.ExoApp = engine.create_basic_app(config, scene, rendering.default_camera(), input_cfg)
+    val events: SnowEvents = {}
+    return trust engine.run_app_with_events[SnowEvents](app, events)
 }

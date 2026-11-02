@@ -8,20 +8,40 @@ val sdl       = use("engine/sdl.sx")
 val input     = use("engine/input.sx")
 val audio     = use("engine/audio.sx")
 
-type (engine.AppEvents) ShowcaseEvents = {}
+type (engine.AppEvents) ShowcaseEvents = {
+    scenes: mut list[ecs.Scene3D]
+    index: mut usize
+}
 
-pub fn (ShowcaseEvents) on_start(_: mut self, _: mut engine.ExoApp) void = {}
+fn activate_scene(events: mut ShowcaseEvents, app: mut engine.ExoApp, index: usize) void = {
+    if @get(events.scenes, index) is some scene {
+        engine.set_scene(app, scene)
+        events.index = index
+        trust @print("scene {d}\n", {index})
+    }
+}
+
+pub fn (ShowcaseEvents) on_start(events: mut self, app: mut engine.ExoApp) void = {
+    if @len(events.scenes) > (0 as usize) {
+        activate_scene(events, app, 0 as usize)
+    }
+}
 
 pub fn (ShowcaseEvents) on_update(_: mut self, app: mut engine.ExoApp, dt: f32, _: f32) void = {
     physics.update_physics(app.scene, dt)
 }
+pub fn (ShowcaseEvents) on_fixed_update(_: mut self, _: mut engine.ExoApp, _: f32) void = {}
 
-pub fn (ShowcaseEvents) on_key_down(_: mut self, app: mut engine.ExoApp, key: i32) void = {
+pub fn (ShowcaseEvents) on_key_down(events: mut self, app: mut engine.ExoApp, key: i32, _: bool, _: u16) void = {
     if key == sdl.SDL_SCANCODE_X {
-        engine.next_scene(app)
+        val count: usize = @len(events.scenes)
+        if count > (0 as usize) {
+            val next: usize = (events.index + (1 as usize)) % count
+            activate_scene(events, app, next)
+        }
     }
     if key >= sdl.SDL_SCANCODE_1 && key <= sdl.SDL_SCANCODE_9 {
-        engine.set_active_scene(app, (key - sdl.SDL_SCANCODE_1) as usize)
+        activate_scene(events, app, (key - sdl.SDL_SCANCODE_1) as usize)
     }
     if key == sdl.SDL_SCANCODE_Y {
         if !trust engine.play_sound(app) {
@@ -30,28 +50,37 @@ pub fn (ShowcaseEvents) on_key_down(_: mut self, app: mut engine.ExoApp, key: i3
     }
 }
 
-pub fn (ShowcaseEvents) on_key_up(_: mut self, _: mut engine.ExoApp, _: i32) void = {}
-
-pub fn (ShowcaseEvents) on_mouse_move(_: mut self, _: mut engine.ExoApp, _: f32, _: f32) void = {}
-
+pub fn (ShowcaseEvents) on_key_up(_: mut self, _: mut engine.ExoApp, _: i32, _: u16) void = {}
+pub fn (ShowcaseEvents) on_mouse_move(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+pub fn (ShowcaseEvents) on_mouse_button(_: mut self, _: mut engine.ExoApp, _: u8, _: bool, _: u8, _: f32, _: f32) void = {}
+pub fn (ShowcaseEvents) on_mouse_wheel(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+pub fn (ShowcaseEvents) on_text_input(_: mut self, _: mut engine.ExoApp, _: ref u8) void = {}
+pub fn (ShowcaseEvents) on_window_resize(_: mut self, _: mut engine.ExoApp, _: i32, _: i32) void = {}
+pub fn (ShowcaseEvents) on_focus_changed(_: mut self, _: mut engine.ExoApp, _: bool) void = {}
+pub fn (ShowcaseEvents) on_gamepad_button(_: mut self, _: mut engine.ExoApp, _: i32, _: bool) void = {}
+pub fn (ShowcaseEvents) on_gamepad_axis(_: mut self, _: mut engine.ExoApp, _: i32, _: f32) void = {}
 pub fn (ShowcaseEvents) on_shutdown(_: mut self, _: mut engine.ExoApp) void = {}
 
 fn build_showcase_scene() ecs.Scene3D = {
-    val scene: mut ecs.Scene3D = ecs.new_scene(
-        ecs.make_light(
-            ecs.make_vec3(0.0 as f32, 4.5 as f32, 0.5 as f32),
-            ecs.make_vec3(0.72 as f32, 0.88 as f32, 1.00 as f32),
-            2.0 as f32,
-            10.0 as f32
-        )
-    )
+    val scene: mut ecs.Scene3D = ecs.new_scene()
+    ecs.add_light(scene, ecs.make_light(
+        ecs.make_vec3(0.0 as f32, 4.5 as f32, 0.5 as f32),
+        ecs.make_vec3(0.72 as f32, 0.88 as f32, 1.00 as f32),
+        2.0 as f32,
+        10.0 as f32
+    ))
     scene.gravity = 0.0 as f32
-    scene.model_scale = 0.11 as f32
 
     val loaded: mut bool = false
     if trust glb.load_glb("./assets/pond.glb") is some pond_model {
-        scene.model = pond_model
-        trust glb.compute_glb_bounds(@addr(scene.model))
+        trust glb.compute_glb_bounds(@addr(pond_model))
+        ecs.add_model(scene, ecs.make_model(
+            pond_model,
+            ecs.make_vec3(0.0 as f32, 0.0 as f32, 0.0 as f32),
+            0.0 as f32,
+            0.11 as f32,
+            ecs.make_vec3(1.0 as f32, 1.0 as f32, 1.0 as f32)
+        ))
         loaded = true
     }
 
@@ -74,7 +103,7 @@ fn build_showcase_scene() ecs.Scene3D = {
         water.size_x = 8.0 as f32
         water.size_z = 10.0 as f32
     }
-    scene.water = some water
+    ecs.add_water(scene, water)
 
     val surface_y: f32 = water.y
     val cx: f32 = water.offset_x
@@ -123,16 +152,15 @@ fn build_showcase_scene() ecs.Scene3D = {
 }
 
 fn build_feature_scene() ecs.Scene3D = {
-    val scene: mut ecs.Scene3D = ecs.new_scene(
-        ecs.make_light(
-            ecs.make_vec3(-0.8 as f32, 3.4 as f32, 1.1 as f32),
-            ecs.make_vec3(0.68 as f32, 0.86 as f32, 1.00 as f32),
-            1.9 as f32,
-            8.5 as f32
-        )
-    )
+    val scene: mut ecs.Scene3D = ecs.new_scene()
+    ecs.add_light(scene, ecs.make_light(
+        ecs.make_vec3(-0.8 as f32, 3.4 as f32, 1.1 as f32),
+        ecs.make_vec3(0.68 as f32, 0.86 as f32, 1.00 as f32),
+        1.9 as f32,
+        8.5 as f32
+    ))
     scene.gravity = 0.0 as f32
-    scene.floor = some ecs.make_floor(-0.7 as f32, 0.4 as f32)
+    ecs.add_floor(scene, ecs.make_floor(-0.7 as f32, 0.4 as f32))
     @append(scene.spheres, ecs.make_sphere(
         ecs.make_vec3(-1.20 as f32, 0.10 as f32, -0.25 as f32),
         ecs.make_vec3(1.00 as f32, 0.58 as f32, 0.24 as f32),
@@ -159,16 +187,15 @@ fn build_feature_scene() ecs.Scene3D = {
 }
 
 fn build_game_scene() ecs.Scene3D = {
-    val scene: mut ecs.Scene3D = ecs.new_scene(
-        ecs.make_light(
-            ecs.make_vec3(0.0 as f32, 3.8 as f32, -1.2 as f32),
-            ecs.make_vec3(1.0 as f32, 0.92 as f32, 0.78 as f32),
-            1.6 as f32,
-            7.0 as f32
-        )
-    )
+    val scene: mut ecs.Scene3D = ecs.new_scene()
+    ecs.add_light(scene, ecs.make_light(
+        ecs.make_vec3(0.0 as f32, 3.8 as f32, -1.2 as f32),
+        ecs.make_vec3(1.0 as f32, 0.92 as f32, 0.78 as f32),
+        1.6 as f32,
+        7.0 as f32
+    ))
     scene.gravity = 9.8 as f32
-    scene.floor = some ecs.make_floor(0.0 as f32, 0.3 as f32)
+    ecs.add_floor(scene, ecs.make_floor(0.0 as f32, 0.3 as f32))
     @append(scene.cubes, ecs.make_cube(
         ecs.make_vec3(-1.55 as f32, 4.82 as f32, -0.65 as f32),
         ecs.make_vec3(0.20 as f32, 0.36 as f32, 0.82 as f32),
@@ -202,28 +229,38 @@ pub fn main() i32 = {
             sensitivity_y: 0.0018 as f32,
             invert_y: false
         },
-        quit_key: sdl.SDL_SCANCODE_ESCAPE
+        text_input: false,
+        gamepad: true
     }
-    val audio_cfg: audio.AudioMixerConfig = {
-        music_volume: 96 as i32,
-        sample: {
+    val audio_cfg: audio.AudioBankConfig = {
+        master_volume: 96 as i32,
+        clips: [{
             path: "./assets/example_sound.wav",
-            loops: 0 as i32
-        }
+            loops: 0 as i32,
+            volume: 96 as i32
+        }]
     }
 
     val app_builder: mut engine.ExoAppBuilder = engine.new_app()
-
     engine.with_title(app_builder, "exo-engine | pond showcase")
     engine.with_resolution(app_builder, 1280 as i32, 720 as i32)
     engine.with_shaders(app_builder, engine.default_shader_config())
-    engine.with_scene_list(app_builder, scenes)
+    if @len(scenes) > (0 as usize) {
+        if @get(scenes, 0 as usize) is some first_scene {
+            engine.with_scene(app_builder, first_scene)
+        }
+    }
     engine.with_default_camera(app_builder)
+    engine.with_auto_camera(app_builder)
     engine.with_input(app_builder, input_cfg)
+    engine.with_quit_key(app_builder, sdl.SDL_SCANCODE_ESCAPE)
     engine.with_audio(app_builder, audio_cfg)
 
     val app: engine.ExoApp = engine.build_app(app_builder)
-    val events: ShowcaseEvents = {}
+    val events: ShowcaseEvents = {
+        scenes: scenes,
+        index: 0 as usize
+    }
 
     return trust engine.run_app_with_events[ShowcaseEvents](app, events)
 }
@@ -238,15 +275,18 @@ test {
     @append(scenes, game)
 
     val app_builder: mut engine.ExoAppBuilder = engine.new_app()
-    engine.with_scene_list(app_builder, scenes)
+    if @get(scenes, 0 as usize) is some first_scene {
+        engine.with_scene(app_builder, first_scene)
+    }
     engine.with_default_camera(app_builder)
     engine.with_input(app_builder, rendering.default_input_config())
-    val test_audio: audio.AudioMixerConfig = {
-        music_volume: 96 as i32,
-        sample: {
+    val test_audio: audio.AudioBankConfig = {
+        master_volume: 96 as i32,
+        clips: [{
             path: "./example_sound.mp3",
-            loops: 0 as i32
-        }
+            loops: 0 as i32,
+            volume: 96 as i32
+        }]
     }
     engine.with_audio(app_builder, test_audio)
     val app: engine.ExoApp = engine.build_app(app_builder)
@@ -255,16 +295,18 @@ test {
     assert @len(feature.spheres) == (2 as usize)
     assert @len(feature.cubes) == (2 as usize)
     assert @len(game.cubes) == (2 as usize)
-    assert @len(app.scenes) == (3 as usize)
-    assert app.active_scene_index == (0 as usize)
-    assert string.raw_cmp(app.audio.sample.path, "./example_sound.mp3") == 0
+    assert @len(app.audio.clips) == (1 as usize)
+    if @get(app.audio.clips, 0 as usize) is some clip {
+        assert string.raw_cmp(clip.path, "./example_sound.mp3") == 0
+    } else {
+        assert false
+    }
     assert app.camera.move_speed > (3.0 as f32)
 
     val scene_app: mut engine.ExoApp = app
-    engine.set_active_scene(scene_app, 2 as usize)
-    assert scene_app.active_scene_index == (2 as usize)
-    engine.next_scene(scene_app)
-    assert scene_app.active_scene_index == (0 as usize)
+    engine.set_scene(scene_app, game)
+    assert @len(scene_app.scene.cubes) == (2 as usize)
+    assert scene_app.scene_revision == (1 as u64)
 
     if @get(showcase.spheres, 0 as usize) is some s0 {
         assert s0.radius > (0.2 as f32)

@@ -1,12 +1,119 @@
-val ecs = use("ecs.sx")
+val ecs  = use("ecs.sx")
+val math = use("engine/math.sx")
+
+pub val HIT_SPHERE: i32 = 1
+pub val HIT_CUBE: i32 = 2
+
+pub type CollisionHit = {
+    kind: i32
+    id: u64
+    index: usize
+}
+
+pub fn sphere_sphere_overlap(a: math.Vec3, a_radius: f32, b: math.Vec3, b_radius: f32) bool = {
+    val combined: f32 = a_radius + b_radius
+    val delta: math.Vec3 = math.vec3_sub(a, b)
+    return math.vec3_dot(delta, delta) <= combined * combined
+}
+
+pub fn point_in_cube(point: math.Vec3, cube: ecs.CubeEntity) bool = {
+    val half: f32 = cube.size * (0.5 as f32)
+    return point.x >= cube.position.x - half
+        && point.x <= cube.position.x + half
+        && point.y >= cube.position.y - half
+        && point.y <= cube.position.y + half
+        && point.z >= cube.position.z - half
+        && point.z <= cube.position.z + half
+}
+
+pub fn sphere_cube_overlap(center: math.Vec3, radius: f32, cube: ecs.CubeEntity) bool = {
+    val half: f32 = cube.size * (0.5 as f32)
+    val nearest_x: f32 = math.fclamp(center.x as f64, (cube.position.x - half) as f64, (cube.position.x + half) as f64) as f32
+    val nearest_y: f32 = math.fclamp(center.y as f64, (cube.position.y - half) as f64, (cube.position.y + half) as f64) as f32
+    val nearest_z: f32 = math.fclamp(center.z as f64, (cube.position.z - half) as f64, (cube.position.z + half) as f64) as f32
+    val delta: math.Vec3 = math.vec3_sub(center, math.vec3(nearest_x, nearest_y, nearest_z))
+    return math.vec3_dot(delta, delta) <= radius * radius
+}
+
+pub fn point_in_floor(point: math.Vec3, floor: ecs.FloorCollider) bool = {
+    val half_x: f32 = floor.size_x * (0.5 as f32)
+    val half_z: f32 = floor.size_z * (0.5 as f32)
+    return point.x >= floor.center_x - half_x
+        && point.x <= floor.center_x + half_x
+        && point.z >= floor.center_z - half_z
+}
+
+/// Highest floor at the given XZ position.
+pub fn floor_at(scene: ecs.Scene3D, x: f32, z: f32) option[ecs.FloorCollider] = {
+    val probe: math.Vec3 = math.vec3(x, 0.0 as f32, z)
+    val best: mut ecs.FloorCollider = ecs.make_floor(0.0 as f32, 0.0 as f32)
+    val found: mut bool = false
+    for floor in scene.floors {
+        if point_in_floor(probe, floor) {
+            if !found || floor.y > best.y {
+                best = floor
+                found = true
+            }
+        }
+    }
+    if found {
+        return some best
+    }
+    return none
+}
+
+pub fn ground_height(scene: ecs.Scene3D, x: f32, z: f32) option[f32] = {
+    if floor_at(scene, x, z) is some floor {
+        return some floor.y
+    }
+    return none
+}
+
+/// First sphere/cube in the scene overlapping the given sphere.
+pub fn query_sphere(scene: ecs.Scene3D, center: math.Vec3, radius: f32) option[CollisionHit] = {
+    val si: mut usize = 0 as usize
+    for sphere in scene.spheres {
+        if sphere_sphere_overlap(center, radius, sphere.position, sphere.radius) {
+            return some { kind: HIT_SPHERE, id: sphere.id, index: si }
+        }
+        si = si + (1 as usize)
+    }
+    val ci: mut usize = 0 as usize
+    for cube in scene.cubes {
+        if sphere_cube_overlap(center, radius, cube) {
+            return some { kind: HIT_CUBE, id: cube.id, index: ci }
+        }
+        ci = ci + (1 as usize)
+    }
+    return none
+}
+
+pub fn query_point(scene: ecs.Scene3D, point: math.Vec3) option[CollisionHit] = {
+    val si: mut usize = 0 as usize
+    for sphere in scene.spheres {
+        val delta: math.Vec3 = math.vec3_sub(point, sphere.position)
+        if math.vec3_dot(delta, delta) <= sphere.radius * sphere.radius {
+            return some { kind: HIT_SPHERE, id: sphere.id, index: si }
+        }
+        si = si + (1 as usize)
+    }
+    val ci: mut usize = 0 as usize
+    for cube in scene.cubes {
+        if point_in_cube(point, cube) {
+            return some { kind: HIT_CUBE, id: cube.id, index: ci }
+        }
+        ci = ci + (1 as usize)
+    }
+    return none
+}
 
 // Applies gravity to all entities in the scene.
 // gravity > 0  => pulls entities downward (Y axis)
 // gravity == 0 => no force, entities float
 // gravity < 0  => pushes entities upward
 //
-// If scene.floor is set, entities collide with the floor plane at floor.y.
-// restitution 0.0 = dead stop, 1.0 = full elastic bounce.
+// Entities collide with every floor in the scene. restitution 0.0 = dead stop,
+// 1.0 = full elastic bounce.
 pub fn update_physics(scene: mut ecs.Scene3D, dt: f32) void = {
     val g: f32 = scene.gravity
     val si: mut usize = 0 as usize
@@ -19,11 +126,11 @@ pub fn update_physics(scene: mut ecs.Scene3D, dt: f32) void = {
             s.position.x = s.position.x + s.velocity.x * dt
             s.position.y = s.position.y + s.velocity.y * dt
             s.position.z = s.position.z + s.velocity.z * dt
-            if scene.floor is some floor {
-                val contact_y: f32 = floor.y + s.radius
+            if floor_at(scene, s.position.x, s.position.z) is some ground {
+                val contact_y: f32 = ground.y + s.radius
                 if s.position.y < contact_y {
                     s.position.y = contact_y
-                    s.velocity.y = -(s.velocity.y * floor.restitution)
+                    s.velocity.y = -(s.velocity.y * ground.restitution)
                 }
             }
             @set(scene.spheres, si, s)
@@ -41,11 +148,11 @@ pub fn update_physics(scene: mut ecs.Scene3D, dt: f32) void = {
             c.position.x = c.position.x + c.velocity.x * dt
             c.position.y = c.position.y + c.velocity.y * dt
             c.position.z = c.position.z + c.velocity.z * dt
-            if scene.floor is some floor {
-                val contact_y: f32 = floor.y + c.size * (0.5 as f32)
+            if floor_at(scene, c.position.x, c.position.z) is some ground {
+                val contact_y: f32 = ground.y + c.size * (0.5 as f32)
                 if c.position.y < contact_y {
                     c.position.y = contact_y
-                    c.velocity.y = -(c.velocity.y * floor.restitution)
+                    c.velocity.y = -(c.velocity.y * ground.restitution)
                 }
             }
             @set(scene.cubes, ci, c)

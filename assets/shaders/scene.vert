@@ -7,6 +7,7 @@ layout(location = 2) in vec2 aTexCoord;
 layout(set = 1, binding = 0, std140) uniform SceneVertexUniforms {
     mat4 uModel;
     mat4 uViewProj;
+    vec4 uUvTransform;
 };
 
 layout(location = 0) out vec3 vWorldPos;
@@ -17,6 +18,6 @@ void main() {
     vec4 world = uModel * vec4(aPosition, 1.0);
     vWorldPos    = world.xyz;
     vWorldNormal = normalize((uModel * vec4(aNormal, 0.0)).xyz);
-    vTexCoord    = aTexCoord;
+    vTexCoord    = aTexCoord * uUvTransform.xy + uUvTransform.zw;
     gl_Position  = uViewProj * world;
 }

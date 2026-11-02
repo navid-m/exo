@@ -9,9 +9,13 @@ struct SceneFragmentUniforms
 {
     float4 uColorReflective;
     float4 uCameraGlow;
-    float4 uLightPosIntensity;
-    float4 uLightColorRadius;
+    float4 uLightPosIntensity[8];
+    float4 uLightColorRadius[8];
     float4 uAlphaPad;
+    float4 uSkyTop;
+    float4 uSkyHorizon;
+    float4 uAmbientPad;
+    float4 uLightMeta;
 };
 
 struct main0_out
@@ -27,17 +31,24 @@ struct main0_in
 };
 
 static inline __attribute__((always_inline))
-float3 sky_color(thread const float3& direction_value)
+float3 sky_color(thread const float3& direction_value, constant SceneFragmentUniforms& _31)
 {
     float t = fast::clamp((direction_value.y * 0.5) + 0.5, 0.0, 1.0);
-    return mix(float3(0.0500000007450580596923828125, 0.07999999821186065673828125, 0.14000000059604644775390625), float3(0.2599999904632568359375, 0.4799999892711639404296875, 0.839999973773956298828125), float3(t));
+    return mix(_31.uSkyHorizon.xyz, _31.uSkyTop.xyz, float3(t));
 }
 
-fragment main0_out main0(main0_in in [[stage_in]], constant SceneFragmentUniforms& _47 [[buffer(0)]], texture2d<float> uAlbedo [[texture(0)]], sampler uAlbedoSmplr [[sampler(0)]])
+fragment main0_out main0(main0_in in [[stage_in]], constant SceneFragmentUniforms& _31 [[buffer(0)]], texture2d<float> uAlbedo [[texture(0)]], sampler uAlbedoSmplr [[sampler(0)]])
 {
     main0_out out = {};
+    if (_31.uAlphaPad.z > 0.5)
+    {
+        float4 ui_tex = uAlbedo.sample(uAlbedoSmplr, in.vTexCoord);
+        float3 ui_color = mix(_31.uColorReflective.xyz, ui_tex.xyz, float3(_31.uAlphaPad.y));
+        out.FragColor = float4(ui_color, ui_tex.w * _31.uAlphaPad.x);
+        return out;
+    }
     float3 normal_value = fast::normalize(in.vWorldNormal);
-    float3 camera_pos = _47.uCameraGlow.xyz;
+    float3 camera_pos = _31.uCameraGlow.xyz;
     float3 view_dir = fast::normalize(camera_pos - in.vWorldPos);
     float3 light_dir = float3(-0.4998001158237457275390625, 0.819672167301177978515625, 0.2798880636692047119140625);
     float diff = fast::max(dot(normal_value, light_dir), 0.0);
@@ -45,27 +56,37 @@ fragment main0_out main0(main0_in in [[stage_in]], constant SceneFragmentUniform
     float3 half_vec = fast::normalize(light_dir + view_dir);
     float spec = powr(fast::max(dot(normal_value, half_vec), 0.0), 36.0);
     float3 param = float3(0.0, (hemi * 2.0) - 1.0, 0.0);
-    float3 ambient = mix(float3(0.070000000298023223876953125, 0.0900000035762786865234375, 0.12999999523162841796875), sky_color(param) * 0.2800000011920928955078125, float3(hemi));
-    float reflective = _47.uColorReflective.w;
-    float glow = _47.uCameraGlow.w;
-    float has_texture = _47.uAlphaPad.y;
+    float3 ambient = mix(float3(0.070000000298023223876953125, 0.0900000035762786865234375, 0.12999999523162841796875), sky_color(param, _31) * 0.2800000011920928955078125, float3(hemi)) * fast::max(_31.uAmbientPad.x, 0.0);
+    float reflective = _31.uColorReflective.w;
+    float glow = _31.uCameraGlow.w;
+    float has_texture = _31.uAlphaPad.y;
     float3 tex_color = uAlbedo.sample(uAlbedoSmplr, in.vTexCoord).xyz;
-    float3 base_color = mix(_47.uColorReflective.xyz, tex_color, float3(has_texture));
+    float3 base_color = mix(_31.uColorReflective.xyz, tex_color, float3(has_texture));
     float3 base = (base_color * (0.300000011920928955078125 + (diff * 0.680000007152557373046875))) + (ambient * 0.3499999940395355224609375);
     float3 highlight = (float3(1.0, 0.980000019073486328125, 0.939999997615814208984375) * spec) * (0.0599999986588954925537109375 + (reflective * 0.119999997317790985107421875));
     float3 glow_value = (base_color * glow) * 0.100000001490116119384765625;
-    float3 to_light = _47.uLightPosIntensity.xyz - in.vWorldPos;
-    float dist = length(to_light);
-    float radius = fast::max(_47.uLightColorRadius.w, 0.001000000047497451305389404296875);
-    float att = 1.0 / (1.0 + ((dist * dist) / (radius * radius)));
-    float3 pl_dir = fast::normalize(to_light);
-    float pdiff = fast::max(dot(normal_value, pl_dir), 0.0);
-    float3 phalf = fast::normalize(pl_dir + view_dir);
-    float pspec = powr(fast::max(dot(normal_value, phalf), 0.0), 48.0);
-    float3 point_color = _47.uLightColorRadius.xyz;
-    float light_intensity = _47.uLightPosIntensity.w;
-    float3 point_contrib = ((point_color * light_intensity) * att) * (((base_color * pdiff) * 0.550000011920928955078125) + ((float3(1.0, 0.980000019073486328125, 0.959999978542327880859375) * pspec) * (0.07999999821186065673828125 + (reflective * 0.14000000059604644775390625))));
-    out.FragColor = float4(((base + highlight) + glow_value) + point_contrib, _47.uAlphaPad.x);
+    float3 point_contrib = float3(0.0);
+    int light_count = int(_31.uLightMeta.x + 0.5);
+    for (int i = 0; i < 8; i++)
+    {
+        if (i >= light_count)
+        {
+            break;
+        }
+        float4 pos_intensity = _31.uLightPosIntensity[i];
+        float4 color_radius = _31.uLightColorRadius[i];
+        float3 to_light = pos_intensity.xyz - in.vWorldPos;
+        float dist = length(to_light);
+        float radius = fast::max(color_radius.w, 0.001000000047497451305389404296875);
+        float att = 1.0 / (1.0 + ((dist * dist) / (radius * radius)));
+        float3 pl_dir = fast::normalize(to_light);
+        float pdiff = fast::max(dot(normal_value, pl_dir), 0.0);
+        float3 phalf = fast::normalize(pl_dir + view_dir);
+        float pspec = powr(fast::max(dot(normal_value, phalf), 0.0), 48.0);
+        float light_intensity = pos_intensity.w;
+        point_contrib += (((color_radius.xyz * light_intensity) * att) * (((base_color * pdiff) * 0.550000011920928955078125) + ((float3(1.0, 0.980000019073486328125, 0.959999978542327880859375) * pspec) * (0.07999999821186065673828125 + (reflective * 0.14000000059604644775390625)))));
+    }
+    out.FragColor = float4(((base + highlight) + glow_value) + point_contrib, _31.uAlphaPad.x);
     return out;
 }
 

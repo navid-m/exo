@@ -34,9 +34,57 @@ pub val SDL_SCANCODE_LSHIFT: i32 = 225
 pub val SDL_SCANCODE_RSHIFT: i32 = 229
 
 pub val SDL_EVENT_QUIT: u32 = 256
+pub val SDL_EVENT_WINDOW_RESIZED: u32 = 518
+pub val SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED: u32 = 519
+pub val SDL_EVENT_WINDOW_FOCUS_GAINED: u32 = 526
+pub val SDL_EVENT_WINDOW_FOCUS_LOST: u32 = 527
 pub val SDL_EVENT_WINDOW_CLOSE_REQUESTED: u32 = 528
+pub val SDL_EVENT_KEY_DOWN: u32 = 768
+pub val SDL_EVENT_KEY_UP: u32 = 769
+pub val SDL_EVENT_TEXT_INPUT: u32 = 771
+pub val SDL_EVENT_MOUSE_MOTION: u32 = 1024
+pub val SDL_EVENT_MOUSE_BUTTON_DOWN: u32 = 1025
+pub val SDL_EVENT_MOUSE_BUTTON_UP: u32 = 1026
+pub val SDL_EVENT_MOUSE_WHEEL: u32 = 1027
+pub val SDL_BUTTON_LEFT: u8 = 1
+pub val SDL_BUTTON_MIDDLE: u8 = 2
+pub val SDL_BUTTON_RIGHT: u8 = 3
+pub val SDL_BUTTON_X1: u8 = 4
+pub val SDL_BUTTON_X2: u8 = 5
+pub val SDL_KMOD_LSHIFT: u16 = 0x0001
+pub val SDL_KMOD_RSHIFT: u16 = 0x0002
+pub val SDL_KMOD_LCTRL: u16 = 0x0040
+pub val SDL_KMOD_RCTRL: u16 = 0x0080
+pub val SDL_KMOD_LALT: u16 = 0x0100
+pub val SDL_KMOD_RALT: u16 = 0x0200
+pub val SDL_KMOD_LGUI: u16 = 0x0400
+pub val SDL_KMOD_RGUI: u16 = 0x0800
+pub val SDL_GAMEPAD_BUTTON_SOUTH: i32 = 0
+pub val SDL_GAMEPAD_BUTTON_EAST: i32 = 1
+pub val SDL_GAMEPAD_BUTTON_WEST: i32 = 2
+pub val SDL_GAMEPAD_BUTTON_NORTH: i32 = 3
+pub val SDL_GAMEPAD_BUTTON_BACK: i32 = 4
+pub val SDL_GAMEPAD_BUTTON_GUIDE: i32 = 5
+pub val SDL_GAMEPAD_BUTTON_START: i32 = 6
+pub val SDL_GAMEPAD_BUTTON_LEFT_STICK: i32 = 7
+pub val SDL_GAMEPAD_BUTTON_RIGHT_STICK: i32 = 8
+pub val SDL_GAMEPAD_BUTTON_LEFT_SHOULDER: i32 = 9
+pub val SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER: i32 = 10
+pub val SDL_GAMEPAD_BUTTON_DPAD_UP: i32 = 11
+pub val SDL_GAMEPAD_BUTTON_DPAD_DOWN: i32 = 12
+pub val SDL_GAMEPAD_BUTTON_DPAD_LEFT: i32 = 13
+pub val SDL_GAMEPAD_BUTTON_DPAD_RIGHT: i32 = 14
+pub val SDL_GAMEPAD_AXIS_LEFTX: i32 = 0
+pub val SDL_GAMEPAD_AXIS_LEFTY: i32 = 1
+pub val SDL_GAMEPAD_AXIS_RIGHTX: i32 = 2
+pub val SDL_GAMEPAD_AXIS_RIGHTY: i32 = 3
+pub val SDL_GAMEPAD_AXIS_LEFT_TRIGGER: i32 = 4
+pub val SDL_GAMEPAD_AXIS_RIGHT_TRIGGER: i32 = 5
 pub val SDL_INIT_AUDIO: u32 = 16
 pub val SDL_INIT_VIDEO: u32 = 32
+pub val SDL_INIT_JOYSTICK: u32 = 512
+pub val SDL_INIT_GAMEPAD: u32 = 8192
+pub val SDL_INIT_EVENTS: u32 = 16384
 pub val SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK: u32 = 0xFFFFFFFF
 pub val SDL_GPU_TEXTUREUSAGE_SAMPLER: u32 = 1
 pub val SDL_GPU_TEXTUREUSAGE_COLOR_TARGET: u32 = 2
@@ -130,6 +178,17 @@ pub extern (C) fn SDL_PutAudioStreamData(stream: ref void, buf: ref void, len: i
 pub extern (C) fn SDL_FlushAudioStream(stream: ref void) bool = "SDL_FlushAudioStream"
 pub extern (C) fn SDL_DestroyAudioStream(stream: ref void) void = "SDL_DestroyAudioStream"
 pub extern (C) fn SDL_free(ptr: ref void) void = "SDL_free"
+pub extern (C) fn SDL_StartTextInput() bool = "SDL_StartTextInput"
+pub extern (C) fn SDL_StopTextInput() void = "SDL_StopTextInput"
+pub extern (C) fn SDL_GetMouseState(x: ref f32, y: ref f32) u32 = "SDL_GetMouseState"
+pub extern (C) fn SDL_GetGamepads(count: ref i32) ref u32 = "SDL_GetGamepads"
+pub extern (C) fn SDL_OpenGamepad(instance_id: u32) ref void = "SDL_OpenGamepad"
+pub extern (C) fn SDL_CloseGamepad(gamepad: ref void) void = "SDL_CloseGamepad"
+pub extern (C) fn SDL_UpdateGamepads() void = "SDL_UpdateGamepads"
+pub extern (C) fn SDL_GamepadHasButton(gamepad: ref void, button: i32) bool = "SDL_GamepadHasButton"
+pub extern (C) fn SDL_GetGamepadButton(gamepad: ref void, button: i32) bool = "SDL_GetGamepadButton"
+pub extern (C) fn SDL_GamepadHasAxis(gamepad: ref void, axis: i32) bool = "SDL_GamepadHasAxis"
+pub extern (C) fn SDL_GetGamepadAxis(gamepad: ref void, axis: i32) i16 = "SDL_GetGamepadAxis"
 
 pub extern (C) fn fopen(path: ref u8, mode: ref u8) ref void = "fopen"
 pub extern (C) fn fclose(stream: ref void) i32 = "fclose"
@@ -183,6 +242,88 @@ pub extern type SDLEvent = {
     p29: mut u32
     p30: mut u32
     p31: mut u32
+}
+
+pub fn empty_event() SDLEvent = {
+    return {
+        typ: 0 as u32, p01: 0 as u32, p02: 0 as u32, p03: 0 as u32, p04: 0 as u32, p05: 0 as u32, p06: 0 as u32, p07: 0 as u32,
+        p08: 0 as u32, p09: 0 as u32, p10: 0 as u32, p11: 0 as u32, p12: 0 as u32, p13: 0 as u32, p14: 0 as u32, p15: 0 as u32,
+        p16: 0 as u32, p17: 0 as u32, p18: 0 as u32, p19: 0 as u32, p20: 0 as u32, p21: 0 as u32, p22: 0 as u32, p23: 0 as u32,
+        p24: 0 as u32, p25: 0 as u32, p26: 0 as u32, p27: 0 as u32, p28: 0 as u32, p29: 0 as u32, p30: 0 as u32, p31: 0 as u32
+    }
+}
+
+pub extern type SDLKeyboardEvent = {
+    typ: mut u32
+    reserved: mut u32
+    timestamp: mut u64
+    window_id: mut u32
+    which: mut u32
+    scancode: mut i32
+    key: mut i32
+    mod: mut u16
+    raw: mut u16
+    down: mut u8
+    repeat: mut u8
+}
+
+pub extern type SDLMouseMotionEvent = {
+    typ: mut u32
+    reserved: mut u32
+    timestamp: mut u64
+    window_id: mut u32
+    which: mut u32
+    state: mut u32
+    x: mut f32
+    y: mut f32
+    xrel: mut f32
+    yrel: mut f32
+}
+
+pub extern type SDLMouseButtonEvent = {
+    typ: mut u32
+    reserved: mut u32
+    timestamp: mut u64
+    window_id: mut u32
+    which: mut u32
+    button: mut u8
+    down: mut u8
+    clicks: mut u8
+    padding: mut u8
+    x: mut f32
+    y: mut f32
+}
+
+pub extern type SDLMouseWheelEvent = {
+    typ: mut u32
+    reserved: mut u32
+    timestamp: mut u64
+    window_id: mut u32
+    which: mut u32
+    x: mut f32
+    y: mut f32
+    direction: mut i32
+    mouse_x: mut f32
+    mouse_y: mut f32
+    integer_x: mut i32
+    integer_y: mut i32
+}
+
+pub extern type SDLTextInputEvent = {
+    typ: mut u32
+    reserved: mut u32
+    timestamp: mut u64
+    window_id: mut u32
+    text: mut ref u8
+}
+
+pub extern type SDLWindowEvent = {
+    typ: mut u32
+    reserved: mut u32
+    timestamp: mut u64
+    window_id: mut u32
+    data1: mut i32
+    data2: mut i32
 }
 
 pub extern type SDLFColor = {

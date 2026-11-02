@@ -1,4 +1,6 @@
+val sdl      = use("engine/sdl.sx")
 val math     = use("std/math")
+val string   = use("std/string")
 val ecs      = use("ecs.sx")
 val cam      = use("engine/camera.sx")
 val input    = use("engine/input.sx")
@@ -11,38 +13,53 @@ val exoerr   = use("engine/error.sx")
 
 val DEFAULT_SCREEN_WIDTH: i32 = 1440
 val DEFAULT_SCREEN_HEIGHT: i32 = 900
-val KEY_STATE_COUNT: i32 = 512
 
 pub type ExoConfig = {
     title: ref u8
     width: i32
     height: i32
     shaders: shaders.ExoShaderConfig
+    quit_key: i32
+    auto_camera: bool
+    fixed_dt: f32
+    font_path: ref u8
+    debug_dump_path: ref u8
+    debug_frame: i32
 }
 
 pub type ExoApp = {
     config: ExoConfig
     scene: mut ecs.Scene3D
-    scenes: mut list[ecs.Scene3D]
-    active_scene_index: mut usize
     camera: mut cam.Camera
     input: input.InputConfig
-    audio: audio.AudioMixerConfig
-    audio_runtime: mut audio.RuntimeAudioMixer
-    keys: mut ref u8
+    input_state: mut input.InputState
+    audio: audio.AudioBankConfig
+    audio_runtime: mut audio.RuntimeAudioBank
+    should_quit: mut bool
+    paused: mut bool
+    time: mut f32
+    dt: mut f32
+    frame: mut u64
+    scene_revision: mut u64
 }
 
-/// Application lifecycle and input hooks.
-///
-/// Games implement this spec to receive input and update their own state. The
-/// engine does not assign any gameplay meaning to keys: callbacks decide what
-/// every key press does.
+/// Application lifecycle and input hooks. The engine assigns no gameplay
+/// meaning to input; every callback is driven by a raw SDL event or by the
+/// gamepad state snapshot.
 pub spec AppEvents = {
     pub fn on_start(e: mut self, app: mut ExoApp) void
     pub fn on_update(e: mut self, app: mut ExoApp, dt: f32, time: f32) void
-    pub fn on_key_down(e: mut self, app: mut ExoApp, key: i32) void
-    pub fn on_key_up(e: mut self, app: mut ExoApp, key: i32) void
-    pub fn on_mouse_move(e: mut self, app: mut ExoApp, dx: f32, dy: f32) void
+    pub fn on_fixed_update(e: mut self, app: mut ExoApp, dt: f32) void
+    pub fn on_key_down(e: mut self, app: mut ExoApp, key: i32, repeat: bool, mods: u16) void
+    pub fn on_key_up(e: mut self, app: mut ExoApp, key: i32, mods: u16) void
+    pub fn on_mouse_move(e: mut self, app: mut ExoApp, dx: f32, dy: f32, x: f32, y: f32) void
+    pub fn on_mouse_button(e: mut self, app: mut ExoApp, button: u8, down: bool, clicks: u8, x: f32, y: f32) void
+    pub fn on_mouse_wheel(e: mut self, app: mut ExoApp, dx: f32, dy: f32, x: f32, y: f32) void
+    pub fn on_text_input(e: mut self, app: mut ExoApp, text: ref u8) void
+    pub fn on_window_resize(e: mut self, app: mut ExoApp, width: i32, height: i32) void
+    pub fn on_focus_changed(e: mut self, app: mut ExoApp, focused: bool) void
+    pub fn on_gamepad_button(e: mut self, app: mut ExoApp, button: i32, down: bool) void
+    pub fn on_gamepad_axis(e: mut self, app: mut ExoApp, axis: i32, value: f32) void
     pub fn on_shutdown(e: mut self, app: mut ExoApp) void
 }
 
@@ -52,16 +69,25 @@ type (AppEvents) NoAppEvents = {
 
 pub fn (NoAppEvents) on_start(_: mut self, _: mut ExoApp) void = {}
 pub fn (NoAppEvents) on_update(_: mut self, _: mut ExoApp, _: f32, _: f32) void = {}
-pub fn (NoAppEvents) on_key_down(_: mut self, _: mut ExoApp, _: i32) void = {}
-pub fn (NoAppEvents) on_key_up(_: mut self, _: mut ExoApp, _: i32) void = {}
-pub fn (NoAppEvents) on_mouse_move(_: mut self, _: mut ExoApp, _: f32, _: f32) void = {}
+pub fn (NoAppEvents) on_fixed_update(_: mut self, _: mut ExoApp, _: f32) void = {}
+pub fn (NoAppEvents) on_key_down(_: mut self, _: mut ExoApp, _: i32, _: bool, _: u16) void = {}
+pub fn (NoAppEvents) on_key_up(_: mut self, _: mut ExoApp, _: i32, _: u16) void = {}
+pub fn (NoAppEvents) on_mouse_move(_: mut self, _: mut ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+pub fn (NoAppEvents) on_mouse_button(_: mut self, _: mut ExoApp, _: u8, _: bool, _: u8, _: f32, _: f32) void = {}
+pub fn (NoAppEvents) on_mouse_wheel(_: mut self, _: mut ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+pub fn (NoAppEvents) on_text_input(_: mut self, _: mut ExoApp, _: ref u8) void = {}
+pub fn (NoAppEvents) on_window_resize(_: mut self, _: mut ExoApp, _: i32, _: i32) void = {}
+pub fn (NoAppEvents) on_focus_changed(_: mut self, _: mut ExoApp, _: bool) void = {}
+pub fn (NoAppEvents) on_gamepad_button(_: mut self, _: mut ExoApp, _: i32, _: bool) void = {}
+pub fn (NoAppEvents) on_gamepad_axis(_: mut self, _: mut ExoApp, _: i32, _: f32) void = {}
 pub fn (NoAppEvents) on_shutdown(_: mut self, _: mut ExoApp) void = {}
 
-fn empty_audio_runtime() audio.RuntimeAudioMixer = {
-    return {
-        initialized: false,
-        sample_audio: none as ref void
-    }
+type SceneResources = {
+    models: mut list[renderer.MeshGPU]
+    model_textures: mut list[ref void]
+    custom: mut list[renderer.MeshGPU]
+    revision: mut u64
+    loaded: mut bool
 }
 
 pub fn default_camera() cam.Camera = {
@@ -80,7 +106,7 @@ pub fn default_input_config() input.InputConfig = {
     return input.default_input_config()
 }
 
-pub fn default_audio_mixer() audio.AudioMixerConfig = {
+pub fn default_audio_mixer() audio.AudioBankConfig = {
     return audio.default_audio_mixer()
 }
 
@@ -113,45 +139,45 @@ pub fn default_config() ExoConfig = {
         title: "exo-engine",
         width: DEFAULT_SCREEN_WIDTH,
         height: DEFAULT_SCREEN_HEIGHT,
-        shaders: default_shader_config()
+        shaders: default_shader_config(),
+        quit_key: 0 as i32,
+        auto_camera: false,
+        fixed_dt: 0.0 as f32,
+        font_path: "./assets/fonts/default.png",
+        debug_dump_path: "",
+        debug_frame: -1 as i32
     }
 }
 
-fn fallback_scene() ecs.Scene3D = {
-    return ecs.new_scene(ecs.default_light())
-}
-
-fn first_scene(scenes: list[ecs.Scene3D]) ecs.Scene3D = {
-    if @get(scenes, 0 as usize) is some scene {
-        return scene
-    }
-    return fallback_scene()
-}
-
-pub fn create_scene_app(
+pub fn create_app(
     config: ExoConfig,
-    scenes: list[ecs.Scene3D],
+    scene: ecs.Scene3D,
     camera: cam.Camera,
     input_cfg: input.InputConfig,
-    audio_cfg: audio.AudioMixerConfig
+    audio_cfg: audio.AudioBankConfig
 ) ExoApp = {
     return {
         config: config,
-        scene: first_scene(scenes),
-        scenes: scenes,
-        active_scene_index: 0 as usize,
+        scene: scene,
         camera: camera,
         input: input_cfg,
+        input_state: input.empty_input_state(),
         audio: audio_cfg,
-        audio_runtime: empty_audio_runtime(),
-        keys: none as ref u8
+        audio_runtime: {
+            initialized: false,
+            clips: []
+        },
+        should_quit: false,
+        paused: false,
+        time: 0.0 as f32,
+        dt: 0.0 as f32,
+        frame: 0 as u64,
+        scene_revision: 0 as u64
     }
 }
 
-pub fn create_app(config: ExoConfig, scene: ecs.Scene3D, camera: cam.Camera, input_cfg: input.InputConfig) ExoApp = {
-    val scenes: mut list[ecs.Scene3D] = []
-    @append(scenes, scene)
-    return create_scene_app(config, scenes, camera, input_cfg, default_audio_mixer())
+pub fn create_basic_app(config: ExoConfig, scene: ecs.Scene3D, camera: cam.Camera, input_cfg: input.InputConfig) ExoApp = {
+    return create_app(config, scene, camera, input_cfg, default_audio_mixer())
 }
 
 pub type ExoAppBuilder = {
@@ -159,10 +185,16 @@ pub type ExoAppBuilder = {
     width: mut i32
     height: mut i32
     shaders: mut shaders.ExoShaderConfig
-    scenes: mut list[ecs.Scene3D]
+    scene: mut ecs.Scene3D
     camera: mut cam.Camera
     input: mut input.InputConfig
-    audio: mut audio.AudioMixerConfig
+    audio: mut audio.AudioBankConfig
+    quit_key: mut i32
+    auto_camera: mut bool
+    fixed_dt: mut f32
+    font_path: mut ref u8
+    debug_dump_path: mut ref u8
+    debug_frame: mut i32
 }
 
 pub fn new_app() ExoAppBuilder = {
@@ -172,10 +204,16 @@ pub fn new_app() ExoAppBuilder = {
         width: cfg.width,
         height: cfg.height,
         shaders: cfg.shaders,
-        scenes: [],
+        scene: ecs.new_scene(),
         camera: default_camera(),
         input: default_input_config(),
-        audio: default_audio_mixer()
+        audio: default_audio_mixer(),
+        quit_key: cfg.quit_key,
+        auto_camera: cfg.auto_camera,
+        fixed_dt: cfg.fixed_dt,
+        font_path: cfg.font_path,
+        debug_dump_path: cfg.debug_dump_path,
+        debug_frame: cfg.debug_frame
     }
 }
 
@@ -184,15 +222,15 @@ pub fn build_app(builder: ExoAppBuilder) ExoApp = {
         title: builder.title,
         width: builder.width,
         height: builder.height,
-        shaders: builder.shaders
+        shaders: builder.shaders,
+        quit_key: builder.quit_key,
+        auto_camera: builder.auto_camera,
+        fixed_dt: builder.fixed_dt,
+        font_path: builder.font_path,
+        debug_dump_path: builder.debug_dump_path,
+        debug_frame: builder.debug_frame
     }
-    return create_scene_app(
-        config,
-        builder.scenes,
-        builder.camera,
-        builder.input,
-        builder.audio
-    )
+    return create_app(config, builder.scene, builder.camera, builder.input, builder.audio)
 }
 
 pub fn with_title(app: mut ExoAppBuilder, title: ref u8) void = {
@@ -208,8 +246,8 @@ pub fn with_shaders(app: mut ExoAppBuilder, shader_cfg: shaders.ExoShaderConfig)
     app.shaders = shader_cfg
 }
 
-pub fn with_scene_list(app: mut ExoAppBuilder, scenes: list[ecs.Scene3D]) void = {
-    app.scenes = scenes
+pub fn with_scene(app: mut ExoAppBuilder, scene: ecs.Scene3D) void = {
+    app.scene = scene
 }
 
 pub fn with_camera(app: mut ExoAppBuilder, camera: cam.Camera) void = {
@@ -233,50 +271,196 @@ pub fn with_mouse_config(app: mut ExoAppBuilder, mouse: input.MouseConfig) void 
 }
 
 pub fn with_quit_key(app: mut ExoAppBuilder, key: i32) void = {
-    app.input.quit_key = key
+    app.quit_key = key
 }
 
-pub fn with_audio(app: mut ExoAppBuilder, audio_cfg: audio.AudioMixerConfig) void = {
+pub fn with_auto_camera(app: mut ExoAppBuilder) void = {
+    app.auto_camera = true
+}
+
+pub fn with_fixed_timestep(app: mut ExoAppBuilder, dt: f32) void = {
+    app.fixed_dt = dt
+}
+
+pub fn with_font(app: mut ExoAppBuilder, path: ref u8) void = {
+    app.font_path = path
+}
+
+pub fn with_debug_dump(app: mut ExoAppBuilder, path: ref u8, frame: i32) void = {
+    app.debug_dump_path = path
+    app.debug_frame = frame
+}
+
+pub fn with_audio(app: mut ExoAppBuilder, audio_cfg: audio.AudioBankConfig) void = {
     app.audio = audio_cfg
 }
 
-pub fn set_active_scene(app: mut ExoApp, index: usize) void = {
-    if @get(app.scenes, index) is some scene {
-        app.active_scene_index = index
-        app.scene = scene
-    }
+pub fn set_scene(app: mut ExoApp, scene: ecs.Scene3D) void = {
+    app.scene = scene
+    app.scene_revision = app.scene_revision + (1 as u64)
 }
 
-pub fn next_scene(app: mut ExoApp) void = {
-    val count: usize = @len(app.scenes)
-    if count <= (1 as usize) {
-        return
-    }
-    val next_index: usize = app.active_scene_index + (1 as usize)
-    if next_index >= count {
-        set_active_scene(app, 0 as usize)
-        return
-    }
-    set_active_scene(app, next_index)
+pub fn reload_scene_resources(app: mut ExoApp) void = {
+    app.scene_revision = app.scene_revision + (1 as u64)
+}
+
+pub fn request_quit(app: mut ExoApp) void = {
+    app.should_quit = true
 }
 
 pub fn key_held(app: ExoApp, key: i32) bool = trust {
-    return input.safe_key(app.keys, key) != 0
+    return input.safe_key(app.input_state.keys, key) != 0
+}
+
+pub fn mouse_button(app: ExoApp, button: u8) bool = {
+    return input.mouse_button_down(app.input_state, button)
+}
+
+pub fn gamepad_button(app: ExoApp, button: i32) bool = {
+    return input.gamepad_button(app.input_state, button)
+}
+
+pub fn gamepad_axis(app: ExoApp, axis: i32) f32 = {
+    if axis == sdl.SDL_GAMEPAD_AXIS_LEFTX {
+        return app.input_state.gamepad_left_x
+    }
+    if axis == sdl.SDL_GAMEPAD_AXIS_LEFTY {
+        return app.input_state.gamepad_left_y
+    }
+    if axis == sdl.SDL_GAMEPAD_AXIS_RIGHTX {
+        return app.input_state.gamepad_right_x
+    }
+    if axis == sdl.SDL_GAMEPAD_AXIS_RIGHTY {
+        return app.input_state.gamepad_right_y
+    }
+    if axis == sdl.SDL_GAMEPAD_AXIS_LEFT_TRIGGER {
+        return app.input_state.gamepad_left_trigger
+    }
+    return app.input_state.gamepad_right_trigger
+}
+
+pub fn apply_default_camera(app: mut ExoApp, dt: f32, mouse_dx: f32, mouse_dy: f32) void = trust {
+    cam.update_camera(app.camera, app.input, dt, app.input_state.keys, mouse_dx, mouse_dy)
+}
+
+pub fn play_clip(app: ExoApp, index: usize) bool = trust {
+    return audio.play_runtime_clip(app.audio, app.audio_runtime, index)
 }
 
 pub fn play_sound(app: ExoApp) bool = trust {
     return audio.play_runtime_audio(app.audio, app.audio_runtime)
 }
 
+pub fn stop_all_sounds(app: ExoApp) void = trust {
+    audio.stop_runtime_audio(app.audio_runtime)
+}
+
+fn empty_scene_resources() SceneResources = {
+    return {
+        models: [],
+        model_textures: [],
+        custom: [],
+        revision: 0 as u64,
+        loaded: false
+    }
+}
+
+fn release_scene_resources(runtime: ref void, resources: mut SceneResources) void = trust {
+    for model_mesh in resources.models {
+        renderer.destroy_mesh(runtime, model_mesh)
+    }
+    for texture in resources.model_textures {
+        renderer.release_texture(runtime, texture)
+    }
+    for custom_mesh in resources.custom {
+        renderer.destroy_mesh(runtime, custom_mesh)
+    }
+    resources.models = []
+    resources.model_textures = []
+    resources.custom = []
+}
+
+fn load_scene_resources(runtime: ref void, scene: ecs.Scene3D) SceneResources = trust {
+    val resources: mut SceneResources = empty_scene_resources()
+    val rt: mut ref renderer.Renderer = runtime as mut ref renderer.Renderer
+    for instance in scene.models {
+        @append(resources.models, mesh.upload_glb_model(runtime, instance.model))
+        @append(resources.model_textures, renderer.create_glb_texture(rt, instance.model))
+    }
+    for instance in scene.mesh_instances {
+        @append(resources.custom, renderer.upload_mesh(
+            runtime,
+            instance.geometry.vertices as ref void,
+            instance.geometry.vertex_float_count,
+            instance.geometry.indices as ref void,
+            instance.geometry.index_count
+        ))
+    }
+    resources.loaded = true
+    return resources
+}
+
+fn scene_meshes(
+    base_cube: renderer.MeshGPU,
+    base_sphere: renderer.MeshGPU,
+    base_quad: renderer.MeshGPU,
+    resources: SceneResources
+) renderer.SceneMeshes = {
+    return {
+        cube: base_cube,
+        sphere: base_sphere,
+        quad: base_quad,
+        models: resources.models,
+        model_textures: resources.model_textures,
+        custom: resources.custom
+    }
+}
+
+fn dispatch_gamepad[E: AppEvents](events: mut E, app: mut ExoApp, before_buttons: u64, before_lx: f32, before_ly: f32, before_rx: f32, before_ry: f32, before_lt: f32, before_rt: f32) void = {
+    events = events
+    app.input_state.key_mods = app.input_state.key_mods
+    val after_buttons: u64 = app.input_state.gamepad_buttons
+    val button: mut i32 = 0 as i32
+    for button < (64 as i32) {
+        val mask: u64 = (1 as u64) << (button as u64)
+        val was_down: bool = (before_buttons & mask) != (0 as u64)
+        val is_down: bool = (after_buttons & mask) != (0 as u64)
+        if is_down && !was_down {
+            E.on_gamepad_button(events, app, button, true)
+        }
+        if !is_down && was_down {
+            E.on_gamepad_button(events, app, button, false)
+        }
+        button = button + (1 as i32)
+    }
+    if before_lx != app.input_state.gamepad_left_x {
+        E.on_gamepad_axis(events, app, sdl.SDL_GAMEPAD_AXIS_LEFTX, app.input_state.gamepad_left_x)
+    }
+    if before_ly != app.input_state.gamepad_left_y {
+        E.on_gamepad_axis(events, app, sdl.SDL_GAMEPAD_AXIS_LEFTY, app.input_state.gamepad_left_y)
+    }
+    if before_rx != app.input_state.gamepad_right_x {
+        E.on_gamepad_axis(events, app, sdl.SDL_GAMEPAD_AXIS_RIGHTX, app.input_state.gamepad_right_x)
+    }
+    if before_ry != app.input_state.gamepad_right_y {
+        E.on_gamepad_axis(events, app, sdl.SDL_GAMEPAD_AXIS_RIGHTY, app.input_state.gamepad_right_y)
+    }
+    if before_lt != app.input_state.gamepad_left_trigger {
+        E.on_gamepad_axis(events, app, sdl.SDL_GAMEPAD_AXIS_LEFT_TRIGGER, app.input_state.gamepad_left_trigger)
+    }
+    if before_rt != app.input_state.gamepad_right_trigger {
+        E.on_gamepad_axis(events, app, sdl.SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, app.input_state.gamepad_right_trigger)
+    }
+}
+
 fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
     val app: mut ExoApp = app0
-    val events: E = events0
-    val runtime: ref void = renderer.create(app.config.title, app.config.width, app.config.height, app.config.shaders)
+    val events: mut E = events0
+    val runtime: ref void = renderer.create(app.config.title, app.config.width, app.config.height, app.config.shaders, app.config.font_path)
     if runtime == none {
         exoerr.print("SDL3 runtime init failed")
         return 1 as i32
     }
-    @print("exo controls: WASD move, Space/LShift up/down, arrows/mouse look, Esc quit\n", {})
     if app.input.mouse.enabled {
         if !renderer.set_relative_mouse_mode(runtime, true) {
             exoerr.print("SDL_SetWindowRelativeMouseMode failed")
@@ -284,103 +468,169 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             return 1 as i32
         }
     }
-    val cube_mesh: renderer.MeshGPU = mesh.build_cube_mesh(runtime)
-    val sphere_mesh: renderer.MeshGPU = mesh.build_sphere_mesh(runtime, 16 as i32, 24 as i32)
-    val quad_mesh: renderer.MeshGPU = mesh.build_quad_mesh(runtime)
-    if !renderer.mesh_valid(cube_mesh) || !renderer.mesh_valid(sphere_mesh) || !renderer.mesh_valid(quad_mesh) {
-        renderer.destroy_mesh(runtime, quad_mesh)
-        renderer.destroy_mesh(runtime, sphere_mesh)
-        renderer.destroy_mesh(runtime, cube_mesh)
+    val base_cube: renderer.MeshGPU = mesh.build_cube_mesh(runtime)
+    val base_sphere: renderer.MeshGPU = mesh.build_sphere_mesh(runtime, 16 as i32, 24 as i32)
+    val base_quad: renderer.MeshGPU = mesh.build_quad_mesh(runtime)
+    if !renderer.mesh_valid(base_cube) || !renderer.mesh_valid(base_sphere) || !renderer.mesh_valid(base_quad) {
+        renderer.destroy_mesh(runtime, base_quad)
+        renderer.destroy_mesh(runtime, base_sphere)
+        renderer.destroy_mesh(runtime, base_cube)
         renderer.destroy(runtime)
         return 1 as i32
     }
-    val glb_mesh: mut renderer.MeshGPU = { raw: none as ref void, index_count: 0 as i32 }
-    if app.scene.model.valid && app.scene.model.raw_bytes != none && app.scene.model.bin_length > (0 as usize) {
-        glb_mesh = mesh.upload_glb_model(runtime, app.scene.model)
-        val rt: mut ref renderer.Renderer = runtime as mut ref renderer.Renderer
-        renderer.upload_glb_texture(rt, app.scene.model)
-    }
-    val last_scene_index: mut usize = app.active_scene_index
     app.audio_runtime = audio.init_runtime_audio(app.audio)
     if audio.audio_enabled(app.audio) && !app.audio_runtime.initialized {
         exoerr.print("SDL3 audio init failed")
-        renderer.destroy_mesh(runtime, quad_mesh)
-        renderer.destroy_mesh(runtime, sphere_mesh)
-        renderer.destroy_mesh(runtime, cube_mesh)
+        renderer.destroy_mesh(runtime, base_quad)
+        renderer.destroy_mesh(runtime, base_sphere)
+        renderer.destroy_mesh(runtime, base_cube)
         renderer.destroy(runtime)
         return 1 as i32
     }
-    val prev_keys: ref u8 = @alloc(KEY_STATE_COUNT as usize) as ref u8
-    if prev_keys == none {
-        exoerr.print("failed to allocate key state")
-        audio.shutdown_runtime_audio(app.audio_runtime)
-        renderer.destroy_mesh(runtime, quad_mesh)
-        renderer.destroy_mesh(runtime, sphere_mesh)
-        renderer.destroy_mesh(runtime, cube_mesh)
-        renderer.destroy(runtime)
-        return 1 as i32
+    if app.input.text_input {
+        app.input_state.text_input_enabled = input.start_text_input()
     }
-    @memset(prev_keys as ref void, 0, KEY_STATE_COUNT as usize)
+    val gamepad: mut input.GamepadState = {
+        handle: none as ref void,
+        connected: false
+    }
+    if app.input.gamepad {
+        gamepad = input.open_gamepad()
+    }
+    val resources: mut SceneResources = empty_scene_resources()
+    val event: mut sdl.SDLEvent = sdl.empty_event()
     E.on_start(events, app)
     val start_ticks: u64 = renderer.get_ticks()
     val last_ticks: mut u64 = start_ticks
-    val quit: mut bool = false
+    val fixed_accumulator: mut f32 = 0.0 as f32
     val exit_code: mut i32 = 0 as i32
-    val debug_frame: mut i32 = 0 as i32
-    for !quit {
-        if renderer.poll_quit() {
-            quit = true
-        }
-        val keys: ref u8 = renderer.keyboard_state()
-        app.keys = keys
-        val quit_pressed: u8 = input.safe_key(keys, app.input.quit_key)
-        if quit_pressed != 0 {
-            quit = true
+    for !app.should_quit {
+        val frame_start: u64 = renderer.get_ticks()
+        app.input_state.mouse_dx = 0.0 as f32
+        app.input_state.mouse_dy = 0.0 as f32
+        app.input_state.wheel_x = 0.0 as f32
+        app.input_state.wheel_y = 0.0 as f32
+        app.input_state.keys = renderer.keyboard_state()
+
+        for {
+            if !(sdl.SDL_PollEvent(@addr(event))) {
+                break
+            }
+            if event.typ == sdl.SDL_EVENT_QUIT || event.typ == sdl.SDL_EVENT_WINDOW_CLOSE_REQUESTED {
+                app.should_quit = true
+            } elif event.typ == sdl.SDL_EVENT_KEY_DOWN || event.typ == sdl.SDL_EVENT_KEY_UP {
+                val key_event: ref sdl.SDLKeyboardEvent = @addr(event) as ref sdl.SDLKeyboardEvent
+                app.input_state.key_mods = key_event.mod
+                val is_down: bool = event.typ == sdl.SDL_EVENT_KEY_DOWN
+                if is_down && app.config.quit_key > (0 as i32) && key_event.scancode == app.config.quit_key {
+                    app.should_quit = true
+                }
+                if is_down {
+                    E.on_key_down(events, app, key_event.scancode, key_event.repeat != (0 as u8), key_event.mod)
+                } else {
+                    E.on_key_up(events, app, key_event.scancode, key_event.mod)
+                }
+            } elif event.typ == sdl.SDL_EVENT_MOUSE_MOTION {
+                val motion: ref sdl.SDLMouseMotionEvent = @addr(event) as ref sdl.SDLMouseMotionEvent
+                app.input_state.mouse_x = motion.x
+                app.input_state.mouse_y = motion.y
+                app.input_state.mouse_dx = app.input_state.mouse_dx + motion.xrel
+                app.input_state.mouse_dy = app.input_state.mouse_dy + motion.yrel
+                app.input_state.mouse_buttons = motion.state
+                E.on_mouse_move(events, app, motion.xrel, motion.yrel, motion.x, motion.y)
+            } elif event.typ == sdl.SDL_EVENT_MOUSE_BUTTON_DOWN || event.typ == sdl.SDL_EVENT_MOUSE_BUTTON_UP {
+                val button_event: ref sdl.SDLMouseButtonEvent = @addr(event) as ref sdl.SDLMouseButtonEvent
+                val mask: u32 = (1 as u32) << ((button_event.button as u32) - (1 as u32))
+                val is_down: bool = event.typ == sdl.SDL_EVENT_MOUSE_BUTTON_DOWN
+                if is_down {
+                    app.input_state.mouse_buttons = app.input_state.mouse_buttons | mask
+                } else {
+                    app.input_state.mouse_buttons = app.input_state.mouse_buttons & (mask ^ (0xFFFFFFFF as u32))
+                }
+                E.on_mouse_button(events, app, button_event.button, is_down, button_event.clicks, button_event.x, button_event.y)
+            } elif event.typ == sdl.SDL_EVENT_MOUSE_WHEEL {
+                val wheel: ref sdl.SDLMouseWheelEvent = @addr(event) as ref sdl.SDLMouseWheelEvent
+                app.input_state.wheel_x = wheel.x
+                app.input_state.wheel_y = wheel.y
+                E.on_mouse_wheel(events, app, wheel.x, wheel.y, wheel.mouse_x, wheel.mouse_y)
+            } elif event.typ == sdl.SDL_EVENT_TEXT_INPUT {
+                if app.input_state.text_input_enabled {
+                    val text_event: ref sdl.SDLTextInputEvent = @addr(event) as ref sdl.SDLTextInputEvent
+                    E.on_text_input(events, app, text_event.text)
+                }
+            } elif event.typ == sdl.SDL_EVENT_WINDOW_RESIZED || event.typ == sdl.SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED {
+                val window_event: ref sdl.SDLWindowEvent = @addr(event) as ref sdl.SDLWindowEvent
+                app.config.width = window_event.data1
+                app.config.height = window_event.data2
+                E.on_window_resize(events, app, window_event.data1, window_event.data2)
+            } elif event.typ == sdl.SDL_EVENT_WINDOW_FOCUS_GAINED {
+                app.input_state.focused = true
+                E.on_focus_changed(events, app, true)
+            } elif event.typ == sdl.SDL_EVENT_WINDOW_FOCUS_LOST {
+                app.input_state.focused = false
+                E.on_focus_changed(events, app, false)
+            }
         }
 
-        val key_index: mut i32 = 0 as i32
-        for key_index < KEY_STATE_COUNT {
-            val key_cur: u8 = @load8(@ptradd(keys, key_index as usize))
-            val key_prev: u8 = @load8(@ptradd(prev_keys, key_index as usize))
-            if key_cur != 0 && key_prev == 0 {
-                E.on_key_down(events, app, key_index)
-            }
-            if key_cur == 0 && key_prev != 0 {
-                E.on_key_up(events, app, key_index)
-            }
-            @store8(@ptradd(prev_keys, key_index as usize), key_cur)
-            key_index = key_index + (1 as i32)
-        }
+        app.input_state.wheel_x = 0.0 as f32
+        app.input_state.wheel_y = 0.0 as f32
+        app.input_state.keys = renderer.keyboard_state()
 
-        if app.active_scene_index != last_scene_index {
-            renderer.destroy_mesh(runtime, glb_mesh)
-            glb_mesh = { raw: none as ref void, index_count: 0 as i32 }
-            if app.scene.model.valid && app.scene.model.raw_bytes != none && app.scene.model.bin_length > (0 as usize) {
-                glb_mesh = mesh.upload_glb_model(runtime, app.scene.model)
-                val rt2: mut ref renderer.Renderer = runtime as mut ref renderer.Renderer
-                renderer.upload_glb_texture(rt2, app.scene.model)
-            } else {
-                val rt2: mut ref renderer.Renderer = runtime as mut ref renderer.Renderer
-                renderer.clear_glb_texture(rt2)
-            }
-            last_scene_index = app.active_scene_index
-            @print("scene {d}\n", {app.active_scene_index})
-        }
-
-        val mx: mut f32 = 0.0 as f32
-        val my: mut f32 = 0.0 as f32
-        renderer.relative_mouse_state(@addr(mx), @addr(my))
-        if mx != (0.0 as f32) || my != (0.0 as f32) {
-            E.on_mouse_move(events, app, mx, my)
+        val before_buttons: u64 = app.input_state.gamepad_buttons
+        val before_lx: f32 = app.input_state.gamepad_left_x
+        val before_ly: f32 = app.input_state.gamepad_left_y
+        val before_rx: f32 = app.input_state.gamepad_right_x
+        val before_ry: f32 = app.input_state.gamepad_right_y
+        val before_lt: f32 = app.input_state.gamepad_left_trigger
+        val before_rt: f32 = app.input_state.gamepad_right_trigger
+        if app.input.gamepad {
+            input.update_gamepad(gamepad, app.input_state)
+            dispatch_gamepad[E](events, app, before_buttons, before_lx, before_ly, before_rx, before_ry, before_lt, before_rt)
         }
 
         val now_ticks: u64 = renderer.get_ticks()
         val dt_raw: f32 = ((now_ticks - last_ticks) as f32) / (1000.0 as f32)
-        val dt: f32 = math.fclamp(dt_raw as f64, 0.0, 0.05) as f32
-        val time_value: f32 = ((now_ticks - start_ticks) as f32) / (1000.0 as f32)
+        app.dt = math.fclamp(dt_raw as f64, 0.0, 0.05) as f32
+        app.time = ((now_ticks - start_ticks) as f32) / (1000.0 as f32)
         last_ticks = now_ticks
-        cam.update_camera(app.camera, app.input, dt, keys, mx, my)
-        E.on_update(events, app, dt, time_value)
+
+        val mx: mut f32 = app.input_state.mouse_dx
+        val my: mut f32 = app.input_state.mouse_dy
+        val rel_x: mut f32 = 0.0 as f32
+        val rel_y: mut f32 = 0.0 as f32
+        renderer.relative_mouse_state(@addr(rel_x), @addr(rel_y))
+        if rel_x != (0.0 as f32) || rel_y != (0.0 as f32) {
+            mx = rel_x
+            my = rel_y
+        }
+        if app.config.auto_camera && !app.paused {
+            apply_default_camera(app, app.dt, mx, my)
+        }
+        if !app.paused {
+            if app.config.fixed_dt > (0.0 as f32) {
+                fixed_accumulator = fixed_accumulator + app.dt
+                val steps: mut i32 = 0 as i32
+                for fixed_accumulator >= app.config.fixed_dt && steps < (8 as i32) {
+                    E.on_fixed_update(events, app, app.config.fixed_dt)
+                    fixed_accumulator = fixed_accumulator - app.config.fixed_dt
+                    steps = steps + (1 as i32)
+                }
+                if steps >= (8 as i32) {
+                    fixed_accumulator = 0.0 as f32
+                }
+            }
+            E.on_update(events, app, app.dt, app.time)
+        }
+
+        if app.scene_revision != resources.revision || !resources.loaded
+            || @len(resources.models) != @len(app.scene.models)
+            || @len(resources.custom) != @len(app.scene.mesh_instances) {
+            release_scene_resources(runtime, resources)
+            resources = load_scene_resources(runtime, app.scene)
+            resources.revision = app.scene_revision
+        }
+        val meshes: renderer.SceneMeshes = scene_meshes(base_cube, base_sphere, base_quad, resources)
+        renderer.configure_scene_style(runtime, app.scene.render.clear_top, app.scene.render.clear_bottom, app.scene.render.ambient, app.scene.lights)
 
         val frame_w: mut u32 = app.config.width as u32
         val frame_h: mut u32 = app.config.height as u32
@@ -389,41 +639,63 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             exit_code = 1 as i32
             break
         }
-        if !renderer.begin_reflection_pass(runtime, 0.05 as f32, 0.08 as f32, 0.14 as f32, 1.0 as f32) {
+        if !renderer.begin_reflection_pass(runtime, app.scene.render.clear_bottom.x, app.scene.render.clear_bottom.y, app.scene.render.clear_bottom.z, 1.0 as f32) {
             exoerr.print("SDL3 reflection pass failed")
             exit_code = 1 as i32
             break
         }
-        renderer.render_reflection_scene(runtime, cube_mesh, sphere_mesh, app.scene, app.camera, frame_w as i32, frame_h as i32, time_value, -0.18 as f32)
-        if !renderer.begin_scene_pass(runtime, 0.09 as f32, 0.15 as f32, 0.30 as f32, 1.0 as f32) {
-            exoerr.print("SDL3 scene pass failed")
-            exit_code = 1 as i32
-            break
-        }
-        renderer.render_scene(runtime, cube_mesh, sphere_mesh, quad_mesh, glb_mesh, app.scene, app.camera, frame_w as i32, frame_h as i32, time_value)
-        if !renderer.apply_fxaa(runtime) {
-            exoerr.print("SDL3 FXAA pass failed")
-            exit_code = 1 as i32
-            break
+        if app.scene.render.enable_reflections {
+            renderer.render_reflection_scene(runtime, meshes, app.scene, app.camera, frame_w as i32, frame_h as i32, app.time)
         }
         renderer.end_pass(runtime)
+        if app.scene.render.enable_fxaa {
+            if !renderer.begin_scene_pass(runtime, app.scene.render.clear_top.x, app.scene.render.clear_top.y, app.scene.render.clear_top.z, 1.0 as f32) {
+                exoerr.print("SDL3 scene pass failed")
+                exit_code = 1 as i32
+                break
+            }
+            renderer.render_scene(runtime, meshes, app.scene, app.camera, frame_w as i32, frame_h as i32, app.time)
+            renderer.end_pass(runtime)
+            if !renderer.apply_fxaa(runtime) {
+                exoerr.print("SDL3 postprocess pass failed")
+                exit_code = 1 as i32
+                break
+            }
+            renderer.render_ui(runtime, meshes, app.scene, frame_w as i32, frame_h as i32)
+            renderer.end_pass(runtime)
+        } else {
+            if !renderer.begin_swapchain_scene_pass(runtime, app.scene.render.clear_top.x, app.scene.render.clear_top.y, app.scene.render.clear_top.z, 1.0 as f32) {
+                exoerr.print("SDL3 scene pass failed")
+                exit_code = 1 as i32
+                break
+            }
+            renderer.render_scene(runtime, meshes, app.scene, app.camera, frame_w as i32, frame_h as i32, app.time)
+            renderer.render_ui(runtime, meshes, app.scene, frame_w as i32, frame_h as i32)
+            renderer.end_pass(runtime)
+        }
         if !renderer.submit_frame(runtime) {
             exoerr.print("SDL3 submit frame failed")
             exit_code = 1 as i32
             break
         }
-        if debug_frame == (5 as i32) {
-            renderer.debug_dump_scene(runtime, "/tmp/exo_scene.ppm")
+        if app.config.debug_frame >= (0 as i32) && app.frame == (app.config.debug_frame as u64) && app.config.debug_dump_path != none && string.len_raw(app.config.debug_dump_path) > (0 as usize) {
+            renderer.debug_dump_scene(runtime, app.config.debug_dump_path)
         }
-        debug_frame = debug_frame + (1 as i32)
+        app.frame = app.frame + (1 as u64)
+        if now_ticks < frame_start {
+            break
+        }
     }
     E.on_shutdown(events, app)
+    if app.input.text_input {
+        input.stop_text_input()
+    }
+    input.close_gamepad(gamepad)
+    release_scene_resources(runtime, resources)
     audio.shutdown_runtime_audio(app.audio_runtime)
-    @free(prev_keys as ref void)
-    renderer.destroy_mesh(runtime, glb_mesh)
-    renderer.destroy_mesh(runtime, quad_mesh)
-    renderer.destroy_mesh(runtime, sphere_mesh)
-    renderer.destroy_mesh(runtime, cube_mesh)
+    renderer.destroy_mesh(runtime, base_quad)
+    renderer.destroy_mesh(runtime, base_sphere)
+    renderer.destroy_mesh(runtime, base_cube)
     renderer.destroy(runtime)
     return exit_code
 }

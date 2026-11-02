@@ -9,6 +9,7 @@ layout(set = 2, binding = 0) uniform sampler2D uReflectionTex;
 
 layout(set = 3, binding = 0, std140) uniform FloorFragmentUniforms {
     vec4 uCameraPos;
+    vec4 uFloorColor;
 };
 
 vec3 sky_color(vec3 direction_value) {
@@ -28,7 +29,7 @@ void main() {
         }
     }
     float fresnel = pow(1.0 - max(dot(view_dir, normal_value), 0.0), 5.0);
-    vec3 tint = vec3(0.03, 0.06, 0.08);
+    vec3 tint = uFloorColor.rgb;
     vec3 color_value = mix(tint, reflection, 0.42 + fresnel * 0.36);
     vec3 highlight = vec3(1.0, 0.98, 0.95)
         * pow(max(dot(reflect(-view_dir, normal_value), vec3(0.0, 1.0, 0.0)), 0.0), 18.0)

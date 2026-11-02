@@ -3,6 +3,7 @@ val engine  = use("engine.sx")
 val cam     = use("engine/camera.sx")
 val input   = use("engine/input.sx")
 val shaders = use("engine/shaders.sx")
+val audio   = use("engine/audio.sx")
 
 pub fn default_config() engine.ExoConfig = {
     return engine.default_config()
@@ -28,12 +29,16 @@ pub fn default_mouse_config() input.MouseConfig = {
     return engine.default_mouse_config()
 }
 
+pub fn default_audio_bank() audio.AudioBankConfig = {
+    return engine.default_audio_mixer()
+}
+
 pub fn create_app(scene: ecs.Scene3D) engine.ExoApp = {
-    return engine.create_app(default_config(), scene, default_camera(), default_input_config())
+    return engine.create_basic_app(default_config(), scene, default_camera(), default_input_config())
 }
 
 pub fn create_configured_app(config: engine.ExoConfig, scene: ecs.Scene3D, camera: cam.Camera, input_cfg: input.InputConfig) engine.ExoApp = {
-    return engine.create_app(config, scene, camera, input_cfg)
+    return engine.create_basic_app(config, scene, camera, input_cfg)
 }
 
 pub fn run(app: engine.ExoApp) i32 = trust {

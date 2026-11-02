@@ -5,19 +5,25 @@ val exoerr = use("error.sx")
 pub type AudioClip = {
     path: ref u8
     loops: i32
+    volume: i32
 }
 
-pub type AudioMixerConfig = {
-    music_volume: i32
-    sample: AudioClip
+pub type AudioBankConfig = {
+    master_volume: i32
+    clips: list[AudioClip]
 }
 
+pub type RuntimeAudioClip = {
+    loaded: bool
+    audio: ref void
+    loops: i32
+    volume: i32
+}
 
-pub type RuntimeAudioMixer = {
+pub type RuntimeAudioBank = {
     initialized: mut bool
-    sample_audio: mut ref void
+    clips: mut list[RuntimeAudioClip]
 }
-
 
 pub type ExoSDL3Audio = {
     stream: mut ref void
@@ -25,7 +31,6 @@ pub type ExoSDL3Audio = {
     buffer: mut ref u8
     length: mut u32
 }
-
 
 pub fn create_audio(wav_path: ref u8, volume: i32) ref void = trust {
     exoerr.clear()
@@ -97,51 +102,93 @@ pub fn play_audio(audio_raw: ref void, loops: i32, volume: i32) bool = trust {
     return sdl.SDL_FlushAudioStream(audio.stream)
 }
 
-
-pub fn default_audio_mixer() AudioMixerConfig = {
+pub fn default_audio_mixer() AudioBankConfig = {
     return {
-        music_volume: 96 as i32,
-        sample: {
-            path: "",
-            loops: 0 as i32
+        master_volume: 96 as i32,
+        clips: []
+    }
+}
+
+pub fn make_clip(path: ref u8, loops: i32, volume: i32) AudioClip = {
+    return {
+        path: path,
+        loops: loops,
+        volume: volume
+    }
+}
+
+pub fn add_clip(config: mut AudioBankConfig, clip: AudioClip) void = {
+    @append(config.clips, clip)
+}
+
+pub fn audio_enabled(config: AudioBankConfig) bool = {
+    for clip in config.clips {
+        if clip.path != none && string.len_raw(clip.path) > (0 as usize) {
+            return true
+        }
+    }
+    return false
+}
+
+pub fn init_runtime_audio(config: AudioBankConfig) RuntimeAudioBank = trust {
+    val runtime: mut RuntimeAudioBank = {
+        initialized: false,
+        clips: []
+    }
+    val loaded_count: mut i32 = 0 as i32
+    for clip in config.clips {
+        val volume: mut i32 = clip.volume
+        if volume <= (0 as i32) {
+            volume = config.master_volume
+        }
+        val audio: ref void = create_audio(clip.path, volume)
+        @append(runtime.clips, {
+            loaded: audio != none,
+            audio: audio,
+            loops: clip.loops,
+            volume: volume
+        })
+        if audio != none {
+            loaded_count = loaded_count + (1 as i32)
+        }
+    }
+    runtime.initialized = loaded_count > (0 as i32)
+    return runtime
+}
+
+pub fn shutdown_runtime_audio(runtime: RuntimeAudioBank) void = trust {
+    for clip in runtime.clips {
+        if clip.audio != none {
+            destroy_audio(clip.audio)
         }
     }
 }
 
-
-pub fn audio_enabled(config: AudioMixerConfig) bool = {
-    if config.sample.path == none {
-        return false
+pub fn play_runtime_clip(config: AudioBankConfig, runtime: RuntimeAudioBank, index: usize) bool = trust {
+    if @get(runtime.clips, index) is some clip {
+        if clip.loaded && clip.audio != none {
+            val volume: mut i32 = clip.volume
+            if volume <= (0 as i32) {
+                volume = config.master_volume
+            }
+            return play_audio(clip.audio, clip.loops, volume)
+        }
     }
-    return string.len_raw(config.sample.path) > (0 as usize)
+    return false
 }
 
-pub fn init_runtime_audio(config: AudioMixerConfig) RuntimeAudioMixer = trust {
-    val runtime: mut RuntimeAudioMixer = {
-        initialized: false,
-        sample_audio: none as ref void
-    }
-    if !audio_enabled(config) {
-        return runtime
-    }
-    runtime.sample_audio = create_audio(config.sample.path, config.music_volume)
-    if runtime.sample_audio == none {
-        return runtime
-    }
-    runtime.initialized = true
-    return runtime
+pub fn play_runtime_audio(config: AudioBankConfig, runtime: RuntimeAudioBank) bool = trust {
+    return play_runtime_clip(config, runtime, 0 as usize)
 }
 
-pub fn shutdown_runtime_audio(runtime: RuntimeAudioMixer) void = trust {
-    if runtime.sample_audio != none {
-        destroy_audio(runtime.sample_audio)
+pub fn stop_runtime_audio(runtime: RuntimeAudioBank) void = trust {
+    for clip in runtime.clips {
+        if clip.audio != none {
+            val audio: ref ExoSDL3Audio = clip.audio as ref ExoSDL3Audio
+            if audio.stream != none {
+                sdl.SDL_ClearAudioStream(audio.stream)
+                sdl.SDL_FlushAudioStream(audio.stream)
+            }
+        }
     }
 }
-
-pub fn play_runtime_audio(config: AudioMixerConfig, runtime: RuntimeAudioMixer) bool = trust {
-    if !runtime.initialized || runtime.sample_audio == none {
-        return false
-    }
-    return play_audio(runtime.sample_audio, config.sample.loops, config.music_volume)
-}
-

@@ -12,18 +12,115 @@ pub type MeshGPU = {
     index_count: i32
 }
 
+pub type SceneMeshes = {
+    cube: MeshGPU
+    sphere: MeshGPU
+    quad: MeshGPU
+    models: list[MeshGPU]
+    model_textures: list[ref void]
+    custom: list[MeshGPU]
+}
+
 
 pub type SceneVertexUniforms = {
     model: mut math.Mat4
     view_proj: mut math.Mat4
+    uv_transform: mut math.Vec4f
 }
 
 pub type SceneFragmentUniforms = {
     color_reflective: mut math.Vec4f
     camera_glow: mut math.Vec4f
-    light_pos_intensity: mut math.Vec4f
-    light_color_radius: mut math.Vec4f
+    light_pos_0: mut math.Vec4f
+    light_pos_1: mut math.Vec4f
+    light_pos_2: mut math.Vec4f
+    light_pos_3: mut math.Vec4f
+    light_pos_4: mut math.Vec4f
+    light_pos_5: mut math.Vec4f
+    light_pos_6: mut math.Vec4f
+    light_pos_7: mut math.Vec4f
+    light_color_0: mut math.Vec4f
+    light_color_1: mut math.Vec4f
+    light_color_2: mut math.Vec4f
+    light_color_3: mut math.Vec4f
+    light_color_4: mut math.Vec4f
+    light_color_5: mut math.Vec4f
+    light_color_6: mut math.Vec4f
+    light_color_7: mut math.Vec4f
     alpha_pad: mut math.Vec4f
+    sky_top: mut math.Vec4f
+    sky_horizon: mut math.Vec4f
+    ambient_pad: mut math.Vec4f
+    light_meta: mut math.Vec4f
+}
+
+fn default_scene_fragment_uniforms() SceneFragmentUniforms = {
+    return {
+        color_reflective: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        camera_glow: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        light_pos_0: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        light_pos_1: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        light_pos_2: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        light_pos_3: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        light_pos_4: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        light_pos_5: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        light_pos_6: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        light_pos_7: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        light_color_0: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        light_color_1: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        light_color_2: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        light_color_3: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        light_color_4: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        light_color_5: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        light_color_6: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        light_color_7: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        alpha_pad: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        sky_top: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        sky_horizon: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        ambient_pad: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        light_meta: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
+    }
+}
+
+fn set_light_uniform(fu: mut SceneFragmentUniforms, index: i32, light: ecs.PointLight) void = {
+    val pos_intensity: math.Vec4f = { x: light.position.x, y: light.position.y, z: light.position.z, w: light.intensity }
+    val color_radius: math.Vec4f = { x: light.color.x, y: light.color.y, z: light.color.z, w: light.radius }
+    if index == (0 as i32) {
+        fu.light_pos_0 = pos_intensity
+        fu.light_color_0 = color_radius
+    } elif index == (1 as i32) {
+        fu.light_pos_1 = pos_intensity
+        fu.light_color_1 = color_radius
+    } elif index == (2 as i32) {
+        fu.light_pos_2 = pos_intensity
+        fu.light_color_2 = color_radius
+    } elif index == (3 as i32) {
+        fu.light_pos_3 = pos_intensity
+        fu.light_color_3 = color_radius
+    } elif index == (4 as i32) {
+        fu.light_pos_4 = pos_intensity
+        fu.light_color_4 = color_radius
+    } elif index == (5 as i32) {
+        fu.light_pos_5 = pos_intensity
+        fu.light_color_5 = color_radius
+    } elif index == (6 as i32) {
+        fu.light_pos_6 = pos_intensity
+        fu.light_color_6 = color_radius
+    } elif index == (7 as i32) {
+        fu.light_pos_7 = pos_intensity
+        fu.light_color_7 = color_radius
+    }
+}
+
+pub fn configure_scene_style(runtime_raw: ref void, sky_top: math.Vec3, sky_horizon: math.Vec3, ambient: f32, lights: list[ecs.PointLight]) void = trust {
+    if runtime_raw == none {
+        return
+    }
+    val runtime: mut ref Renderer = runtime_raw as mut ref Renderer
+    runtime.sky_top = sky_top
+    runtime.sky_horizon = sky_horizon
+    runtime.ambient = ambient
+    runtime.lights = lights
 }
 
 pub type FloorVertexUniforms = {
@@ -34,6 +131,7 @@ pub type FloorVertexUniforms = {
 
 pub type FloorFragmentUniforms = {
     camera_pos: mut math.Vec4f
+    floor_color: mut math.Vec4f
 }
 
 pub type GlowVertexUniforms = {
@@ -82,8 +180,10 @@ pub type Renderer = {
     glow_pipeline: mut ref void
     fxaa_pipeline: mut ref void
     water_pipeline: mut ref void
+    ui_pipeline: mut ref void
     normal_map_texture: mut ref void
     glb_texture: mut ref void
+    font_texture: mut ref void
     linear_sampler: mut ref void
     repeat_sampler: mut ref void
     reflection_color: mut ref void
@@ -97,6 +197,10 @@ pub type Renderer = {
     render_width: mut u32
     render_height: mut u32
     frame_active: mut bool
+    sky_top: mut math.Vec3
+    sky_horizon: mut math.Vec3
+    ambient: mut f32
+    lights: mut list[ecs.PointLight]
 }
 
 
@@ -473,6 +577,91 @@ pub fn create_scene_pipeline(
     return pipeline
 }
 
+/// UI pipeline: same vertex layout/shader as the scene pipeline, but no depth
+/// target and alpha blending so HUD quads can be drawn directly to the swapchain.
+pub fn create_ui_pipeline(
+    runtime: ref Renderer,
+    vs_path: ref u8,
+    fs_path: ref u8,
+    color_format: i32
+) ref void = trust {
+    val vs: ref void = load_shader(runtime, vs_path, sdl.SDL_GPU_SHADERSTAGE_VERTEX, 0 as u32, 1 as u32)
+    if vs == none {
+        return none as ref void
+    }
+    val fs: ref void = load_shader(runtime, fs_path, sdl.SDL_GPU_SHADERSTAGE_FRAGMENT, 1 as u32, 1 as u32)
+    if fs == none {
+        sdl.SDL_ReleaseGPUShader(runtime.device, vs)
+        return none as ref void
+    }
+    val vbd: mut sdl.SDLGPUVertexBufferDescription = {
+        slot: 0 as u32, pitch: 32 as u32,
+        input_rate: sdl.SDL_GPU_VERTEXINPUTRATE_VERTEX, instance_step_rate: 0 as u32
+    }
+    val attrs: mut VertexAttributeTriple = {
+        first: { location: 0 as u32, buffer_slot: 0 as u32, format: sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, offset: 0 as u32 },
+        second: { location: 1 as u32, buffer_slot: 0 as u32, format: sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, offset: 12 as u32 },
+        third: { location: 2 as u32, buffer_slot: 0 as u32, format: sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, offset: 24 as u32 }
+    }
+    val color_target: mut sdl.SDLGPUColorTargetDescription = {
+        format: color_format,
+        blend_state: {
+            src_color_blendfactor: sdl.SDL_GPU_BLENDFACTOR_SRC_ALPHA,
+            dst_color_blendfactor: sdl.SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+            color_blend_op: sdl.SDL_GPU_BLENDOP_ADD,
+            src_alpha_blendfactor: sdl.SDL_GPU_BLENDFACTOR_ONE,
+            dst_alpha_blendfactor: sdl.SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+            alpha_blend_op: sdl.SDL_GPU_BLENDOP_ADD,
+            color_write_mask: 0 as u8, enable_blend: true,
+            enable_color_write_mask: false, padding1: 0 as u8, padding2: 0 as u8
+        }
+    }
+    val info: mut sdl.SDLGPUGraphicsPipelineCreateInfo = {
+        vertex_shader: vs, fragment_shader: fs,
+        vertex_input_state: {
+            vertex_buffer_descriptions: @addr(vbd),
+            num_vertex_buffers: 1 as u32,
+            vertex_attributes: @addr(attrs.first),
+            num_vertex_attributes: 3 as u32
+        },
+        primitive_type: sdl.SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
+        rasterizer_state: {
+            fill_mode: sdl.SDL_GPU_FILLMODE_FILL, cull_mode: sdl.SDL_GPU_CULLMODE_NONE,
+            front_face: sdl.SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE,
+            depth_bias_constant_factor: 0.0 as f32, depth_bias_clamp: 0.0 as f32,
+            depth_bias_slope_factor: 0.0 as f32,
+            enable_depth_bias: false, enable_depth_clip: true,
+            padding1: 0 as u8, padding2: 0 as u8
+        },
+        multisample_state: {
+            sample_count: sdl.SDL_GPU_SAMPLECOUNT_1, sample_mask: 0 as u32,
+            enable_mask: false, enable_alpha_to_coverage: false,
+            padding2: 0 as u8, padding3: 0 as u8
+        },
+        depth_stencil_state: {
+            compare_op: sdl.SDL_GPU_COMPAREOP_LESS_OR_EQUAL,
+            back_stencil_state: { fail_op: 0 as i32, pass_op: 0 as i32, depth_fail_op: 0 as i32, compare_op: 0 as i32 },
+            front_stencil_state: { fail_op: 0 as i32, pass_op: 0 as i32, depth_fail_op: 0 as i32, compare_op: 0 as i32 },
+            compare_mask: 0 as u8, write_mask: 0 as u8,
+            enable_depth_test: false, enable_depth_write: false,
+            enable_stencil_test: false,
+            padding1: 0 as u8, padding2: 0 as u8, padding3: 0 as u8
+        },
+        target_info: {
+            color_target_descriptions: @addr(color_target),
+            num_color_targets: 1 as u32,
+            depth_stencil_format: 0 as i32,
+            has_depth_stencil_target: false,
+            padding1: 0 as u8, padding2: 0 as u8, padding3: 0 as u8
+        },
+        props: 0 as u32
+    }
+    val pipeline: ref void = sdl.SDL_CreateGPUGraphicsPipeline(runtime.device, @addr(info))
+    sdl.SDL_ReleaseGPUShader(runtime.device, fs)
+    sdl.SDL_ReleaseGPUShader(runtime.device, vs)
+    return pipeline
+}
+
 pub fn create_postprocess_pipeline(
     runtime: ref Renderer,
     vs_path: ref u8,
@@ -672,6 +861,15 @@ pub fn create_pipelines(runtime: mut ref Renderer, shader_cfg: shaders.ExoShader
     if runtime.scene_pipeline == none {
         return false
     }
+    runtime.ui_pipeline = create_ui_pipeline(
+        runtime,
+        shader_cfg.scene.vertex_path,
+        shader_cfg.scene.fragment_path,
+        runtime.swapchain_format
+    )
+    if runtime.ui_pipeline == none {
+        return false
+    }
     runtime.floor_pipeline = create_pipeline(
         runtime,
         shader_cfg.floor.vertex_path,
@@ -747,6 +945,10 @@ pub fn destroy_pipelines(runtime: mut ref Renderer) void = trust {
     if runtime.floor_pipeline != none {
         sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.floor_pipeline)
         runtime.floor_pipeline = none
+    }
+    if runtime.ui_pipeline != none {
+        sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.ui_pipeline)
+        runtime.ui_pipeline = none
     }
     if runtime.scene_pipeline != none {
         sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.scene_pipeline)
@@ -903,6 +1105,10 @@ pub fn destroy_runtime_resources(runtime: mut ref Renderer) void = trust {
         sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.glb_texture)
         runtime.glb_texture = none
     }
+    if runtime.font_texture != none {
+        sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.font_texture)
+        runtime.font_texture = none
+    }
     if runtime.normal_map_texture != none {
         sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.normal_map_texture)
         runtime.normal_map_texture = none
@@ -919,14 +1125,9 @@ pub fn destroy_runtime_resources(runtime: mut ref Renderer) void = trust {
 }
 
 /// Upload an embedded GLB image (PNG/JPEG bytes in the BIN chunk) as a GPU texture.
-
-pub fn upload_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) void = trust {
-    if runtime.glb_texture != none {
-        sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.glb_texture)
-        runtime.glb_texture = none
-    }
+pub fn create_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) ref void = trust {
     if model.texture_length == (0 as usize) || model.raw_bytes == none {
-        return
+        return none as ref void
     }
     val img_ptr: ref u8 = @ptradd(model.raw_bytes, model.texture_offset) as ref u8
     val w: mut i32 = 0 as i32
@@ -934,7 +1135,7 @@ pub fn upload_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) void =
     val ch: mut i32 = 0 as i32
     val pixels: ref u8 = sdl.stbi_load_from_memory(img_ptr, model.texture_length as i32, @addr(w), @addr(h), @addr(ch), 4 as i32)
     if pixels == none {
-        return
+        return none as ref void
     }
     val tex_info: mut sdl.SDLGPUTextureCreateInfo = {
         typ: 0 as i32, format: 0 as i32, usage: 0 as u32,
@@ -952,7 +1153,7 @@ pub fn upload_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) void =
     val texture: ref void = sdl.SDL_CreateGPUTexture(runtime.device, @addr(tex_info))
     if texture == none {
         sdl.stbi_image_free(pixels as ref void)
-        return
+        return none as ref void
     }
     val byte_size: u32 = (w as u32) * (h as u32) * (4 as u32)
     val tbuf_info: mut sdl.SDLGPUTransferBufferCreateInfo = { usage: 0 as i32, size: 0 as u32, props: 0 as u32 }
@@ -962,14 +1163,14 @@ pub fn upload_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) void =
     if tbuf == none {
         sdl.SDL_ReleaseGPUTexture(runtime.device, texture)
         sdl.stbi_image_free(pixels as ref void)
-        return
+        return none as ref void
     }
     val mapped: ref void = sdl.SDL_MapGPUTransferBuffer(runtime.device, tbuf, false)
     if mapped == none {
         sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
         sdl.SDL_ReleaseGPUTexture(runtime.device, texture)
         sdl.stbi_image_free(pixels as ref void)
-        return
+        return none as ref void
     }
     @memcpy(mapped, pixels as ref void, byte_size as usize)
     sdl.SDL_UnmapGPUTransferBuffer(runtime.device, tbuf)
@@ -978,7 +1179,7 @@ pub fn upload_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) void =
     if cmd == none {
         sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
         sdl.SDL_ReleaseGPUTexture(runtime.device, texture)
-        return
+        return none as ref void
     }
     val copy_pass: ref void = sdl.SDL_BeginGPUCopyPass(cmd)
     val src: mut sdl.SDLGPUTextureTransferInfo = {
@@ -994,13 +1195,20 @@ pub fn upload_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) void =
     sdl.SDL_EndGPUCopyPass(copy_pass)
     sdl.SDL_SubmitGPUCommandBuffer(cmd)
     sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
-    runtime.glb_texture = texture
+    return texture
 }
 
+pub fn upload_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) void = trust {
+    if runtime.glb_texture != none {
+        sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.glb_texture)
+        runtime.glb_texture = none
+    }
+    runtime.glb_texture = create_glb_texture(runtime, model)
+}
 
-pub fn create(title: ref u8, width: i32, height: i32, shader_cfg: shaders.ExoShaderConfig) ref void = trust {
+pub fn create(title: ref u8, width: i32, height: i32, shader_cfg: shaders.ExoShaderConfig, font_path: ref u8) ref void = trust {
     exoerr.clear()
-    if !sdl.SDL_Init(sdl.SDL_INIT_VIDEO | sdl.SDL_INIT_AUDIO) {
+    if !sdl.SDL_Init(sdl.SDL_INIT_VIDEO | sdl.SDL_INIT_AUDIO | sdl.SDL_INIT_GAMEPAD | sdl.SDL_INIT_EVENTS) {
         return none as ref void
     }
     val runtime: mut ref Renderer = @alloc(@sizeof(Renderer)) as mut ref Renderer
@@ -1008,6 +1216,10 @@ pub fn create(title: ref u8, width: i32, height: i32, shader_cfg: shaders.ExoSha
         sdl.SDL_Quit()
         return exoerr.set_ptr("failed to allocate runtime")
     }
+    runtime.sky_top = math.vec3(0.26 as f32, 0.48 as f32, 0.84 as f32)
+    runtime.sky_horizon = math.vec3(0.05 as f32, 0.08 as f32, 0.14 as f32)
+    runtime.ambient = 0.30 as f32
+    runtime.lights = []
     runtime.window = sdl.SDL_CreateWindow(title, width, height, 0 as u64)
     if runtime.window == none {
         destroy(runtime as ref void)
@@ -1082,6 +1294,9 @@ pub fn create(title: ref u8, width: i32, height: i32, shader_cfg: shaders.ExoSha
         return none as ref void
     }
     runtime.normal_map_texture = load_png_texture(runtime, "./assets/normal_map.png")
+    if font_path != none && string.len_raw(font_path) > (0 as usize) {
+        runtime.font_texture = load_png_texture(runtime, font_path)
+    }
     return runtime as ref void
 }
 
@@ -1336,6 +1551,15 @@ pub fn begin_scene_pass(runtime_raw: ref void, r: f32, g: f32, b: f32, a: f32) b
     return begin_pass(runtime, runtime.scene_color, runtime.scene_depth, r, g, b, a)
 }
 
+pub fn begin_swapchain_scene_pass(runtime_raw: ref void, r: f32, g: f32, b: f32, a: f32) bool = trust {
+    if runtime_raw == none {
+        exoerr.clear()
+        return exoerr.set("runtime unavailable")
+    }
+    val runtime: mut ref Renderer = runtime_raw as mut ref Renderer
+    return begin_pass(runtime, runtime.swapchain_texture, runtime.scene_depth, r, g, b, a)
+}
+
 pub fn end_pass(runtime_raw: ref void) void = trust {
     if runtime_raw == none {
         return
@@ -1454,7 +1678,8 @@ pub fn draw_scene_mesh(
     light_pos: ref f32,
     light_color: ref f32,
     light_intensity: f32,
-    light_radius: f32
+    light_radius: f32,
+    texture_raw: ref void
 ) void = trust {
     if runtime_raw == none || mesh_raw == none {
         return
@@ -1463,19 +1688,38 @@ pub fn draw_scene_mesh(
     val mesh: ref GpuMesh = mesh_raw as ref GpuMesh
     val vu: mut SceneVertexUniforms = {
         model: math.transpose_mat4_ptr(model),
-        view_proj: math.transpose_mat4_ptr(view_proj)
+        view_proj: math.transpose_mat4_ptr(view_proj),
+        uv_transform: { x: 1.0 as f32, y: 1.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
     }
-    val fu: mut SceneFragmentUniforms = {
-        color_reflective: math.vec4_from_ptr(color, reflective),
-        camera_glow: math.vec4_from_ptr(camera_pos, glow),
-        light_pos_intensity: math.vec4_from_ptr(light_pos, light_intensity),
-        light_color_radius: math.vec4_from_ptr(light_color, light_radius),
-        alpha_pad: { x: alpha, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
+    val fu: mut SceneFragmentUniforms = default_scene_fragment_uniforms()
+    fu.color_reflective = math.vec4_from_ptr(color, reflective)
+    fu.camera_glow = math.vec4_from_ptr(camera_pos, glow)
+    fu.alpha_pad = { x: alpha, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
+    fu.sky_top = { x: runtime.sky_top.x, y: runtime.sky_top.y, z: runtime.sky_top.z, w: 0.0 as f32 }
+    fu.sky_horizon = { x: runtime.sky_horizon.x, y: runtime.sky_horizon.y, z: runtime.sky_horizon.z, w: 0.0 as f32 }
+    fu.ambient_pad = { x: runtime.ambient, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
+    val light_count: mut i32 = 0 as i32
+    for scene_light in runtime.lights {
+        if light_count < (8 as i32) {
+            set_light_uniform(fu, light_count, scene_light)
+            light_count = light_count + (1 as i32)
+        }
     }
+    if light_count == (0 as i32) {
+        val fallback_light: ecs.PointLight = {
+            position: { x: math.read_f32(light_pos, 0 as usize), y: math.read_f32(light_pos, 1 as usize), z: math.read_f32(light_pos, 2 as usize) },
+            color: { x: math.read_f32(light_color, 0 as usize), y: math.read_f32(light_color, 1 as usize), z: math.read_f32(light_color, 2 as usize) },
+            intensity: light_intensity,
+            radius: light_radius
+        }
+        set_light_uniform(fu, 0 as i32, fallback_light)
+        light_count = 1 as i32
+    }
+    fu.light_meta = { x: light_count as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
     val has_tex: mut f32 = 0.0 as f32
     val tex_to_bind: mut ref void = runtime.reflection_color
-    if runtime.glb_texture != none {
-        tex_to_bind = runtime.glb_texture
+    if texture_raw != none {
+        tex_to_bind = texture_raw
         has_tex = 1.0 as f32
         fu.alpha_pad.y = has_tex
     }
@@ -1491,7 +1735,7 @@ pub fn draw_scene_mesh(
     sdl.SDL_DrawGPUIndexedPrimitives(runtime.current_pass, mesh.index_count, 1 as u32, 0 as u32, 0 as i32, 0 as u32)
 }
 
-pub fn draw_floor_raw(runtime_raw: ref void, mesh_raw: ref void, model: ref f32, view_proj: ref f32, reflect_view_proj: ref f32, camera_pos: ref f32) void = trust {
+pub fn draw_floor_raw(runtime_raw: ref void, mesh_raw: ref void, model: ref f32, view_proj: ref f32, reflect_view_proj: ref f32, camera_pos: ref f32, floor_color: ref f32) void = trust {
     if runtime_raw == none || mesh_raw == none {
         return
     }
@@ -1503,7 +1747,8 @@ pub fn draw_floor_raw(runtime_raw: ref void, mesh_raw: ref void, model: ref f32,
         reflect_view_proj: math.transpose_mat4_ptr(reflect_view_proj)
     }
     val fu: mut FloorFragmentUniforms = {
-        camera_pos: math.vec4_from_ptr(camera_pos, 0.0 as f32)
+        camera_pos: math.vec4_from_ptr(camera_pos, 0.0 as f32),
+        floor_color: math.vec4_from_ptr(floor_color, 1.0 as f32)
     }
     val binding: mut sdl.SDLGPUTextureSamplerBinding = {
         texture: none as ref void,
@@ -1579,7 +1824,7 @@ pub fn mesh_valid(mesh: MeshGPU) bool = {
 }
 
 
-pub fn draw_mesh(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj: math.Mat4, color: math.Vec3, camera_pos: math.Vec3, reflective: f32, glow: f32, alpha: f32, light: ecs.PointLight) void = trust {
+pub fn draw_mesh_textured(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj: math.Mat4, color: math.Vec3, camera_pos: math.Vec3, reflective: f32, glow: f32, alpha: f32, light: ecs.PointLight, texture: ref void) void = trust {
     draw_scene_mesh(
         runtime,
         mesh.raw,
@@ -1593,8 +1838,26 @@ pub fn draw_mesh(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj: 
         @addr(light.position.x),
         @addr(light.color.x),
         light.intensity,
-        light.radius
+        light.radius,
+        texture
     )
+}
+
+pub fn release_texture(runtime: ref void, texture: ref void) void = trust {
+    if runtime == none || texture == none {
+        return
+    }
+    val rt: ref Renderer = runtime as ref Renderer
+    sdl.SDL_ReleaseGPUTexture(rt.device, texture)
+}
+
+pub fn draw_mesh(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj: math.Mat4, color: math.Vec3, camera_pos: math.Vec3, reflective: f32, glow: f32, alpha: f32, light: ecs.PointLight) void = trust {
+    val tex: mut ref void = none as ref void
+    if runtime != none {
+        val rt: ref Renderer = runtime as ref Renderer
+        tex = rt.glb_texture
+    }
+    draw_mesh_textured(runtime, mesh, model, view_proj, color, camera_pos, reflective, glow, alpha, light, tex)
 }
 
 pub fn draw_billboard(runtime: ref void, mesh: MeshGPU, pos: math.Vec3, width: f32, height: f32, view_proj: math.Mat4, cam_right: math.Vec3, cam_up: math.Vec3, color: math.Vec3, intensity: f32, alpha: f32) void = trust {
@@ -1620,13 +1883,53 @@ pub fn draw_typed_entities[E: ecs.SceneEntity](runtime: ref void, mesh: MeshGPU,
     }
 }
 
-pub fn draw_scene_entities(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, scene: ecs.Scene3D, camera: cam.Camera, view_proj: math.Mat4, time: f32, glow_scale: f32) void = trust {
-    draw_typed_entities[ecs.SphereEntity](runtime, sphere_mesh, scene.spheres, camera, view_proj, time, glow_scale, scene.light)
-    draw_typed_entities[ecs.CubeEntity](runtime, cube_mesh, scene.cubes, camera, view_proj, time, glow_scale, scene.light)
+pub fn primary_light(scene: ecs.Scene3D) ecs.PointLight = {
+    if @get(scene.lights, 0 as usize) is some light {
+        return light
+    }
+    return ecs.default_light()
 }
 
-pub fn draw_floor(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj: math.Mat4, reflect_view_proj: math.Mat4, camera: cam.Camera) void = trust {
-    draw_floor_raw(runtime, mesh.raw, @addr(model.m00), @addr(view_proj.m00), @addr(reflect_view_proj.m00), @addr(camera.position.x))
+pub fn draw_models(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, camera: cam.Camera, view_proj: math.Mat4, glow_scale: f32) void = trust {
+    val index: mut usize = 0 as usize
+    for instance in scene.models {
+        if @get(resources.models, index) is some mesh {
+            if mesh_valid(mesh) {
+                val mm: math.Mat4 = math.model_matrix(instance.position, instance.scale, instance.rotation_y)
+                val tex: mut ref void = none as ref void
+                if @get(resources.model_textures, index) is some texture {
+                    tex = texture
+                }
+                draw_mesh_textured(runtime, mesh, mm, view_proj, instance.color, camera.position, instance.reflective, glow_scale * instance.glow, instance.alpha, primary_light(scene), tex)
+            }
+        }
+        index = index + (1 as usize)
+    }
+}
+
+pub fn draw_custom_meshes(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, camera: cam.Camera, view_proj: math.Mat4, glow_scale: f32) void = trust {
+    val index: mut usize = 0 as usize
+    for instance in scene.mesh_instances {
+        if @get(resources.custom, index) is some mesh {
+            if mesh_valid(mesh) {
+                val mm: math.Mat4 = math.model_matrix_scaled(instance.position, instance.scale, instance.rotation_y)
+                draw_mesh(runtime, mesh, mm, view_proj, instance.color, camera.position, instance.reflective, glow_scale * instance.glow, instance.alpha, primary_light(scene))
+            }
+        }
+        index = index + (1 as usize)
+    }
+}
+
+pub fn draw_scene_entities(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, camera: cam.Camera, view_proj: math.Mat4, time: f32, glow_scale: f32) void = trust {
+    val light: ecs.PointLight = primary_light(scene)
+    draw_typed_entities[ecs.SphereEntity](runtime, resources.sphere, scene.spheres, camera, view_proj, time, glow_scale, light)
+    draw_typed_entities[ecs.CubeEntity](runtime, resources.cube, scene.cubes, camera, view_proj, time, glow_scale, light)
+    draw_models(runtime, resources, scene, camera, view_proj, glow_scale)
+    draw_custom_meshes(runtime, resources, scene, camera, view_proj, glow_scale)
+}
+
+pub fn draw_floor(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj: math.Mat4, reflect_view_proj: math.Mat4, camera: cam.Camera, color: math.Vec3) void = trust {
+    draw_floor_raw(runtime, mesh.raw, @addr(model.m00), @addr(view_proj.m00), @addr(reflect_view_proj.m00), @addr(camera.position.x), @addr(color.x))
 }
 
 pub fn draw_water(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj: math.Mat4, reflect_view_proj: math.Mat4, camera: cam.Camera, color: math.Vec3, wave_offset: f32, wave_amplitude: f32, wave_frequency: f32, light: ecs.PointLight, corner_radius: f32, size_x: f32, size_z: f32, center_x: f32, center_z: f32) void = trust {
@@ -1671,60 +1974,162 @@ pub fn draw_water(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj:
     sdl.SDL_DrawGPUIndexedPrimitives(rt.current_pass, mesh.index_count as u32, 1 as u32, 0 as u32, 0 as i32, 0 as u32)
 }
 
-pub fn render_reflection_scene(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, scene: ecs.Scene3D, camera: cam.Camera, width: i32, height: i32, time: f32, plane_y: f32) void = trust {
-    val mirror_y: mut f32 = plane_y
-    if scene.water is some water {
+pub fn render_reflection_scene(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, camera: cam.Camera, width: i32, height: i32, time: f32) void = trust {
+    val mirror_y: mut f32 = scene.render.reflection_plane
+    if @get(scene.waters, 0 as usize) is some water {
         mirror_y = water.y
-        if water.size_x == (0.0 as f32) && water.size_z == (0.0 as f32) && scene.model.valid {
-            mirror_y = scene.model.bounds_max_y * scene.model_scale + water.y
-        }
     }
     val mirrored: cam.Camera = cam.mirrored_camera(camera, mirror_y)
     val reflect_vp: math.Mat4 = cam.view_projection(mirrored, width, height)
-    draw_scene_entities(runtime, cube_mesh, sphere_mesh, scene, mirrored, reflect_vp, time, 0.60 as f32)
+    draw_scene_entities(runtime, resources, scene, mirrored, reflect_vp, time, 0.60 as f32)
 }
 
-pub fn render_scene(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: MeshGPU, quad_mesh: MeshGPU, glb_mesh: MeshGPU, scene: ecs.Scene3D, camera: cam.Camera, width: i32, height: i32, time: f32) void = trust {
+pub fn render_scene(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, camera: cam.Camera, width: i32, height: i32, time: f32) void = trust {
     val vp: math.Mat4 = cam.view_projection(camera, width, height)
-    val floor_y: f32 = -0.18 as f32
-    val floor_position: math.Vec3 = math.vec3(0.0 as f32, floor_y - (0.08 as f32), -1.45 as f32)
-    val floor_scale: math.Vec3 = math.vec3(7.8 as f32, 0.16 as f32, 7.8 as f32)
-    val reflect_vp: math.Mat4 = cam.view_projection(cam.mirrored_camera(camera, floor_y), width, height)
-    draw_scene_entities(runtime, cube_mesh, sphere_mesh, scene, camera, vp, time, 1.00 as f32)
-    if mesh_valid(glb_mesh) {
-        val glb_mm: math.Mat4 = math.model_matrix(math.vec3(0.0 as f32, 0.0 as f32, 0.0 as f32), scene.model_scale, 0.0 as f32)
-        draw_mesh(runtime, glb_mesh, glb_mm, vp, scene.light.color, camera.position, 0.05 as f32, 0.0 as f32, 1.0 as f32, scene.light)
+    draw_scene_entities(runtime, resources, scene, camera, vp, time, 1.00 as f32)
+    for floor in scene.floors {
+        val floor_position: math.Vec3 = math.vec3(floor.center_x, floor.y - (0.08 as f32), floor.center_z)
+        val floor_scale: math.Vec3 = math.vec3(floor.size_x, 0.16 as f32, floor.size_z)
+        val reflect_vp: math.Mat4 = cam.view_projection(cam.mirrored_camera(camera, floor.y), width, height)
+        draw_floor(runtime, resources.cube, math.model_matrix_scaled(floor_position, floor_scale, 0.0 as f32), vp, reflect_vp, camera, floor.color)
     }
-    if scene.floor is some _ {
-        draw_floor(runtime, cube_mesh, math.model_matrix_scaled(floor_position, floor_scale, 0.0 as f32), vp, reflect_vp, camera)
-    }
-    if scene.water is some water {
+    val light: ecs.PointLight = primary_light(scene)
+    for water in scene.waters {
         val wave_offset: f32 = time * water.wave_speed
         val fit_x: mut f32 = water.size_x
         val fit_z: mut f32 = water.size_z
         val fit_ox: mut f32 = water.offset_x
         val fit_oz: mut f32 = water.offset_z
         val fit_y: mut f32 = water.y
-        if fit_x == (0.0 as f32) && fit_z == (0.0 as f32) && scene.model.valid {
-            val s: f32 = scene.model_scale
-            fit_x = (scene.model.bounds_max_x - scene.model.bounds_min_x) * s * water.fit_scale
-            fit_z = (scene.model.bounds_max_z - scene.model.bounds_min_z) * s * water.fit_scale
-            fit_ox = ((scene.model.bounds_min_x + scene.model.bounds_max_x) * 0.5 as f32) * s
-            fit_oz = ((scene.model.bounds_min_z + scene.model.bounds_max_z) * 0.5 as f32) * s
-            fit_y = scene.model.bounds_max_y * s + water.y
+        if fit_x == (0.0 as f32) && fit_z == (0.0 as f32) && @len(scene.models) > (0 as usize) {
+            if @get(scene.models, 0 as usize) is some first_model {
+                val s: f32 = first_model.scale
+                fit_x = (first_model.model.bounds_max_x - first_model.model.bounds_min_x) * s * water.fit_scale
+                fit_z = (first_model.model.bounds_max_z - first_model.model.bounds_min_z) * s * water.fit_scale
+                fit_ox = ((first_model.model.bounds_min_x + first_model.model.bounds_max_x) * 0.5 as f32) * s
+                fit_oz = ((first_model.model.bounds_min_z + first_model.model.bounds_max_z) * 0.5 as f32) * s
+                fit_y = first_model.model.bounds_max_y * s + water.y
+            }
         }
         val water_position: math.Vec3 = math.vec3(fit_ox, fit_y, fit_oz)
         val water_scale: math.Vec3 = math.vec3(fit_x, 0.04 as f32, fit_z)
         val water_model: math.Mat4 = math.model_matrix_scaled(water_position, water_scale, 0.0 as f32)
         val reflect_water_vp: math.Mat4 = cam.view_projection(cam.mirrored_camera(camera, fit_y), width, height)
-        draw_water(runtime, cube_mesh, water_model, vp, reflect_water_vp, camera, water.color, wave_offset, water.wave_amplitude, water.wave_frequency, scene.light, water.corner_radius, fit_x, fit_z, fit_ox, fit_oz)
+        draw_water(runtime, resources.cube, water_model, vp, reflect_water_vp, camera, water.color, wave_offset, water.wave_amplitude, water.wave_frequency, light, water.corner_radius, fit_x, fit_z, fit_ox, fit_oz)
     }
-    val light_pos: math.Vec3 = scene.light.position
-    val light_color: math.Vec3 = scene.light.color
-    val cam_fwd: math.Vec3 = cam.camera_forward(camera)
-    val world_up_v: math.Vec3 = math.vec3(0.0 as f32, 1.0 as f32, 0.0 as f32)
-    val cam_right: math.Vec3 = math.vec3_normalize(math.vec3_cross(cam_fwd, world_up_v))
-    val cam_up: math.Vec3 = math.vec3_normalize(math.vec3_cross(cam_right, cam_fwd))
-    draw_billboard(runtime, quad_mesh, light_pos, 1.05 as f32, 1.05 as f32, vp, cam_right, cam_up, light_color, 1.4 as f32, 0.62 as f32)
+    if scene.render.enable_light_glow {
+        val cam_fwd: math.Vec3 = cam.camera_forward(camera)
+        val world_up_v: math.Vec3 = math.vec3(0.0 as f32, 1.0 as f32, 0.0 as f32)
+        val cam_right: math.Vec3 = math.vec3_normalize(math.vec3_cross(cam_fwd, world_up_v))
+        val cam_up: math.Vec3 = math.vec3_normalize(math.vec3_cross(cam_right, cam_fwd))
+        for point_light in scene.lights {
+            draw_billboard(runtime, resources.quad, point_light.position, 1.05 as f32, 1.05 as f32, vp, cam_right, cam_up, point_light.color, 1.4 as f32, 0.62 as f32)
+        }
+    }
 }
 
+fn ui_model(x: f32, y: f32, width: f32, height: f32, screen_w: f32, screen_h: f32) math.Mat4 = {
+    val ndc_x: f32 = ((x + width * (0.5 as f32)) / screen_w) * (2.0 as f32) - (1.0 as f32)
+    val ndc_y: f32 = (1.0 as f32) - ((y + height * (0.5 as f32)) / screen_h) * (2.0 as f32)
+    val sx: f32 = (width / screen_w) * (2.0 as f32)
+    val sy: f32 = (height / screen_h) * (2.0 as f32)
+    return math.model_matrix_scaled(math.vec3(ndc_x, ndc_y, 0.0 as f32), math.vec3(sx, sy, 1.0 as f32), 0.0 as f32)
+}
+
+fn identity_matrix() math.Mat4 = {
+    return math.mat4(
+        1.0 as f32, 0.0 as f32, 0.0 as f32, 0.0 as f32,
+        0.0 as f32, 1.0 as f32, 0.0 as f32, 0.0 as f32,
+        0.0 as f32, 0.0 as f32, 1.0 as f32, 0.0 as f32,
+        0.0 as f32, 0.0 as f32, 0.0 as f32, 1.0 as f32
+    )
+}
+
+pub fn draw_ui_quad(
+    runtime_raw: ref void,
+    quad_mesh: MeshGPU,
+    x: f32, y: f32, width: f32, height: f32,
+    u0: f32, v0: f32, u1: f32, v1: f32,
+    color: math.Vec3, alpha: f32,
+    screen_w: f32, screen_h: f32,
+    textured: bool
+) void = trust {
+    if runtime_raw == none || !mesh_valid(quad_mesh) {
+        return
+    }
+    val runtime: ref Renderer = runtime_raw as ref Renderer
+    if runtime.ui_pipeline == none {
+        return
+    }
+    val model: math.Mat4 = ui_model(x, y, width, height, screen_w, screen_h)
+    val vp: math.Mat4 = identity_matrix()
+    val vu: mut SceneVertexUniforms = {
+        model: math.transpose_mat4_ptr(@addr(model.m00)),
+        view_proj: math.transpose_mat4_ptr(@addr(vp.m00)),
+        uv_transform: { x: u1 - u0, y: v1 - v0, z: u0, w: v0 }
+    }
+    val has_tex: mut f32 = 0.0 as f32
+    if textured {
+        has_tex = 1.0 as f32
+    }
+    val fu: mut SceneFragmentUniforms = default_scene_fragment_uniforms()
+    fu.color_reflective = { x: color.x, y: color.y, z: color.z, w: 0.0 as f32 }
+    fu.alpha_pad = { x: alpha, y: has_tex, z: 1.0 as f32, w: 0.0 as f32 }
+    val tex: mut ref void = runtime.font_texture
+    if !textured {
+        tex = runtime.reflection_color
+    }
+    val binding: mut sdl.SDLGPUTextureSamplerBinding = {
+        texture: tex,
+        sampler: runtime.linear_sampler
+    }
+    sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.ui_pipeline)
+    sdl.SDL_PushGPUVertexUniformData(runtime.command_buffer, 0 as u32, @addr(vu) as ref void, @sizeof(SceneVertexUniforms) as u32)
+    sdl.SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(SceneFragmentUniforms) as u32)
+    sdl.SDL_BindGPUFragmentSamplers(runtime.current_pass, 0 as u32, @addr(binding), 1 as u32)
+    bind_mesh(runtime, quad_mesh.raw as ref GpuMesh)
+    sdl.SDL_DrawGPUIndexedPrimitives(runtime.current_pass, quad_mesh.index_count as u32, 1 as u32, 0 as u32, 0 as i32, 0 as u32)
+}
+
+pub fn render_ui(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, screen_w: i32, screen_h: i32) void = trust {
+    if runtime == none {
+        return
+    }
+    val sw: f32 = screen_w as f32
+    val sh: f32 = screen_h as f32
+    for rect in scene.ui.rects {
+        draw_ui_quad(runtime, resources.quad, rect.x, rect.y, rect.width, rect.height, 0.0 as f32, 0.0 as f32, 1.0 as f32, 1.0 as f32, rect.color, rect.alpha, sw, sh, false)
+    }
+    for text in scene.ui.texts {
+        val line_height: f32 = 8.0 as f32 * text.scale
+        val advance: f32 = 6.0 as f32 * text.scale
+        val pen_x: mut f32 = text.x
+        val pen_y: mut f32 = text.y
+        val i: mut usize = 0 as usize
+        for {
+            val ch: u8 = @load8(@ptradd(text.text, i))
+            if ch == (0 as u8) {
+                break
+            }
+            if ch == (10 as u8) {
+                pen_x = text.x
+                pen_y = pen_y + line_height + (2.0 as f32) * text.scale
+            } elif ch != (32 as u8) {
+                val glyph: i32 = ch as i32 - (32 as i32)
+                if glyph >= (0 as i32) && glyph < (96 as i32) {
+                    val cell_x: f32 = ((glyph % (16 as i32)) as f32) * (8.0 as f32)
+                    val cell_y: f32 = ((glyph / (16 as i32)) as f32) * (8.0 as f32)
+                    val u0: f32 = cell_x / (128.0 as f32)
+                    val v0: f32 = cell_y / (48.0 as f32)
+                    val u1: f32 = (cell_x + (8.0 as f32)) / (128.0 as f32)
+                    val v1: f32 = (cell_y + (8.0 as f32)) / (48.0 as f32)
+                    draw_ui_quad(runtime, resources.quad, pen_x, pen_y, line_height, line_height, u0, v0, u1, v1, text.color, text.alpha, sw, sh, true)
+                }
+                pen_x = pen_x + advance
+            } else {
+                pen_x = pen_x + advance
+            }
+            i = i + (1 as usize)
+        }
+    }
+}

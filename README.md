@@ -1,37 +1,47 @@
 # Exo
 
-A simple 3D game engine designed for ease of use and performance.
+A simple and performant 3D game engine built on the
+<a href="https://github.com/spectrelang/spectre">Spectre</a> programming
+language.
 
-Built on the <a href="https://github.com/spectrelang/spectre">Spectre</a> programming language.
+The engine has no built-in notion of a level list, player, camera controller,
+goal, score, or key bindings. Games receive raw input/lifecycle events and own
+all gameplay state.
 
-Currently supports:
+## Features
 
-- Modular engine modules with a small high-level app API
-- Full ECS-style scene model
-- Builtin physics system
-- Audio subsystem
-- Input system
-- GLB model rendering with textures
-- Simple 3D graphical primitives
-- Reflective, animated water effects
-- Particle/glow billboards
+- Single mutable `Scene3D` with arbitrary numbers of lights, floors, water
+  surfaces, GLB models, custom meshes, spheres, and cubes
+- Stable entity IDs plus scene lookup/removal helpers
+- Optional default fly camera, or fully game-controlled camera
+- Keyboard, mouse button, mouse wheel, text input, window/focus, and gamepad
+  events
+- Custom mobile camera helper and fixed-timestep hook
+- Multi-clip audio bank with per-clip loops/volume
+- Scene-owned render settings: background/sky colors, ambient strength,
+  reflection plane, reflections, post-processing, and light glow
+- Multiple per-instance GLB textures and custom CPU mesh uploads
+- Screen-space HUD rectangles and bitmap text with a bundled default font
+- Collision/query helpers and generic gravity/floor physics
+- Configurable debug scene dump (off by default)
 
 ## Library Layout
 
 | Module | Responsibility |
 |--------|----------------|
-| `engine.sx` | App lifecycle, builder API, defaults, main loop |
-| `engine/sdl.sx` | SDL3 bindings, constants, and link directives |
+| `engine.sx` | App lifecycle, generic event loop, scene/resource management |
+| `engine/sdl.sx` | SDL3 bindings, event structs, constants, link directives |
 | `engine/math.sx` | `Vec3`, `Vec4f`, `Mat4`, and math helpers |
-| `engine/camera.sx` | Camera state, movement, and view/projection |
-| `engine/input.sx` | Key bindings, mouse settings, key lookup |
-| `engine/audio.sx` | WAV loading and playback |
+| `engine/camera.sx` | Optional fly-camera state and view/projection |
+| `engine/input.sx` | Input configuration, state, event helpers, gamepad polling |
+| `engine/audio.sx` | WAV loading and multi-clip playback |
 | `engine/shaders.sx` | Shader paths and platform shader format |
 | `engine/io.sx` | Binary file loading |
 | `engine/glb.sx` | GLB parsing and bounds |
 | `engine/mesh.sx` | Procedural meshes and GLB mesh upload |
-| `engine/renderer.sx` | SDL_GPU renderer, pipelines, and passes |
-| `ecs.sx` | Scene/entity data model |
+| `engine/renderer.sx` | SDL_GPU renderer, scene passes, HUD pipeline |
+| `ecs.sx` | Generic scene/entity/render/UI data model |
+| `physics.sx` | Gravity, floor collision, and collision/query helpers |
 
 Every module can be imported directly, so gameplay code can depend on only the
 parts it needs.
@@ -42,20 +52,22 @@ parts it needs.
 val ecs       = use("ecs.sx")
 val engine    = use("engine.sx")
 val rendering = use("rendering.sx")
+val physics   = use("physics.sx")
 val sdl       = use("engine/sdl.sx")
 val input     = use("engine/input.sx")
+val audio     = use("engine/audio.sx")
 
 fn build_scene() ecs.Scene3D = {
-    val scene: mut ecs.Scene3D = ecs.new_scene(
-        ecs.make_light(
-            ecs.make_vec3(0.0 as f32, 4.0 as f32, 1.0 as f32),
-            ecs.make_vec3(1.0 as f32, 1.0 as f32, 1.0 as f32),
-            1.8 as f32,
-            8.0 as f32
-        )
-    )
+    val scene: mut ecs.Scene3D = ecs.new_scene()
+    ecs.add_light(scene, ecs.make_light(
+        ecs.make_vec3(0.0 as f32, 4.0 as f32, 1.0 as f32),
+        ecs.make_vec3(1.0 as f32, 1.0 as f32, 1.0 as f32),
+        1.8 as f32,
+        8.0 as f32
+    ))
 
-    scene.gravity = 0.0 as f32
+    scene.gravity = 9.8 as f32
+    ecs.add_floor(scene, ecs.make_floor(0.0 as f32, 0.25 as f32))
 
     @append(scene.cubes, ecs.make_cube(
         ecs.make_vec3(0.0 as f32, 0.0 as f32, -2.5 as f32),
@@ -70,44 +82,39 @@ fn build_scene() ecs.Scene3D = {
         0.7 as f32
     ))
 
-    val water = ecs.make_water(
-        -0.2 as f32,
-        0.0 as f32,
-        0.0 as f32,
-        8.0 as f32,
-        8.0 as f32,
-        ecs.make_vec3(0.10 as f32, 0.46 as f32, 0.78 as f32),
-        1.2 as f32,
-        0.02 as f32,
-        3.0 as f32,
-        0.4 as f32
-    )
-    scene.water = some water
-
     return scene
 }
 
-type (engine.AppEvents) MyGame = {}
-
-pub fn (MyGame) on_start(_: mut self, _: mut engine.ExoApp) void = {}
-pub fn (MyGame) on_update(_: mut self, _: mut engine.ExoApp, _: f32, _: f32) void = {}
-pub fn (MyGame) on_shutdown(_: mut self, _: mut engine.ExoApp) void = {}
-pub fn (MyGame) on_key_up(_: mut self, _: mut engine.ExoApp, _: i32) void = {}
-pub fn (MyGame) on_mouse_move(_: mut self, _: mut engine.ExoApp, _: f32, _: f32) void = {}
-
-pub fn (MyGame) on_key_down(_: mut self, app: mut engine.ExoApp, key: i32) void = {
-    if key == sdl.SDL_SCANCODE_SPACE {
-        trust @print("jump!\n", {})
-    }
-    if key == sdl.SDL_SCANCODE_R {
-        engine.set_active_scene(app, 0 as usize)
-    }
+type (engine.AppEvents) MyGame = {
+    score: mut i32
 }
 
-pub fn main() i32 = {
-    val scenes: mut list[ecs.Scene3D] = []
-    @append(scenes, build_scene())
+pub fn (MyGame) on_start(_: mut self, _: mut engine.ExoApp) void = {}
+pub fn (MyGame) on_shutdown(_: mut self, _: mut engine.ExoApp) void = {}
+pub fn (MyGame) on_update(_: mut self, app: mut engine.ExoApp, dt: f32, _: f32) void = {
+    physics.update_physics(app.scene, dt)
+}
+pub fn (MyGame) on_fixed_update(_: mut self, _: mut engine.ExoApp, _: f32) void = {}
+pub fn (MyGame) on_key_up(_: mut self, _: mut engine.ExoApp, _: i32, _: u16) void = {}
+pub fn (MyGame) on_key_down(game: mut self, app: mut engine.ExoApp, key: i32, _: bool, _: u16) void = {
+    if key == sdl.SDL_SCANCODE_SPACE {
+        game.score = game.score + 1
+        trust engine.play_sound(app)
+    }
+    if key == sdl.SDL_SCANCODE_ESCAPE {
+        engine.request_quit(app)
+    }
+}
+pub fn (MyGame) on_mouse_move(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+pub fn (MyGame) on_mouse_button(_: mut self, _: mut engine.ExoApp, _: u8, _: bool, _: u8, _: f32, _: f32) void = {}
+pub fn (MyGame) on_mouse_wheel(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+pub fn (MyGame) on_text_input(_: mut self, _: mut engine.ExoApp, _: ref u8) void = {}
+pub fn (MyGame) on_window_resize(_: mut self, _: mut engine.ExoApp, _: i32, _: i32) void = {}
+pub fn (MyGame) on_focus_changed(_: mut self, _: mut engine.ExoApp, _: bool) void = {}
+pub fn (MyGame) on_gamepad_button(_: mut self, _: mut engine.ExoApp, _: i32, _: bool) void = {}
+pub fn (MyGame) on_gamepad_axis(_: mut self, _: mut engine.ExoApp, _: i32, _: f32) void = {}
 
+pub fn main() i32 = {
     val input_cfg: input.InputConfig = {
         keys: rendering.default_key_bindings(),
         mouse: {
@@ -116,33 +123,54 @@ pub fn main() i32 = {
             sensitivity_y: 0.0018 as f32,
             invert_y: false
         },
-        quit_key: sdl.SDL_SCANCODE_ESCAPE
+        text_input: false,
+        gamepad: true
+    }
+    val audio_cfg: audio.AudioBankConfig = {
+        master_volume: 96 as i32,
+        clips: [{
+            path: "./assets/example_sound.wav",
+            loops: 0 as i32,
+            volume: 96 as i32
+        }]
     }
 
     val builder: mut engine.ExoAppBuilder = engine.new_app()
-
     engine.with_title(builder, "Hello World")
     engine.with_resolution(builder, 1280 as i32, 720 as i32)
-    engine.with_scene_list(builder, scenes)
+    engine.with_scene(builder, build_scene())
     engine.with_default_camera(builder)
+    engine.with_auto_camera(builder)      // omit for a custom camera
     engine.with_input(builder, input_cfg)
+    engine.with_audio(builder, audio_cfg)
 
     val app: engine.ExoApp = engine.build_app(builder)
-    val game: MyGame = {}
+    val game: MyGame = { score: 0 as i32 }
     return trust engine.run_app_with_events[MyGame](app, game)
 }
 ```
 
-Games own their key bindings through `engine.AppEvents`. The engine provides
-`set_active_scene`, `next_scene`, `key_held`, and `play_sound` helpers but does
-not assign gameplay meaning to any key. See `src/main_game.sx` for a complete
-self-contained example.
+`engine.set_scene` swaps scenes at runtime and reloads GPU resources.
+`engine.reload_scene_resources` handles models/meshes added to the active
+scene. `engine.paused`, `engine.with_fixed_timestep`, `engine.key_held`,
+`engine.mouse_button`, `engine.gamepad_button`, and `engine.play_clip` are
+available to games without adding engine-side gameplay assumptions.
+
+See `src/main_game.sx` for a self-contained game using input, sound, HUD text,
+3D rendering, and collision checks.
 
 Run the bundled showcase with:
 
 ```sh
-spectre build
+spectre build dev
 ./exo-dev
+```
+
+Run the smaller game example with:
+
+```sh
+spectre src/main_game.sx -o ./crystal-run
+./crystal-run
 ```
 
 License: GPL-3.0-only

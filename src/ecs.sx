@@ -10,6 +10,7 @@ pub spec SceneEntity = {
 }
 
 pub type (SceneEntity) SphereEntity = {
+    id: mut u64
     position: mut math.Vec3
     color: math.Vec3
     radius: f32
@@ -17,6 +18,7 @@ pub type (SceneEntity) SphereEntity = {
 }
 
 pub type (SceneEntity) CubeEntity = {
+    id: mut u64
     position: mut math.Vec3
     color: math.Vec3
     size: f32
@@ -102,13 +104,51 @@ pub type GlbModel = {
     texture_length: mut usize
 }
 
-/// A flat infinite floor at a given Y height that entities collide with.
+/// A GLB model placed somewhere in the world.
+pub type ModelInstance = {
+    model: mut GlbModel
+    position: math.Vec3
+    rotation_y: f32
+    scale: f32
+    color: math.Vec3
+    reflective: f32
+    glow: f32
+    alpha: f32
+}
+
+/// Raw CPU-side mesh data. Vertices are interleaved position/normal/uv
+/// (8 floats per vertex) and indices are 32-bit.
+pub type MeshGeometry = {
+    vertices: ref f32
+    vertex_float_count: usize
+    indices: ref u32
+    index_count: i32
+    owned: bool
+}
+
+pub type MeshInstance = {
+    geometry: MeshGeometry
+    position: math.Vec3
+    rotation_y: f32
+    scale: math.Vec3
+    color: math.Vec3
+    reflective: f32
+    glow: f32
+    alpha: f32
+}
+
+/// A flat floor at a given Y height that entities collide with.
 ///
 ///    - restitution: 0.0 = entities stop dead
 ///    - 1.0 = perfectly elastic bounce.
 pub type FloorCollider = {
     y: f32
     restitution: f32
+    center_x: f32
+    center_z: f32
+    size_x: f32
+    size_z: f32
+    color: math.Vec3
 }
 
 // A flat animated water surface rendered at a given Y height.
@@ -131,15 +171,52 @@ pub type WaterSurface = {
     corner_radius: f32
 }
 
+/// Rendering options that are owned by the scene, not the engine.
+pub type RenderSettings = {
+    clear_top: math.Vec3
+    clear_bottom: math.Vec3
+    reflection_plane: f32
+    enable_reflections: bool
+    enable_fxaa: bool
+    enable_light_glow: bool
+    ambient: f32
+}
+
+pub type UiText = {
+    text: ref u8
+    x: f32
+    y: f32
+    scale: f32
+    color: math.Vec3
+    alpha: f32
+}
+
+pub type UiRect = {
+    x: f32
+    y: f32
+    width: f32
+    height: f32
+    color: math.Vec3
+    alpha: f32
+}
+
+pub type Ui = {
+    texts: mut list[UiText]
+    rects: mut list[UiRect]
+}
+
 pub type Scene3D = {
     spheres: mut list[SphereEntity]
     cubes: mut list[CubeEntity]
-    model: mut GlbModel
-    model_scale: mut f32
-    light: PointLight
+    models: mut list[ModelInstance]
+    mesh_instances: mut list[MeshInstance]
+    lights: mut list[PointLight]
     gravity: mut f32
-    floor: mut option[FloorCollider]
-    water: mut option[WaterSurface]
+    floors: mut list[FloorCollider]
+    waters: mut list[WaterSurface]
+    render: mut RenderSettings
+    ui: mut Ui
+    next_entity_id: mut u64
 }
 
 pub fn make_water(y: f32, offset_x: f32, offset_z: f32, size_x: f32, size_z: f32, color: math.Vec3, wave_speed: f32, wave_amplitude: f32, wave_frequency: f32, corner_radius: f32) WaterSurface = {
@@ -159,7 +236,27 @@ pub fn make_water(y: f32, offset_x: f32, offset_z: f32, size_x: f32, size_z: f32
 }
 
 pub fn make_floor(y: f32, restitution: f32) FloorCollider = {
-    return { y: y, restitution: restitution }
+    return {
+        y: y,
+        restitution: restitution,
+        center_x: 0.0 as f32,
+        center_z: 0.0 as f32,
+        size_x: 8.0 as f32,
+        size_z: 8.0 as f32,
+        color: math.vec3(0.03 as f32, 0.06 as f32, 0.08 as f32)
+    }
+}
+
+pub fn make_floor_sized(y: f32, restitution: f32, center_x: f32, center_z: f32, size_x: f32, size_z: f32, color: math.Vec3) FloorCollider = {
+    return {
+        y: y,
+        restitution: restitution,
+        center_x: center_x,
+        center_z: center_z,
+        size_x: size_x,
+        size_z: size_z,
+        color: color
+    }
 }
 
 pub fn make_vec3(x: f32, y: f32, z: f32) math.Vec3 = {
@@ -168,6 +265,7 @@ pub fn make_vec3(x: f32, y: f32, z: f32) math.Vec3 = {
 
 pub fn make_sphere(position: math.Vec3, color: math.Vec3, radius: f32) SphereEntity = {
     return {
+        id: 0 as u64,
         position: position,
         color: color,
         radius: radius,
@@ -177,12 +275,85 @@ pub fn make_sphere(position: math.Vec3, color: math.Vec3, radius: f32) SphereEnt
 
 pub fn make_cube(position: math.Vec3, color: math.Vec3, size: f32, rotation_speed: f32) CubeEntity = {
     return {
+        id: 0 as u64,
         position: position,
         color: color,
         size: size,
         rotation_speed: rotation_speed,
         velocity: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32 }
     }
+}
+
+pub fn make_model(model: GlbModel, position: math.Vec3, rotation_y: f32, scale: f32, color: math.Vec3) ModelInstance = {
+    return {
+        model: model,
+        position: position,
+        rotation_y: rotation_y,
+        scale: scale,
+        color: color,
+        reflective: 0.05 as f32,
+        glow: 0.0 as f32,
+        alpha: 1.0 as f32
+    }
+}
+
+pub fn make_mesh(geometry: MeshGeometry, position: math.Vec3, rotation_y: f32, scale: math.Vec3, color: math.Vec3) MeshInstance = {
+    return {
+        geometry: geometry,
+        position: position,
+        rotation_y: rotation_y,
+        scale: scale,
+        color: color,
+        reflective: 0.08 as f32,
+        glow: 0.0 as f32,
+        alpha: 1.0 as f32
+    }
+}
+
+pub fn default_render_settings() RenderSettings = {
+    return {
+        clear_top: math.vec3(0.05 as f32, 0.08 as f32, 0.14 as f32),
+        clear_bottom: math.vec3(0.09 as f32, 0.15 as f32, 0.30 as f32),
+        reflection_plane: -0.18 as f32,
+        enable_reflections: true,
+        enable_fxaa: true,
+        enable_light_glow: true,
+        ambient: 0.30 as f32
+    }
+}
+
+pub fn default_ui() Ui = {
+    return {
+        texts: [],
+        rects: []
+    }
+}
+
+pub fn ui_clear(ui: mut Ui) void = {
+    ui.texts = []
+    ui.rects = []
+}
+
+pub fn ui_text(ui: mut Ui, text: ref u8, x: f32, y: f32, scale: f32, color: math.Vec3, alpha: f32) void = {
+    @append(ui.texts, {
+        text: text,
+        x: x,
+        y: y,
+        scale: scale,
+        color: color,
+        alpha: alpha
+    })
+}
+
+pub fn ui_rect(ui: mut Ui, x: f32, y: f32, width: f32, height: f32, color: math.Vec3, alpha: f32) void = {
+    @append(ui.rects, {
+        x: x,
+        y: y,
+        width: width,
+        height: height,
+        color: color,
+        alpha: alpha
+    })
 }
 
 pub fn default_light() PointLight = {
@@ -223,15 +394,94 @@ pub fn empty_model() GlbModel = {
     }
 }
 
-pub fn new_scene(light: PointLight) Scene3D = {
+pub fn new_scene() Scene3D = {
     return {
         spheres: [],
         cubes: [],
-        model: empty_model(),
-        model_scale: 1.0 as f32,
-        light: light,
+        models: [],
+        mesh_instances: [],
+        lights: [],
         gravity: 9.8 as f32,
-        floor: none,
-        water: none
+        floors: [],
+        waters: [],
+        render: default_render_settings(),
+        ui: default_ui(),
+        next_entity_id: 1 as u64
     }
+}
+
+pub fn add_light(scene: mut Scene3D, light: PointLight) void = {
+    @append(scene.lights, light)
+}
+
+pub fn add_model(scene: mut Scene3D, instance: ModelInstance) void = {
+    @append(scene.models, instance)
+}
+
+pub fn add_mesh(scene: mut Scene3D, instance: MeshInstance) void = {
+    @append(scene.mesh_instances, instance)
+}
+
+pub fn add_floor(scene: mut Scene3D, floor: FloorCollider) void = {
+    @append(scene.floors, floor)
+}
+
+pub fn add_water(scene: mut Scene3D, water: WaterSurface) void = {
+    @append(scene.waters, water)
+}
+
+pub fn add_sphere(scene: mut Scene3D, sphere: SphereEntity) u64 = {
+    val id: u64 = scene.next_entity_id
+    scene.next_entity_id = scene.next_entity_id + (1 as u64)
+    val entity: mut SphereEntity = sphere
+    entity.id = id
+    @append(scene.spheres, entity)
+    return id
+}
+
+pub fn add_cube(scene: mut Scene3D, cube: CubeEntity) u64 = {
+    val id: u64 = scene.next_entity_id
+    scene.next_entity_id = scene.next_entity_id + (1 as u64)
+    val entity: mut CubeEntity = cube
+    entity.id = id
+    @append(scene.cubes, entity)
+    return id
+}
+
+pub fn find_sphere_index(scene: Scene3D, id: u64) option[usize] = {
+    val index: mut usize = 0 as usize
+    for sphere in scene.spheres {
+        if sphere.id == id {
+            return some index
+        }
+        index = index + (1 as usize)
+    }
+    return none
+}
+
+pub fn find_cube_index(scene: Scene3D, id: u64) option[usize] = {
+    val index: mut usize = 0 as usize
+    for cube in scene.cubes {
+        if cube.id == id {
+            return some index
+        }
+        index = index + (1 as usize)
+    }
+    return none
+}
+
+pub fn remove_sphere(scene: mut Scene3D, id: u64) bool = {
+    if find_sphere_index(scene, id) is some index {
+        @remove(scene.spheres, index)
+        return true
+    }
+    return false
+}
+
+pub fn remove_cube(scene: mut Scene3D, id: u64) bool = {
+    if find_cube_index(scene, id) is some index {
+        @remove(scene.cubes, index)
+        return true
+    }
+    return false
 }

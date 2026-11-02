@@ -7,6 +7,7 @@ struct SceneVertexUniforms
 {
     float4x4 uModel;
     float4x4 uViewProj;
+    float4 uUvTransform;
 };
 
 struct main0_out
@@ -30,7 +31,7 @@ vertex main0_out main0(main0_in in [[stage_in]], constant SceneVertexUniforms& _
     float4 world = _13.uModel * float4(in.aPosition, 1.0);
     out.vWorldPos = world.xyz;
     out.vWorldNormal = fast::normalize((_13.uModel * float4(in.aNormal, 0.0)).xyz);
-    out.vTexCoord = in.aTexCoord;
+    out.vTexCoord = (in.aTexCoord * _13.uUvTransform.xy) + _13.uUvTransform.zw;
     out.gl_Position = _13.uViewProj * world;
     return out;
 }

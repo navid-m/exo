@@ -8,6 +8,7 @@ using namespace metal;
 struct FloorFragmentUniforms
 {
     float4 uCameraPos;
+    float4 uFloorColor;
 };
 
 struct main0_out
@@ -74,7 +75,7 @@ fragment main0_out main0(main0_in in [[stage_in]], constant FloorFragmentUniform
         }
     }
     float fresnel = powr(1.0 - fast::max(dot(view_dir, normal_value), 0.0), 5.0);
-    float3 tint = float3(0.02999999932944774627685546875, 0.0599999986588954925537109375, 0.07999999821186065673828125);
+    float3 tint = _47.uFloorColor.xyz;
     float3 color_value = mix(tint, reflection, float3(0.4199999868869781494140625 + (fresnel * 0.36000001430511474609375)));
     float3 highlight = (float3(1.0, 0.980000019073486328125, 0.949999988079071044921875) * powr(fast::max(dot(reflect(-view_dir, normal_value), float3(0.0, 1.0, 0.0)), 0.0), 18.0)) * 0.039999999105930328369140625;
     out.FragColor = float4(color_value + highlight, 0.579999983310699462890625);

@@ -23,9 +23,37 @@ pub type MouseConfig = {
 pub type InputConfig = {
     keys: KeyBindings
     mouse: MouseConfig
-    quit_key: i32
+    text_input: bool
+    gamepad: bool
 }
 
+pub type InputState = {
+    keys: mut ref u8
+    mouse_x: mut f32
+    mouse_y: mut f32
+    mouse_dx: mut f32
+    mouse_dy: mut f32
+    mouse_buttons: mut u32
+    wheel_x: mut f32
+    wheel_y: mut f32
+    key_mods: mut u16
+    focused: mut bool
+    text_input_enabled: mut bool
+    gamepad_connected: mut bool
+    gamepad_buttons: mut u64
+    gamepad_prev_buttons: mut u64
+    gamepad_left_x: mut f32
+    gamepad_left_y: mut f32
+    gamepad_right_x: mut f32
+    gamepad_right_y: mut f32
+    gamepad_left_trigger: mut f32
+    gamepad_right_trigger: mut f32
+}
+
+pub type GamepadState = {
+    handle: mut ref void
+    connected: mut bool
+}
 
 pub fn default_key_bindings() KeyBindings = {
     return {
@@ -55,15 +83,139 @@ pub fn default_input_config() InputConfig = {
     return {
         keys: default_key_bindings(),
         mouse: default_mouse_config(),
-        quit_key: sdl.SDL_SCANCODE_ESCAPE
+        text_input: false,
+        gamepad: true
     }
 }
 
+pub fn empty_input_state() InputState = {
+    return {
+        keys: none as ref u8,
+        mouse_x: 0.0 as f32,
+        mouse_y: 0.0 as f32,
+        mouse_dx: 0.0 as f32,
+        mouse_dy: 0.0 as f32,
+        mouse_buttons: 0 as u32,
+        wheel_x: 0.0 as f32,
+        wheel_y: 0.0 as f32,
+        key_mods: 0 as u16,
+        focused: true,
+        text_input_enabled: false,
+        gamepad_connected: false,
+        gamepad_buttons: 0 as u64,
+        gamepad_prev_buttons: 0 as u64,
+        gamepad_left_x: 0.0 as f32,
+        gamepad_left_y: 0.0 as f32,
+        gamepad_right_x: 0.0 as f32,
+        gamepad_right_y: 0.0 as f32,
+        gamepad_left_trigger: 0.0 as f32,
+        gamepad_right_trigger: 0.0 as f32
+    }
+}
 
 pub fn safe_key(keys: ref u8, scancode: i32) u8 = trust {
-    if scancode <= (0 as i32) || scancode >= (512 as i32) {
+    if keys == none || scancode <= (0 as i32) || scancode >= (512 as i32) {
         return 0 as u8
     }
     return @load8(@ptradd(keys, scancode as usize))
 }
 
+pub fn mouse_button_down(state: InputState, button: u8) bool = {
+    val mask: u32 = (1 as u32) << ((button as u32) - (1 as u32))
+    return (state.mouse_buttons & mask) != (0 as u32)
+}
+
+pub fn mod_shift(state: InputState) bool = {
+    return (state.key_mods & (sdl.SDL_KMOD_LSHIFT | sdl.SDL_KMOD_RSHIFT)) != (0 as u16)
+}
+
+pub fn mod_ctrl(state: InputState) bool = {
+    return (state.key_mods & (sdl.SDL_KMOD_LCTRL | sdl.SDL_KMOD_RCTRL)) != (0 as u16)
+}
+
+pub fn mod_alt(state: InputState) bool = {
+    return (state.key_mods & (sdl.SDL_KMOD_LALT | sdl.SDL_KMOD_RALT)) != (0 as u16)
+}
+
+pub fn mod_gui(state: InputState) bool = {
+    return (state.key_mods & (sdl.SDL_KMOD_LGUI | sdl.SDL_KMOD_RGUI)) != (0 as u16)
+}
+
+pub fn gamepad_button(state: InputState, button: i32) bool = {
+    if button < (0 as i32) || button >= (64 as i32) {
+        return false
+    }
+    val mask: u64 = (1 as u64) << (button as u64)
+    return (state.gamepad_buttons & mask) != (0 as u64)
+}
+
+pub fn gamepad_button_pressed(state: InputState, button: i32) bool = {
+    if button < (0 as i32) || button >= (64 as i32) {
+        return false
+    }
+    val mask: u64 = (1 as u64) << (button as u64)
+    return (state.gamepad_buttons & mask) != (0 as u64) && (state.gamepad_prev_buttons & mask) == (0 as u64)
+}
+
+pub fn gamepad_button_released(state: InputState, button: i32) bool = {
+    if button < (0 as i32) || button >= (64 as i32) {
+        return false
+    }
+    val mask: u64 = (1 as u64) << (button as u64)
+    return (state.gamepad_buttons & mask) == (0 as u64) && (state.gamepad_prev_buttons & mask) != (0 as u64)
+}
+
+pub fn open_gamepad() GamepadState = trust {
+    val state: mut GamepadState = {
+        handle: none as ref void,
+        connected: false
+    }
+    val count: mut i32 = 0 as i32
+    val ids: ref u32 = sdl.SDL_GetGamepads(@addr(count))
+    if ids != none && count > (0 as i32) {
+        state.handle = sdl.SDL_OpenGamepad(@load(ids) as u32)
+        state.connected = state.handle != none
+        sdl.SDL_free(ids as ref void)
+    }
+    return state
+}
+
+pub fn close_gamepad(state: GamepadState) void = trust {
+    if state.handle != none {
+        sdl.SDL_CloseGamepad(state.handle)
+    }
+}
+
+pub fn update_gamepad(gamepad: GamepadState, state: mut InputState) void = trust {
+    state.gamepad_prev_buttons = state.gamepad_buttons
+    if gamepad.handle == none {
+        state.gamepad_connected = false
+        state.gamepad_buttons = 0 as u64
+        return
+    }
+    sdl.SDL_UpdateGamepads()
+    state.gamepad_connected = true
+    val buttons: mut u64 = 0 as u64
+    val button: mut i32 = 0 as i32
+    for button < (64 as i32) {
+        if sdl.SDL_GamepadHasButton(gamepad.handle, button) && sdl.SDL_GetGamepadButton(gamepad.handle, button) {
+            buttons = buttons | ((1 as u64) << (button as u64))
+        }
+        button = button + (1 as i32)
+    }
+    state.gamepad_buttons = buttons
+    state.gamepad_left_x = (sdl.SDL_GetGamepadAxis(gamepad.handle, sdl.SDL_GAMEPAD_AXIS_LEFTX) as f32) / (32767.0 as f32)
+    state.gamepad_left_y = (sdl.SDL_GetGamepadAxis(gamepad.handle, sdl.SDL_GAMEPAD_AXIS_LEFTY) as f32) / (32767.0 as f32)
+    state.gamepad_right_x = (sdl.SDL_GetGamepadAxis(gamepad.handle, sdl.SDL_GAMEPAD_AXIS_RIGHTX) as f32) / (32767.0 as f32)
+    state.gamepad_right_y = (sdl.SDL_GetGamepadAxis(gamepad.handle, sdl.SDL_GAMEPAD_AXIS_RIGHTY) as f32) / (32767.0 as f32)
+    state.gamepad_left_trigger = (sdl.SDL_GetGamepadAxis(gamepad.handle, sdl.SDL_GAMEPAD_AXIS_LEFT_TRIGGER) as f32) / (32767.0 as f32)
+    state.gamepad_right_trigger = (sdl.SDL_GetGamepadAxis(gamepad.handle, sdl.SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) as f32) / (32767.0 as f32)
+}
+
+pub fn start_text_input() bool = trust {
+    return sdl.SDL_StartTextInput()
+}
+
+pub fn stop_text_input() void = trust {
+    sdl.SDL_StopTextInput()
+}
