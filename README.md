@@ -8,9 +8,13 @@ The engine has no built-in notion of a level list, player, camera controller,
 goal, score, or key bindings. Games receive raw input/lifecycle events and own
 all gameplay state.
 
+## Screenshots
+
+<img src=".github/assets/exo-pacman.png">
+
 ## Features
 
-- Single mutable `Scene3D` with arbitrary numbers of lights, floors, water
+- Singleton `Scene3D` with arbitrary numbers of lights, floors, water
   surfaces, GLB models, custom meshes, spheres, and cubes
 - Stable entity IDs plus scene lookup/removal helpers
 - Optional default fly camera, or fully game-controlled camera
@@ -27,21 +31,21 @@ all gameplay state.
 
 ## Library Layout
 
-| Module | Responsibility |
-|--------|----------------|
-| `engine.sx` | App lifecycle, generic event loop, scene/resource management |
-| `engine/sdl.sx` | SDL3 bindings, event structs, constants, link directives |
-| `engine/math.sx` | `Vec3`, `Vec4f`, `Mat4`, and math helpers |
-| `engine/camera.sx` | Optional fly-camera state and view/projection |
-| `engine/input.sx` | Input configuration, state, event helpers, gamepad polling |
-| `engine/audio.sx` | WAV loading and multi-clip playback |
-| `engine/shaders.sx` | Shader paths and platform shader format |
-| `engine/io.sx` | Binary file loading |
-| `engine/glb.sx` | GLB parsing and bounds |
-| `engine/mesh.sx` | Procedural meshes and GLB mesh upload |
-| `engine/renderer.sx` | SDL_GPU renderer, scene passes, HUD pipeline |
-| `ecs.sx` | Generic scene/entity/render/UI data model |
-| `physics.sx` | Gravity, floor collision, and collision/query helpers |
+| Module               | Responsibility                                               |
+| -------------------- | ------------------------------------------------------------ |
+| `engine.sx`          | App lifecycle, generic event loop, scene/resource management |
+| `engine/sdl.sx`      | SDL3 bindings, event structs, constants, link directives     |
+| `engine/math.sx`     | `Vec3`, `Vec4f`, `Mat4`, and math helpers                    |
+| `engine/camera.sx`   | Optional fly-camera state and view/projection                |
+| `engine/input.sx`    | Input configuration, state, event helpers, gamepad polling   |
+| `engine/audio.sx`    | WAV loading and multi-clip playback                          |
+| `engine/shaders.sx`  | Shader paths and platform shader format                      |
+| `engine/io.sx`       | Binary file loading                                          |
+| `engine/glb.sx`      | GLB parsing and bounds                                       |
+| `engine/mesh.sx`     | Procedural meshes and GLB mesh upload                        |
+| `engine/renderer.sx` | SDL_GPU renderer, scene passes, HUD pipeline                 |
+| `ecs.sx`             | Generic scene/entity/render/UI data model                    |
+| `physics.sx`         | Gravity, floor collision, and collision/query helpers        |
 
 Every module can be imported directly, so gameplay code can depend on only the
 parts it needs.
@@ -156,21 +160,17 @@ scene. `engine.paused`, `engine.with_fixed_timestep`, `engine.key_held`,
 `engine.mouse_button`, `engine.gamepad_button`, and `engine.play_clip` are
 available to games without adding engine-side gameplay assumptions.
 
-See `src/main_game.sx` for a self-contained game using input, sound, HUD text,
-3D rendering, and collision checks.
-
 Run the bundled showcase with:
 
 ```sh
-spectre build dev
-./exo-dev
+spectre run examples/pacman3d.sx
 ```
 
-Run the smaller game example with:
+Or:
 
 ```sh
-spectre src/main_game.sx -o ./crystal-run
-./crystal-run
+spectre examples/pacman3d.sx
+./s-out/pacman3d
 ```
 
 License: GPL-3.0-only
