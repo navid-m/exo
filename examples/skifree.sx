@@ -1,0 +1,496 @@
+val math      = use("std/math")
+val ecs       = use("../src/ecs.sx")
+val engine    = use("../src/engine.sx")
+val rendering = use("../src/rendering.sx")
+val sdl       = use("../src/engine/sdl.sx")
+val input     = use("../src/engine/input.sx")
+val audio     = use("../src/engine/audio.sx")
+
+val PLAY_HALF_WIDTH: f32 = 7.5 as f32
+val START_SPEED: f32 = 12.0 as f32
+val MAX_SPEED: f32 = 34.0 as f32
+val SPAWN_Z: f32 = -110.0 as f32
+val DESPAWN_Z: f32 = 14.0 as f32
+val SPAWN_SPACING: f32 = 4.0 as f32
+val JUMP_IMPULSE: f32 = 7.4 as f32
+val GRAVITY: f32 = 21.0 as f32
+val PI: f32 = 3.14159265 as f32
+
+type Obstacle = {
+    x: mut f32
+    z: mut f32
+    radius: f32
+    height: f32
+    kind: i32
+    r: f32
+    g: f32
+    b: f32
+}
+
+type (engine.AppEvents) SkiFree = {
+    obstacles: mut list[Obstacle]
+    player_x: mut f32
+    jump_y: mut f32
+    jump_vel: mut f32
+    speed: mut f32
+    distance: mut f32
+    score: mut i32
+    best: mut i32
+    spawn_accum: mut f32
+    spawn_serial: mut i32
+    yeti_active: mut bool
+    next_yeti: mut f32
+    state: mut i32
+    shake: mut f32
+    hud: mut ref u8
+}
+
+fn fabs_f32(v: f32) f32 = {
+    return math.fabs(v as f64) as f32
+}
+
+fn rand01(seed: i32) f32 = {
+    val v: f64 = math.sin((seed as f64) * (12.9898 as f64)) * (43758.5453 as f64)
+    return (v - math.floor(v)) as f32
+}
+
+fn make_obstacle(x: f32, z: f32, radius: f32, height: f32, kind: i32, r: f32, g: f32, b: f32) Obstacle = {
+    return {
+        x: x,
+        z: z,
+        radius: radius,
+        height: height,
+        kind: kind,
+        r: r,
+        g: g,
+        b: b
+    }
+}
+
+fn is_key_held(app: engine.ExoApp, key: i32) bool = {
+    return trust engine.key_held(app, key)
+}
+
+fn spawn_tree(game: mut SkiFree, x: f32, z: f32) void = {
+    @append(game.obstacles, make_obstacle(x, z, 0.55 as f32, 1.65 as f32, 0 as i32, 0.10 as f32, 0.34 as f32, 0.16 as f32))
+}
+
+fn spawn_rock(game: mut SkiFree, x: f32, z: f32) void = {
+    @append(game.obstacles, make_obstacle(x, z, 0.62 as f32, 0.72 as f32, 1 as i32, 0.42 as f32, 0.46 as f32, 0.52 as f32))
+}
+
+fn spawn_row(game: mut SkiFree, z_base: f32) void = {
+    val serial: i32 = game.spawn_serial
+    game.spawn_serial = serial + (1 as i32)
+    val density: f32 = rand01((serial * (13 as i32)) + (7 as i32))
+    val count: mut i32 = 1 as i32
+    if density > (0.42 as f32) {
+        count = 2 as i32
+    }
+    if density > (0.78 as f32) {
+        count = 3 as i32
+    }
+    val j: mut i32 = 0 as i32
+    for j < count {
+        val seed: i32 = (serial * (29 as i32)) + (j * (53 as i32)) + (3 as i32)
+        val x: f32 = ((0.0 as f32) - (PLAY_HALF_WIDTH - (0.7 as f32))) + rand01(seed) * ((PLAY_HALF_WIDTH * (2.0 as f32)) - (1.4 as f32))
+        val z: f32 = z_base - rand01(seed + (17 as i32)) * (2.6 as f32)
+        val pick: f32 = rand01(seed + (41 as i32))
+        if pick > (0.58 as f32) {
+            spawn_rock(game, x, z)
+        } else {
+            spawn_tree(game, x, z)
+        }
+        j = j + (1 as i32)
+    }
+    spawn_tree(game, (0.0 as f32) - (10.5 as f32), z_base - (1.0 as f32))
+    spawn_tree(game, 10.5 as f32, z_base - (2.0 as f32))
+}
+
+fn reset_game(game: mut SkiFree) void = {
+    game.obstacles = []
+    game.player_x = 0.0 as f32
+    game.jump_y = 0.0 as f32
+    game.jump_vel = 0.0 as f32
+    game.speed = START_SPEED
+    game.distance = 0.0 as f32
+    game.score = 0 as i32
+    game.spawn_accum = 0.0 as f32
+    game.spawn_serial = 0 as i32
+    game.yeti_active = false
+    game.next_yeti = 180.0 as f32
+    game.state = 0 as i32
+    game.shake = 0.0 as f32
+    val i: mut i32 = 0 as i32
+    for i < 26 {
+        spawn_row(game, (0.0 as f32) - (12.0 as f32) - ((i as f32) * SPAWN_SPACING))
+        i = i + (1 as i32)
+    }
+}
+
+fn make_game() SkiFree = {
+    return {
+        obstacles: [],
+        player_x: 0.0 as f32,
+        jump_y: 0.0 as f32,
+        jump_vel: 0.0 as f32,
+        speed: START_SPEED,
+        distance: 0.0 as f32,
+        score: 0 as i32,
+        best: 0 as i32,
+        spawn_accum: 0.0 as f32,
+        spawn_serial: 0 as i32,
+        yeti_active: false,
+        next_yeti: 180.0 as f32,
+        state: 0 as i32,
+        shake: 0.0 as f32,
+        hud: none as ref u8
+    }
+}
+
+fn crash(game: mut SkiFree, app: engine.ExoApp) void = {
+    if game.state == (0 as i32) {
+        game.state = 1 as i32
+        game.shake = 1.0 as f32
+        if game.score > game.best {
+            game.best = game.score
+        }
+        trust engine.play_sound(app)
+    }
+}
+
+fn spawn_yeti(game: mut SkiFree) void = {
+    val side: mut f32 = (0.0 as f32) - (4.0 as f32)
+    if rand01(game.spawn_serial + (5 as i32)) > (0.5 as f32) {
+        side = 4.0 as f32
+    }
+    @append(game.obstacles, make_obstacle(
+        game.player_x + side,
+        (0.0 as f32) - (72.0 as f32),
+        0.92 as f32,
+        1.8 as f32,
+        2 as i32,
+        0.94 as f32,
+        0.96 as f32,
+        1.00 as f32
+    ))
+    game.yeti_active = true
+    game.next_yeti = game.next_yeti + (230.0 as f32)
+}
+
+fn update_game(game: mut SkiFree, app: engine.ExoApp, dt: f32) void = {
+    if game.state != (0 as i32) {
+        if game.shake > (0.0 as f32) {
+            game.shake = game.shake - dt * (0.8 as f32)
+        }
+        return
+    }
+    val steer: mut f32 = 0.0 as f32
+    if is_key_held(app, sdl.SDL_SCANCODE_LEFT) || is_key_held(app, sdl.SDL_SCANCODE_A) {
+        steer = (0.0 as f32) - (1.0 as f32)
+    }
+    if is_key_held(app, sdl.SDL_SCANCODE_RIGHT) || is_key_held(app, sdl.SDL_SCANCODE_D) {
+        steer = 1.0 as f32
+    }
+    game.player_x = game.player_x + steer * ((9.0 as f32) + game.speed * (0.25 as f32)) * dt
+    if game.player_x > PLAY_HALF_WIDTH {
+        game.player_x = PLAY_HALF_WIDTH
+    }
+    if game.player_x < (0.0 as f32) - PLAY_HALF_WIDTH {
+        game.player_x = (0.0 as f32) - PLAY_HALF_WIDTH
+    }
+    if game.jump_y > (0.0 as f32) || game.jump_vel != (0.0 as f32) {
+        game.jump_vel = game.jump_vel - GRAVITY * dt
+        game.jump_y = game.jump_y + game.jump_vel * dt
+        if game.jump_y <= (0.0 as f32) {
+            game.jump_y = 0.0 as f32
+            game.jump_vel = 0.0 as f32
+        }
+    }
+    game.speed = START_SPEED + game.distance * (0.024 as f32)
+    if game.speed > MAX_SPEED {
+        game.speed = MAX_SPEED
+    }
+    game.distance = game.distance + game.speed * dt
+    game.score = game.distance as i32
+    if game.score > game.best {
+        game.best = game.score
+    }
+    if game.shake > (0.0 as f32) {
+        game.shake = game.shake - dt * (0.8 as f32)
+    }
+    if !game.yeti_active && game.distance > game.next_yeti {
+        spawn_yeti(game)
+    }
+    game.spawn_accum = game.spawn_accum + game.speed * dt
+    for game.spawn_accum >= SPAWN_SPACING {
+        game.spawn_accum = game.spawn_accum - SPAWN_SPACING
+        spawn_row(game, SPAWN_Z)
+    }
+    val next: mut list[Obstacle] = []
+    for obstacle in game.obstacles {
+        val o: mut Obstacle = obstacle
+        val move_speed: mut f32 = game.speed
+        if o.kind == (2 as i32) {
+            move_speed = game.speed * (1.18 as f32) + (5.0 as f32)
+            o.x = o.x + (game.player_x - o.x) * dt * (0.9 as f32)
+        }
+        o.z = o.z + move_speed * dt
+        if o.z <= DESPAWN_Z {
+            if game.state == (0 as i32) {
+                if fabs_f32(o.z) < o.radius + (0.42 as f32) {
+                    if fabs_f32(o.x - game.player_x) < o.radius + (0.38 as f32) {
+                        if game.jump_y < o.height - (0.18 as f32) {
+                            crash(game, app)
+                        }
+                    }
+                }
+            }
+            @append(next, o)
+        } elif o.kind == (2 as i32) {
+            game.yeti_active = false
+        }
+    }
+    game.obstacles = next
+}
+
+fn sync_scene(game: SkiFree, app: mut engine.ExoApp) void = {
+    val cubes: mut list[ecs.CubeEntity] = []
+    val spheres: mut list[ecs.SphereEntity] = []
+    @append(cubes, ecs.make_cube(
+        ecs.make_vec3((0.0 as f32) - (26.0 as f32), 5.0 as f32, (0.0 as f32) - (74.0 as f32)),
+        ecs.make_vec3(0.46 as f32, 0.58 as f32, 0.72 as f32),
+        24.0 as f32,
+        0.0 as f32
+    ))
+    @append(cubes, ecs.make_cube(
+        ecs.make_vec3(22.0 as f32, 4.0 as f32, (0.0 as f32) - (69.0 as f32)),
+        ecs.make_vec3(0.40 as f32, 0.52 as f32, 0.68 as f32),
+        20.0 as f32,
+        0.0 as f32
+    ))
+    @append(cubes, ecs.make_cube(
+        ecs.make_vec3(4.0 as f32, 3.0 as f32, (0.0 as f32) - (80.0 as f32)),
+        ecs.make_vec3(0.52 as f32, 0.62 as f32, 0.76 as f32),
+        16.0 as f32,
+        0.0 as f32
+    ))
+    for obstacle in game.obstacles {
+        if obstacle.kind == (0 as i32) {
+            @append(cubes, ecs.make_cube(
+                ecs.make_vec3(obstacle.x, 0.35 as f32, obstacle.z),
+                ecs.make_vec3(0.26 as f32, 0.16 as f32, 0.08 as f32),
+                0.34 as f32,
+                0.0 as f32
+            ))
+            @append(cubes, ecs.make_cube(
+                ecs.make_vec3(obstacle.x, 1.05 as f32, obstacle.z),
+                ecs.make_vec3(obstacle.r, obstacle.g, obstacle.b),
+                1.10 as f32,
+                0.0 as f32
+            ))
+        } elif obstacle.kind == (1 as i32) {
+            @append(cubes, ecs.make_cube(
+                ecs.make_vec3(obstacle.x, 0.18 as f32, obstacle.z),
+                ecs.make_vec3(obstacle.r, obstacle.g, obstacle.b),
+                0.82 as f32,
+                0.0 as f32
+            ))
+        } else {
+            @append(spheres, ecs.make_sphere(
+                ecs.make_vec3(obstacle.x, 0.95 as f32, obstacle.z),
+                ecs.make_vec3(obstacle.r, obstacle.g, obstacle.b),
+                0.78 as f32
+            ))
+            @append(spheres, ecs.make_sphere(
+                ecs.make_vec3(obstacle.x, 1.78 as f32, obstacle.z),
+                ecs.make_vec3(0.88 as f32, 0.92 as f32, 0.98 as f32),
+                0.44 as f32
+            ))
+        }
+    }
+    val py: f32 = game.jump_y
+    @append(cubes, ecs.make_cube(
+        ecs.make_vec3(game.player_x - (0.20 as f32), 0.07 as f32 + py, 0.22 as f32),
+        ecs.make_vec3(0.08 as f32, 0.10 as f32, 0.14 as f32),
+        0.18 as f32,
+        0.0 as f32
+    ))
+    @append(cubes, ecs.make_cube(
+        ecs.make_vec3(game.player_x + (0.20 as f32), 0.07 as f32 + py, 0.22 as f32),
+        ecs.make_vec3(0.08 as f32, 0.10 as f32, 0.14 as f32),
+        0.18 as f32,
+        0.0 as f32
+    ))
+    @append(spheres, ecs.make_sphere(
+        ecs.make_vec3(game.player_x, 0.78 as f32 + py, 0.0 as f32),
+        ecs.make_vec3(0.92 as f32, 0.16 as f32, 0.18 as f32),
+        0.36 as f32
+    ))
+    @append(spheres, ecs.make_sphere(
+        ecs.make_vec3(game.player_x, 1.30 as f32 + py, 0.06 as f32),
+        ecs.make_vec3(0.94 as f32, 0.78 as f32, 0.62 as f32),
+        0.19 as f32
+    ))
+    @append(spheres, ecs.make_sphere(
+        ecs.make_vec3(game.player_x - (0.30 as f32), 0.16 as f32, 0.50 as f32),
+        ecs.make_vec3(0.98 as f32, 0.99 as f32, 1.00 as f32),
+        0.17 as f32
+    ))
+    @append(spheres, ecs.make_sphere(
+        ecs.make_vec3(game.player_x + (0.34 as f32), 0.13 as f32, 0.64 as f32),
+        ecs.make_vec3(0.98 as f32, 0.99 as f32, 1.00 as f32),
+        0.13 as f32
+    ))
+    app.scene.cubes = cubes
+    app.scene.spheres = spheres
+}
+
+fn place_camera(app: mut engine.ExoApp) void = {
+    app.camera.position = ecs.make_vec3(0.0 as f32, 5.2 as f32, 12.5 as f32)
+    app.camera.yaw = PI
+    app.camera.pitch = -0.32 as f32
+}
+
+fn refresh_hud(game: SkiFree, app: mut engine.ExoApp) void = {
+    val kmh: i32 = (game.speed * (3.6 as f32)) as i32
+    @snprintf(game.hud, 128 as usize, "DISTANCE {d} M   BEST {d} M   SPEED {d}", { game.score, game.best, kmh })
+    ecs.ui_clear(app.scene.ui)
+    ecs.ui_rect(app.scene.ui, 16.0 as f32, 16.0 as f32, 480.0 as f32, 44.0 as f32, ecs.make_vec3(0.02 as f32, 0.05 as f32, 0.10 as f32), 0.66 as f32)
+    ecs.ui_text(app.scene.ui, game.hud, 26.0 as f32, 26.0 as f32, 3.0 as f32, ecs.make_vec3(0.92 as f32, 0.97 as f32, 1.00 as f32), 1.0 as f32)
+    if game.state == (1 as i32) {
+        ecs.ui_text(app.scene.ui, "WIPEOUT!  PRESS R TO SKI AGAIN", 26.0 as f32, 82.0 as f32, 2.2 as f32, ecs.make_vec3(1.00 as f32, 0.38 as f32, 0.28 as f32), 1.0 as f32)
+    } elif game.yeti_active {
+        ecs.ui_text(app.scene.ui, "YETI!  MOVE!", 26.0 as f32, 82.0 as f32, 2.2 as f32, ecs.make_vec3(1.00 as f32, 0.86 as f32, 0.22 as f32), 1.0 as f32)
+    } else {
+        ecs.ui_text(app.scene.ui, "A/D OR ARROWS STEER    SPACE JUMP    R RESTART", 26.0 as f32, 82.0 as f32, 2.0 as f32, ecs.make_vec3(0.72 as f32, 0.82 as f32, 0.94 as f32), 1.0 as f32)
+    }
+}
+
+fn build_scene() ecs.Scene3D = {
+    val scene: mut ecs.Scene3D = ecs.new_scene()
+    scene.gravity = 0.0 as f32
+    scene.render.clear_top = ecs.make_vec3(0.42 as f32, 0.62 as f32, 0.86 as f32)
+    scene.render.clear_bottom = ecs.make_vec3(0.72 as f32, 0.84 as f32, 0.96 as f32)
+    scene.render.ambient = 0.62 as f32
+    scene.render.enable_reflections = false
+    scene.render.enable_fxaa = true
+    scene.render.enable_light_glow = true
+    scene.render.reflection_plane = -0.2 as f32
+    ecs.add_light(scene, ecs.make_light(
+        ecs.make_vec3(-6.0 as f32, 14.0 as f32, 8.0 as f32),
+        ecs.make_vec3(1.00 as f32, 0.97 as f32, 0.90 as f32),
+        2.4 as f32,
+        42.0 as f32
+    ))
+    ecs.add_light(scene, ecs.make_light(
+        ecs.make_vec3(8.0 as f32, 8.0 as f32, -12.0 as f32),
+        ecs.make_vec3(0.62 as f32, 0.76 as f32, 1.00 as f32),
+        1.3 as f32,
+        30.0 as f32
+    ))
+    ecs.add_floor(scene, ecs.make_floor_sized(
+        0.0 as f32,
+        0.0 as f32,
+        0.0 as f32,
+        (0.0 as f32) - (30.0 as f32),
+        88.0 as f32,
+        180.0 as f32,
+        ecs.make_vec3(0.88 as f32, 0.94 as f32, 1.00 as f32)
+    ))
+    return scene
+}
+
+pub fn (SkiFree) on_start(game: mut self, app: mut engine.ExoApp) void = {
+    game.hud = @alloc(128 as usize) as ref u8
+    reset_game(game)
+    place_camera(app)
+    sync_scene(game, app)
+    refresh_hud(game, app)
+}
+
+pub fn (SkiFree) on_update(game: mut self, app: mut engine.ExoApp, dt: f32, _: f32) void = {
+    update_game(game, app, dt)
+    if game.shake > (0.0 as f32) {
+        val sway: f32 = (math.sin((app.time * (42.0 as f32)) as f64) as f32) * game.shake * (0.18 as f32)
+        app.camera.position = ecs.make_vec3(sway, 5.2 as f32, 12.5 as f32)
+    } else {
+        place_camera(app)
+    }
+    sync_scene(game, app)
+    refresh_hud(game, app)
+}
+
+pub fn (SkiFree) on_fixed_update(_: mut self, _: mut engine.ExoApp, _: f32) void = {}
+
+pub fn (SkiFree) on_key_down(game: mut self, _: mut engine.ExoApp, key: i32, _: bool, _: u16) void = {
+    if key == sdl.SDL_SCANCODE_R {
+        reset_game(game)
+    }
+    if key == sdl.SDL_SCANCODE_SPACE && game.state == (0 as i32) && game.jump_y == (0.0 as f32) {
+        game.jump_vel = JUMP_IMPULSE
+    }
+}
+
+pub fn (SkiFree) on_key_up(_: mut self, _: mut engine.ExoApp, _: i32, _: u16) void = {}
+pub fn (SkiFree) on_mouse_move(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+pub fn (SkiFree) on_mouse_button(_: mut self, _: mut engine.ExoApp, _: u8, _: bool, _: u8, _: f32, _: f32) void = {}
+pub fn (SkiFree) on_mouse_wheel(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+pub fn (SkiFree) on_text_input(_: mut self, _: mut engine.ExoApp, _: ref u8) void = {}
+pub fn (SkiFree) on_window_resize(_: mut self, _: mut engine.ExoApp, _: i32, _: i32) void = {}
+pub fn (SkiFree) on_focus_changed(_: mut self, _: mut engine.ExoApp, _: bool) void = {}
+pub fn (SkiFree) on_gamepad_button(_: mut self, _: mut engine.ExoApp, _: i32, _: bool) void = {}
+pub fn (SkiFree) on_gamepad_axis(_: mut self, _: mut engine.ExoApp, _: i32, _: f32) void = {}
+
+pub fn (SkiFree) on_shutdown(game: mut self, _: mut engine.ExoApp) void = {
+    if game.hud != none {
+        trust @free(game.hud as ref void)
+        game.hud = none as ref u8
+    }
+}
+
+pub fn main() i32 = {
+    val scene: ecs.Scene3D = build_scene()
+    val input_cfg: input.InputConfig = {
+        keys: rendering.default_key_bindings(),
+        mouse: {
+            enabled: false,
+            sensitivity_x: 0.0018 as f32,
+            sensitivity_y: 0.0018 as f32,
+            invert_y: false
+        },
+        text_input: false,
+        gamepad: true
+    }
+    val audio_cfg: audio.AudioBankConfig = {
+        master_volume: 90 as i32,
+        clips: [{
+            path: "./assets/example_sound.wav",
+            loops: 0 as i32,
+            volume: 90 as i32
+        }]
+    }
+
+    val builder: mut engine.ExoAppBuilder = engine.new_app()
+    engine.with_title(builder, "exo | skifree")
+    engine.with_resolution(builder, 1280 as i32, 720 as i32)
+    engine.with_shaders(builder, engine.default_shader_config())
+    engine.with_scene(builder, scene)
+    engine.with_camera(builder, engine.default_camera())
+    engine.with_input(builder, input_cfg)
+    engine.with_quit_key(builder, sdl.SDL_SCANCODE_ESCAPE)
+    engine.with_audio(builder, audio_cfg)
+
+    val app: engine.ExoApp = engine.build_app(builder)
+    val game: SkiFree = make_game()
+    return trust engine.run_app_with_events[SkiFree](app, game)
+}
+
+test {
+    val game = make_game()
+    assert game.state == (0 as i32)
+    assert game.speed == START_SPEED
+    assert @len(game.obstacles) == (0 as usize)
+    assert rand01(7 as i32) >= (0.0 as f32)
+    assert rand01(7 as i32) < (1.0 as f32)
+}

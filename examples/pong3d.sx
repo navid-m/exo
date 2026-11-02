@@ -1,0 +1,521 @@
+val math      = use("std/math")
+val ecs       = use("../src/ecs.sx")
+val engine    = use("../src/engine.sx")
+val rendering = use("../src/rendering.sx")
+val sdl       = use("../src/engine/sdl.sx")
+val input     = use("../src/engine/input.sx")
+val audio     = use("../src/engine/audio.sx")
+
+val COURT_HALF_X: f32 = 12.0 as f32
+val COURT_HALF_Z: f32 = 6.0 as f32
+val COURT_HEIGHT: f32 = 6.0 as f32
+val PADDLE_X: f32 = 11.1 as f32
+val PADDLE_SIZE: f32 = 1.8 as f32
+val BALL_RADIUS: f32 = 0.36 as f32
+val START_BALL_SPEED: f32 = 12.0 as f32
+val MAX_BALL_SPEED: f32 = 25.0 as f32
+val PLAYER_SPEED: f32 = 9.0 as f32
+val AI_SPEED: f32 = 6.1 as f32
+val WIN_SCORE: i32 = 7
+val PI: f32 = 3.14159265 as f32
+
+type (engine.AppEvents) PongGame = {
+    player_y: mut f32
+    player_z: mut f32
+    ai_y: mut f32
+    ai_z: mut f32
+    ball_x: mut f32
+    ball_y: mut f32
+    ball_z: mut f32
+    ball_vx: mut f32
+    ball_vy: mut f32
+    ball_vz: mut f32
+    player_score: mut i32
+    ai_score: mut i32
+    serve_timer: mut f32
+    serve_dir: mut i32
+    rally: mut i32
+    state: mut i32
+    shake: mut f32
+    hud: mut ref u8
+}
+
+fn fabs_f32(v: f32) f32 = {
+    return math.fabs(v as f64) as f32
+}
+
+fn clampf(v: f32, lo: f32, hi: f32) f32 = {
+    if v < lo {
+        return lo
+    }
+    if v > hi {
+        return hi
+    }
+    return v
+}
+
+fn rand01(seed: i32) f32 = {
+    val v: f64 = math.sin((seed as f64) * (12.9898 as f64)) * (43758.5453 as f64)
+    return (v - math.floor(v)) as f32
+}
+
+fn is_key_held(app: engine.ExoApp, key: i32) bool = {
+    return trust engine.key_held(app, key)
+}
+
+fn make_game() PongGame = {
+    return {
+        player_y: COURT_HEIGHT * (0.5 as f32),
+        player_z: 0.0 as f32,
+        ai_y: COURT_HEIGHT * (0.5 as f32),
+        ai_z: 0.0 as f32,
+        ball_x: 0.0 as f32,
+        ball_y: COURT_HEIGHT * (0.5 as f32),
+        ball_z: 0.0 as f32,
+        ball_vx: 0.0 as f32,
+        ball_vy: 0.0 as f32,
+        ball_vz: 0.0 as f32,
+        player_score: 0 as i32,
+        ai_score: 0 as i32,
+        serve_timer: 1.1 as f32,
+        serve_dir: 1 as i32,
+        rally: 0 as i32,
+        state: 0 as i32,
+        shake: 0.0 as f32,
+        hud: none as ref u8
+    }
+}
+
+fn reset_ball(game: mut PongGame) void = {
+    game.ball_x = 0.0 as f32
+    game.ball_y = COURT_HEIGHT * (0.5 as f32)
+    game.ball_z = 0.0 as f32
+    game.ball_vx = 0.0 as f32
+    game.ball_vy = 0.0 as f32
+    game.ball_vz = 0.0 as f32
+    game.serve_timer = 1.1 as f32
+    game.serve_dir = (0 as i32) - game.serve_dir
+    game.rally = 0 as i32
+}
+
+fn reset_game(game: mut PongGame) void = {
+    game.player_y = COURT_HEIGHT * (0.5 as f32)
+    game.player_z = 0.0 as f32
+    game.ai_y = COURT_HEIGHT * (0.5 as f32)
+    game.ai_z = 0.0 as f32
+    game.player_score = 0 as i32
+    game.ai_score = 0 as i32
+    game.state = 0 as i32
+    game.shake = 0.0 as f32
+    game.serve_dir = 1 as i32
+    reset_ball(game)
+}
+
+fn serve_ball(game: mut PongGame) void = {
+    val seed: i32 = game.player_score * (17 as i32) + game.ai_score * (31 as i32) + game.rally * (7 as i32) + (11 as i32)
+    val speed: f32 = START_BALL_SPEED + (game.rally as f32) * (0.25 as f32)
+    game.ball_vx = (game.serve_dir as f32) * speed
+    game.ball_vy = (rand01(seed) - (0.5 as f32)) * (3.4 as f32)
+    game.ball_vz = (rand01(seed + (19 as i32)) - (0.5 as f32)) * (4.6 as f32)
+    cap_ball_speed(game)
+}
+
+fn cap_ball_speed(game: mut PongGame) void = {
+    val sp: f32 = math.sqrt((game.ball_vx * game.ball_vx + game.ball_vy * game.ball_vy + game.ball_vz * game.ball_vz) as f64) as f32
+    if sp > MAX_BALL_SPEED {
+        val f: f32 = MAX_BALL_SPEED / sp
+        game.ball_vx = game.ball_vx * f
+        game.ball_vy = game.ball_vy * f
+        game.ball_vz = game.ball_vz * f
+    }
+}
+
+fn score_point(game: mut PongGame, app: engine.ExoApp, player_scored: bool) void = {
+    if player_scored {
+        game.player_score = game.player_score + (1 as i32)
+    } else {
+        game.ai_score = game.ai_score + (1 as i32)
+    }
+    trust engine.play_sound(app)
+    if game.player_score >= WIN_SCORE || game.ai_score >= WIN_SCORE {
+        game.state = 1 as i32
+        game.ball_vx = 0.0 as f32
+        game.ball_vy = 0.0 as f32
+        game.ball_vz = 0.0 as f32
+    } else {
+        reset_ball(game)
+    }
+}
+
+fn update_player(game: mut PongGame, app: engine.ExoApp, dt: f32) void = {
+    val mz: mut f32 = 0.0 as f32
+    val my: mut f32 = 0.0 as f32
+    if is_key_held(app, sdl.SDL_SCANCODE_LEFT) || is_key_held(app, sdl.SDL_SCANCODE_A) {
+        mz = (0.0 as f32) - (1.0 as f32)
+    }
+    if is_key_held(app, sdl.SDL_SCANCODE_RIGHT) || is_key_held(app, sdl.SDL_SCANCODE_D) {
+        mz = 1.0 as f32
+    }
+    if is_key_held(app, sdl.SDL_SCANCODE_DOWN) || is_key_held(app, sdl.SDL_SCANCODE_S) {
+        my = (0.0 as f32) - (1.0 as f32)
+    }
+    if is_key_held(app, sdl.SDL_SCANCODE_UP) || is_key_held(app, sdl.SDL_SCANCODE_W) {
+        my = 1.0 as f32
+    }
+    mz = mz + engine.gamepad_axis(app, sdl.SDL_GAMEPAD_AXIS_LEFTX)
+    my = my - engine.gamepad_axis(app, sdl.SDL_GAMEPAD_AXIS_LEFTY)
+    val half: f32 = PADDLE_SIZE * (0.5 as f32)
+    game.player_z = clampf(game.player_z + mz * PLAYER_SPEED * dt, (0.0 as f32) - COURT_HALF_Z + half, COURT_HALF_Z - half)
+    game.player_y = clampf(game.player_y + my * PLAYER_SPEED * dt, half, COURT_HEIGHT - half)
+}
+
+fn update_ai(game: mut PongGame, time: f32, dt: f32) void = {
+    val target_y: mut f32 = COURT_HEIGHT * (0.5 as f32)
+    val target_z: mut f32 = 0.0 as f32
+    if game.ball_vx > (0.0 as f32) {
+        target_y = game.ball_y
+        target_z = game.ball_z + (math.sin((time * (1.7 as f32)) as f64) as f32) * (0.65 as f32)
+    }
+    val half: f32 = PADDLE_SIZE * (0.5 as f32)
+    val dy: f32 = target_y - game.ai_y
+    val dz: f32 = target_z - game.ai_z
+    game.ai_y = clampf(game.ai_y + clampf(dy, (0.0 as f32) - AI_SPEED * dt, AI_SPEED * dt), half, COURT_HEIGHT - half)
+    game.ai_z = clampf(game.ai_z + clampf(dz, (0.0 as f32) - AI_SPEED * dt, AI_SPEED * dt), (0.0 as f32) - COURT_HALF_Z + half, COURT_HALF_Z - half)
+}
+
+fn paddle_bounce(game: mut PongGame, app: engine.ExoApp, player_paddle: bool) void = {
+    val half: f32 = PADDLE_SIZE * (0.5 as f32)
+    val py: f32 = game.player_y
+    val pz: f32 = game.player_z
+    val ay: f32 = game.ai_y
+    val az: f32 = game.ai_z
+    if player_paddle {
+        val px: f32 = (0.0 as f32) - PADDLE_X
+        game.ball_x = px + half + BALL_RADIUS
+        game.ball_vx = fabs_f32(game.ball_vx) * (1.045 as f32) + (0.8 as f32)
+        game.ball_vy = game.ball_vy + (game.ball_y - py) * (3.0 as f32)
+        game.ball_vz = game.ball_vz + (game.ball_z - pz) * (2.2 as f32)
+    } else {
+        val px: f32 = PADDLE_X
+        game.ball_x = px - half - BALL_RADIUS
+        game.ball_vx = (0.0 as f32) - (fabs_f32(game.ball_vx) * (1.045 as f32) + (0.8 as f32))
+        game.ball_vy = game.ball_vy + (game.ball_y - ay) * (2.6 as f32)
+        game.ball_vz = game.ball_vz + (game.ball_z - az) * (2.0 as f32)
+    }
+    game.rally = game.rally + (1 as i32)
+    game.shake = 0.35 as f32
+    cap_ball_speed(game)
+    trust engine.play_sound(app)
+}
+
+fn update_ball(game: mut PongGame, app: engine.ExoApp, dt: f32) void = {
+    if game.serve_timer > (0.0 as f32) {
+        game.serve_timer = game.serve_timer - dt
+        if game.serve_timer <= (0.0 as f32) {
+            serve_ball(game)
+        }
+        return
+    }
+    game.ball_x = game.ball_x + game.ball_vx * dt
+    game.ball_y = game.ball_y + game.ball_vy * dt
+    game.ball_z = game.ball_z + game.ball_vz * dt
+    if game.ball_y < BALL_RADIUS {
+        game.ball_y = BALL_RADIUS
+        game.ball_vy = fabs_f32(game.ball_vy)
+    }
+    if game.ball_y > COURT_HEIGHT - BALL_RADIUS {
+        game.ball_y = COURT_HEIGHT - BALL_RADIUS
+        game.ball_vy = (0.0 as f32) - fabs_f32(game.ball_vy)
+    }
+    if game.ball_z < (0.0 as f32) - COURT_HALF_Z + BALL_RADIUS {
+        game.ball_z = (0.0 as f32) - COURT_HALF_Z + BALL_RADIUS
+        game.ball_vz = fabs_f32(game.ball_vz)
+    }
+    if game.ball_z > COURT_HALF_Z - BALL_RADIUS {
+        game.ball_z = COURT_HALF_Z - BALL_RADIUS
+        game.ball_vz = (0.0 as f32) - fabs_f32(game.ball_vz)
+    }
+    val half: f32 = PADDLE_SIZE * (0.5 as f32)
+    if game.ball_vx < (0.0 as f32) {
+        val px: f32 = (0.0 as f32) - PADDLE_X
+        if game.ball_x - BALL_RADIUS <= px + half && game.ball_x > px - half - (1.2 as f32) {
+            if fabs_f32(game.ball_y - game.player_y) <= half + BALL_RADIUS && fabs_f32(game.ball_z - game.player_z) <= half + BALL_RADIUS {
+                paddle_bounce(game, app, true)
+            }
+        }
+    }
+    if game.ball_vx > (0.0 as f32) {
+        val px: f32 = PADDLE_X
+        if game.ball_x + BALL_RADIUS >= px - half && game.ball_x < px + half + (1.2 as f32) {
+            if fabs_f32(game.ball_y - game.ai_y) <= half + BALL_RADIUS && fabs_f32(game.ball_z - game.ai_z) <= half + BALL_RADIUS {
+                paddle_bounce(game, app, false)
+            }
+        }
+    }
+    if game.ball_x < (0.0 as f32) - COURT_HALF_X - (0.8 as f32) {
+        score_point(game, app, false)
+    } elif game.ball_x > COURT_HALF_X + (0.8 as f32) {
+        score_point(game, app, true)
+    }
+}
+
+fn update_game(game: mut PongGame, app: engine.ExoApp, dt: f32, time: f32) void = {
+    if game.shake > (0.0 as f32) {
+        game.shake = game.shake - dt * (1.6 as f32)
+        if game.shake < (0.0 as f32) {
+            game.shake = 0.0 as f32
+        }
+    }
+    if game.state != (0 as i32) {
+        return
+    }
+    update_player(game, app, dt)
+    update_ai(game, time, dt)
+    update_ball(game, app, dt)
+}
+
+fn sync_scene(game: PongGame, app: mut engine.ExoApp, time: f32) void = {
+    val cubes: mut list[ecs.CubeEntity] = []
+    val x: mut i32 = (0 as i32) - (12 as i32)
+    for x <= (12 as i32) {
+        @append(cubes, ecs.make_cube(
+            ecs.make_vec3(x as f32, 0.16 as f32, (0.0 as f32) - COURT_HALF_Z),
+            ecs.make_vec3(0.05 as f32, 0.22 as f32, 0.36 as f32),
+            0.42 as f32,
+            0.0 as f32
+        ))
+        @append(cubes, ecs.make_cube(
+            ecs.make_vec3(x as f32, 0.16 as f32, COURT_HALF_Z),
+            ecs.make_vec3(0.10 as f32, 0.34 as f32, 0.52 as f32),
+            0.42 as f32,
+            0.0 as f32
+        ))
+        x = x + (1 as i32)
+    }
+    val z: mut i32 = (0 as i32) - (6 as i32)
+    for z <= (6 as i32) {
+        @append(cubes, ecs.make_cube(
+            ecs.make_vec3((0.0 as f32) - COURT_HALF_X, 0.14 as f32, z as f32),
+            ecs.make_vec3(0.16 as f32, 0.58 as f32, 0.98 as f32),
+            0.34 as f32,
+            0.0 as f32
+        ))
+        @append(cubes, ecs.make_cube(
+            ecs.make_vec3(COURT_HALF_X, 0.14 as f32, z as f32),
+            ecs.make_vec3(0.98 as f32, 0.28 as f32, 0.52 as f32),
+            0.34 as f32,
+            0.0 as f32
+        ))
+        z = z + (1 as i32)
+    }
+    val c: mut i32 = (0 as i32) - (6 as i32)
+    for c <= (6 as i32) {
+        @append(cubes, ecs.make_cube(
+            ecs.make_vec3(0.0 as f32, 0.06 as f32, c as f32),
+            ecs.make_vec3(0.20 as f32, 0.30 as f32, 0.42 as f32),
+            0.18 as f32,
+            0.0 as f32
+        ))
+        c = c + (1 as i32)
+    }
+    @append(cubes, ecs.make_cube(
+        ecs.make_vec3((0.0 as f32) - COURT_HALF_X, 3.0 as f32, (0.0 as f32) - COURT_HALF_Z),
+        ecs.make_vec3(0.20 as f32, 0.70 as f32, 1.00 as f32),
+        0.55 as f32,
+        0.0 as f32
+    ))
+    @append(cubes, ecs.make_cube(
+        ecs.make_vec3((0.0 as f32) - COURT_HALF_X, 3.0 as f32, COURT_HALF_Z),
+        ecs.make_vec3(0.20 as f32, 0.70 as f32, 1.00 as f32),
+        0.55 as f32,
+        0.0 as f32
+    ))
+    @append(cubes, ecs.make_cube(
+        ecs.make_vec3(COURT_HALF_X, 3.0 as f32, (0.0 as f32) - COURT_HALF_Z),
+        ecs.make_vec3(1.00 as f32, 0.34 as f32, 0.62 as f32),
+        0.55 as f32,
+        0.0 as f32
+    ))
+    @append(cubes, ecs.make_cube(
+        ecs.make_vec3(COURT_HALF_X, 3.0 as f32, COURT_HALF_Z),
+        ecs.make_vec3(1.00 as f32, 0.34 as f32, 0.62 as f32),
+        0.55 as f32,
+        0.0 as f32
+    ))
+    @append(cubes, ecs.make_cube(
+        ecs.make_vec3((0.0 as f32) - PADDLE_X, game.player_y, game.player_z),
+        ecs.make_vec3(0.20 as f32, 0.92 as f32, 1.00 as f32),
+        PADDLE_SIZE,
+        0.0 as f32
+    ))
+    @append(cubes, ecs.make_cube(
+        ecs.make_vec3(PADDLE_X, game.ai_y, game.ai_z),
+        ecs.make_vec3(1.00 as f32, 0.26 as f32, 0.58 as f32),
+        PADDLE_SIZE,
+        0.0 as f32
+    ))
+    val ball_pulse: f32 = (math.sin((time * (9.0 as f32)) as f64) as f32) * (0.025 as f32)
+    val spheres: mut list[ecs.SphereEntity] = []
+    @append(spheres, ecs.make_sphere(
+        ecs.make_vec3(game.ball_x, game.ball_y, game.ball_z),
+        ecs.make_vec3(1.00 as f32, 0.94 as f32, 0.52 as f32),
+        BALL_RADIUS + ball_pulse
+    ))
+    app.scene.cubes = cubes
+    app.scene.spheres = spheres
+}
+
+fn place_camera(game: PongGame, app: mut engine.ExoApp, time: f32) void = {
+    val sway: f32 = (math.sin((time * (2.0 as f32)) as f64) as f32) * game.shake * (0.16 as f32)
+    app.camera.position = ecs.make_vec3((0.0 as f32) - (19.0 as f32), 8.0 as f32, sway)
+    app.camera.yaw = PI * (0.5 as f32)
+    app.camera.pitch = -0.27 as f32
+}
+
+fn refresh_hud(game: PongGame, app: mut engine.ExoApp) void = {
+    @snprintf(game.hud, 128 as usize, "PLAYER {d}   AI {d}   FIRST TO {d}", { game.player_score, game.ai_score, WIN_SCORE })
+    ecs.ui_clear(app.scene.ui)
+    ecs.ui_rect(app.scene.ui, 16.0 as f32, 16.0 as f32, 460.0 as f32, 44.0 as f32, ecs.make_vec3(0.01 as f32, 0.02 as f32, 0.07 as f32), 0.70 as f32)
+    ecs.ui_text(app.scene.ui, game.hud, 26.0 as f32, 26.0 as f32, 3.0 as f32, ecs.make_vec3(0.76 as f32, 0.96 as f32, 1.00 as f32), 1.0 as f32)
+    if game.state == (1 as i32) {
+        if game.player_score >= WIN_SCORE {
+            ecs.ui_text(app.scene.ui, "PLAYER WINS!  PRESS R", 26.0 as f32, 82.0 as f32, 2.2 as f32, ecs.make_vec3(0.30 as f32, 1.00 as f32, 0.92 as f32), 1.0 as f32)
+        } else {
+            ecs.ui_text(app.scene.ui, "AI WINS!  PRESS R", 26.0 as f32, 82.0 as f32, 2.2 as f32, ecs.make_vec3(1.00 as f32, 0.38 as f32, 0.52 as f32), 1.0 as f32)
+        }
+    } elif game.serve_timer > (0.0 as f32) {
+        ecs.ui_text(app.scene.ui, "SERVE...", 26.0 as f32, 82.0 as f32, 2.0 as f32, ecs.make_vec3(1.00 as f32, 0.86 as f32, 0.30 as f32), 1.0 as f32)
+    } else {
+        ecs.ui_text(app.scene.ui, "W/S VERTICAL   A/D SIDE   R RESTART", 26.0 as f32, 82.0 as f32, 2.0 as f32, ecs.make_vec3(0.64 as f32, 0.76 as f32, 0.90 as f32), 1.0 as f32)
+    }
+}
+
+fn build_scene() ecs.Scene3D = {
+    val scene: mut ecs.Scene3D = ecs.new_scene()
+    scene.gravity = 0.0 as f32
+    scene.render.clear_top = ecs.make_vec3(0.010 as f32, 0.012 as f32, 0.040 as f32)
+    scene.render.clear_bottom = ecs.make_vec3(0.020 as f32, 0.035 as f32, 0.090 as f32)
+    scene.render.ambient = 0.36 as f32
+    scene.render.enable_reflections = true
+    scene.render.reflect_models = false
+    scene.render.enable_fxaa = true
+    scene.render.enable_light_glow = true
+    scene.render.reflection_plane = 0.0 as f32
+    ecs.add_light(scene, ecs.make_light(
+        ecs.make_vec3(0.0 as f32, 9.0 as f32, 0.0 as f32),
+        ecs.make_vec3(0.72 as f32, 0.86 as f32, 1.00 as f32),
+        2.4 as f32,
+        26.0 as f32
+    ))
+    ecs.add_light(scene, ecs.make_light(
+        ecs.make_vec3((0.0 as f32) - (9.0 as f32), 3.2 as f32, 0.0 as f32),
+        ecs.make_vec3(0.20 as f32, 0.55 as f32, 1.00 as f32),
+        1.4 as f32,
+        12.0 as f32
+    ))
+    ecs.add_light(scene, ecs.make_light(
+        ecs.make_vec3(9.0 as f32, 3.2 as f32, 0.0 as f32),
+        ecs.make_vec3(1.00 as f32, 0.22 as f32, 0.52 as f32),
+        1.4 as f32,
+        12.0 as f32
+    ))
+    ecs.add_floor(scene, ecs.make_floor_sized(
+        0.0 as f32,
+        0.0 as f32,
+        0.0 as f32,
+        0.0 as f32,
+        (COURT_HALF_X * (2.0 as f32)) + (2.0 as f32),
+        (COURT_HALF_Z * (2.0 as f32)) + (2.0 as f32),
+        ecs.make_vec3(0.018 as f32, 0.035 as f32, 0.075 as f32)
+    ))
+    return scene
+}
+
+pub fn (PongGame) on_start(game: mut self, app: mut engine.ExoApp) void = {
+    game.hud = @alloc(128 as usize) as ref u8
+    reset_game(game)
+    place_camera(game, app, 0.0 as f32)
+    sync_scene(game, app, 0.0 as f32)
+    refresh_hud(game, app)
+}
+
+pub fn (PongGame) on_update(game: mut self, app: mut engine.ExoApp, dt: f32, time: f32) void = {
+    update_game(game, app, dt, time)
+    place_camera(game, app, time)
+    sync_scene(game, app, time)
+    refresh_hud(game, app)
+}
+
+pub fn (PongGame) on_fixed_update(_: mut self, _: mut engine.ExoApp, _: f32) void = {}
+
+pub fn (PongGame) on_key_down(game: mut self, _: mut engine.ExoApp, key: i32, _: bool, _: u16) void = {
+    if key == sdl.SDL_SCANCODE_R {
+        reset_game(game)
+    }
+    if key == sdl.SDL_SCANCODE_SPACE && game.serve_timer > (0.0 as f32) {
+        game.serve_timer = 0.01 as f32
+    }
+}
+
+pub fn (PongGame) on_key_up(_: mut self, _: mut engine.ExoApp, _: i32, _: u16) void = {}
+pub fn (PongGame) on_mouse_move(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+pub fn (PongGame) on_mouse_button(_: mut self, _: mut engine.ExoApp, _: u8, _: bool, _: u8, _: f32, _: f32) void = {}
+pub fn (PongGame) on_mouse_wheel(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+pub fn (PongGame) on_text_input(_: mut self, _: mut engine.ExoApp, _: ref u8) void = {}
+pub fn (PongGame) on_window_resize(_: mut self, _: mut engine.ExoApp, _: i32, _: i32) void = {}
+pub fn (PongGame) on_focus_changed(_: mut self, _: mut engine.ExoApp, _: bool) void = {}
+pub fn (PongGame) on_gamepad_button(_: mut self, _: mut engine.ExoApp, _: i32, _: bool) void = {}
+pub fn (PongGame) on_gamepad_axis(_: mut self, _: mut engine.ExoApp, _: i32, _: f32) void = {}
+
+pub fn (PongGame) on_shutdown(game: mut self, _: mut engine.ExoApp) void = {
+    if game.hud != none {
+        trust @free(game.hud as ref void)
+        game.hud = none as ref u8
+    }
+}
+
+pub fn main() i32 = {
+    val scene: ecs.Scene3D = build_scene()
+    val input_cfg: input.InputConfig = {
+        keys: rendering.default_key_bindings(),
+        mouse: {
+            enabled: false,
+            sensitivity_x: 0.0018 as f32,
+            sensitivity_y: 0.0018 as f32,
+            invert_y: false
+        },
+        text_input: false,
+        gamepad: true
+    }
+    val audio_cfg: audio.AudioBankConfig = {
+        master_volume: 90 as i32,
+        clips: [{
+            path: "./assets/example_sound.wav",
+            loops: 0 as i32,
+            volume: 90 as i32
+        }]
+    }
+
+    val builder: mut engine.ExoAppBuilder = engine.new_app()
+    engine.with_title(builder, "exo | pong 3d")
+    engine.with_resolution(builder, 1280 as i32, 720 as i32)
+    engine.with_shaders(builder, engine.default_shader_config())
+    engine.with_scene(builder, scene)
+    engine.with_camera(builder, engine.default_camera())
+    engine.with_input(builder, input_cfg)
+    engine.with_quit_key(builder, sdl.SDL_SCANCODE_ESCAPE)
+    engine.with_audio(builder, audio_cfg)
+
+    val app: engine.ExoApp = engine.build_app(builder)
+    val game: PongGame = make_game()
+    return trust engine.run_app_with_events[PongGame](app, game)
+}
+
+test {
+    val game = make_game()
+    assert game.state == (0 as i32)
+    assert game.player_score == (0 as i32)
+    assert game.serve_timer > (0.0 as f32)
+    assert BALL_RADIUS > (0.0 as f32)
+    assert WIN_SCORE > (0 as i32)
+}
