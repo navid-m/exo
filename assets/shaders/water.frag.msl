@@ -46,7 +46,7 @@ fragment main0_out main0(main0_in in [[stage_in]], constant WaterFragmentUniform
     float time = _74.uCameraPos.w;
     float sx = _74.uWaterParams.y;
     float sz = _74.uWaterParams.z;
-    float2 planePos = in.vWorldPos.xz;
+    float2 planePos = in.vWorldPos.xz - float2(_74.uWaterColor.w, _74.uWaterParams.w);
     float2 halfExt = float2(sx, sz) * 0.5;
     float cornerR = _74.uWaterParams.x * fast::min(halfExt.x, halfExt.y);
     float2 param = planePos;

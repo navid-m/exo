@@ -34,36 +34,29 @@ fn build_showcase_scene() ecs.Scene3D = {
     }
 
     val water: mut ecs.WaterSurface = ecs.make_water(
-        -0.12 as f32,
-        0.0 as f32,
-        0.0 as f32,
-        0.0 as f32,
-        0.0 as f32,
+        -0.385 as f32,
+        1.19 as f32,
+        -2.04 as f32,
+        6.95 as f32,
+        9.48 as f32,
         ecs.make_vec3(0.10 as f32, 0.46 as f32, 0.78 as f32),
         1.25 as f32,
         0.022 as f32,
         3.0 as f32,
         0.45 as f32
     )
-    water.fit_scale = 0.72 as f32
     if !loaded {
+        water.y = -0.1 as f32
+        water.offset_x = 0.0 as f32
+        water.offset_z = 0.0 as f32
         water.size_x = 8.0 as f32
         water.size_z = 10.0 as f32
-        water.y = -0.1 as f32
     }
     scene.water = some water
 
-    val surface_y: mut f32 = water.y
-    val scale: f32 = scene.model_scale
-    if loaded {
-        surface_y = scene.model.bounds_max_y * scale + water.y
-    }
-    val cx: mut f32 = 0.0 as f32
-    val cz: mut f32 = -2.0 as f32
-    if loaded {
-        cx = ((scene.model.bounds_min_x + scene.model.bounds_max_x) * (0.5 as f32)) * scale
-        cz = ((scene.model.bounds_min_z + scene.model.bounds_max_z) * (0.5 as f32)) * scale
-    }
+    val surface_y: f32 = water.y
+    val cx: f32 = water.offset_x
+    val cz: f32 = water.offset_z
 
     @append(scene.cubes, ecs.make_cube(
         ecs.make_vec3(cx - 2.2 as f32, surface_y + 0.18 as f32, cz + 0.9 as f32),

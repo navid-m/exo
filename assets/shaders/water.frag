@@ -30,7 +30,7 @@ void main() {
 
     float sx = uWaterParams.y;
     float sz = uWaterParams.z;
-    vec2 planePos = vWorldPos.xz;
+    vec2 planePos = vWorldPos.xz - vec2(uWaterColor.w, uWaterParams.w);
     vec2 halfExt  = vec2(sx, sz) * 0.5;
     float cornerR = uWaterParams.x * min(halfExt.x, halfExt.y);
     float dist    = sdRoundedRect(planePos, halfExt, cornerR);

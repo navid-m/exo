@@ -1629,7 +1629,7 @@ pub fn draw_floor(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj:
     draw_floor_raw(runtime, mesh.raw, @addr(model.m00), @addr(view_proj.m00), @addr(reflect_view_proj.m00), @addr(camera.position.x))
 }
 
-pub fn draw_water(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj: math.Mat4, reflect_view_proj: math.Mat4, camera: cam.Camera, color: math.Vec3, wave_offset: f32, wave_amplitude: f32, wave_frequency: f32, light: ecs.PointLight, corner_radius: f32, size_x: f32, size_z: f32) void = trust {
+pub fn draw_water(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj: math.Mat4, reflect_view_proj: math.Mat4, camera: cam.Camera, color: math.Vec3, wave_offset: f32, wave_amplitude: f32, wave_frequency: f32, light: ecs.PointLight, corner_radius: f32, size_x: f32, size_z: f32, center_x: f32, center_z: f32) void = trust {
     if runtime == none || mesh.raw == none {
         return
     }
@@ -1646,9 +1646,9 @@ pub fn draw_water(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj:
     val light_dir: math.Vec3 = math.vec3_normalize(math.vec3_sub(light.position, math.vec3(0.0 as f32, 0.0 as f32, 0.0 as f32)))
     val fu: mut WaterFragmentUniforms = {
         camera_pos: { x: camera.position.x, y: camera.position.y, z: camera.position.z, w: wave_offset },
-        water_color: { x: color.x, y: color.y, z: color.z, w: 0.0 as f32 },
+        water_color: { x: color.x, y: color.y, z: color.z, w: center_x },
         light_dir: { x: light_dir.x, y: light_dir.y, z: light_dir.z, w: light.intensity },
-        water_params: { x: corner_radius, y: size_x, z: size_z, w: 0.0 as f32 }
+        water_params: { x: corner_radius, y: size_x, z: size_z, w: center_z }
     }
     sdl.SDL_BindGPUGraphicsPipeline(rt.current_pass, rt.water_pipeline)
     sdl.SDL_PushGPUVertexUniformData(rt.command_buffer, 0 as u32, @addr(vu) as ref void, @sizeof(WaterVertexUniforms) as u32)
@@ -1675,6 +1675,9 @@ pub fn render_reflection_scene(runtime: ref void, cube_mesh: MeshGPU, sphere_mes
     val mirror_y: mut f32 = plane_y
     if scene.water is some water {
         mirror_y = water.y
+        if water.size_x == (0.0 as f32) && water.size_z == (0.0 as f32) && scene.model.valid {
+            mirror_y = scene.model.bounds_max_y * scene.model_scale + water.y
+        }
     }
     val mirrored: cam.Camera = cam.mirrored_camera(camera, mirror_y)
     val reflect_vp: math.Mat4 = cam.view_projection(mirrored, width, height)
@@ -1714,7 +1717,7 @@ pub fn render_scene(runtime: ref void, cube_mesh: MeshGPU, sphere_mesh: MeshGPU,
         val water_scale: math.Vec3 = math.vec3(fit_x, 0.04 as f32, fit_z)
         val water_model: math.Mat4 = math.model_matrix_scaled(water_position, water_scale, 0.0 as f32)
         val reflect_water_vp: math.Mat4 = cam.view_projection(cam.mirrored_camera(camera, fit_y), width, height)
-        draw_water(runtime, cube_mesh, water_model, vp, reflect_water_vp, camera, water.color, wave_offset, water.wave_amplitude, water.wave_frequency, scene.light, water.corner_radius, fit_x, fit_z)
+        draw_water(runtime, cube_mesh, water_model, vp, reflect_water_vp, camera, water.color, wave_offset, water.wave_amplitude, water.wave_frequency, scene.light, water.corner_radius, fit_x, fit_z, fit_ox, fit_oz)
     }
     val light_pos: math.Vec3 = scene.light.position
     val light_color: math.Vec3 = scene.light.color
