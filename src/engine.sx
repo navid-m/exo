@@ -683,16 +683,17 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             renderer.render_ui(runtime, meshes, app.scene, frame_w as i32, frame_h as i32)
             renderer.end_pass(runtime)
         }
-        if !renderer.submit_frame(runtime) {
+        val capture_path: mut ref u8 = none as ref u8
+        if app.screenshot_requested {
+            if app.screenshot_path != none && string.len_raw(app.screenshot_path) > (0 as usize) {
+                capture_path = app.screenshot_path
+            }
+            app.screenshot_requested = false
+        }
+        if !renderer.submit_frame_capture(runtime, capture_path) {
             exoerr.print("SDL3 submit frame failed")
             exit_code = 1 as i32
             break
-        }
-        if app.screenshot_requested {
-            if app.screenshot_path != none && string.len_raw(app.screenshot_path) > (0 as usize) {
-                renderer.debug_dump_scene(runtime, app.screenshot_path)
-            }
-            app.screenshot_requested = false
         }
         if app.config.debug_frame >= (0 as i32) && app.frame == (app.config.debug_frame as u64) && app.config.debug_dump_path != none && string.len_raw(app.config.debug_dump_path) > (0 as usize) {
             renderer.debug_dump_scene(runtime, app.config.debug_dump_path)

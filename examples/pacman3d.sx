@@ -212,7 +212,7 @@ fn reset_positions(game: mut PacmanGame) void = {
             g.dir_z = 0 as i32
             @set(game.ghosts, i, g)
         }
-        i = i + (1 as usize)
+        i += (1 as usize)
     }
 }
 
@@ -591,7 +591,7 @@ fn follow_camera(game: PacmanGame, app: mut engine.ExoApp) void = {
 fn refresh_hud(game: PacmanGame, app: mut engine.ExoApp) void = {
     @snprintf(game.hud, 128 as usize, "SCORE {d}   LIVES {d}   DOTS {d}", { game.score, game.lives, game.pellets_left })
     ecs.ui_clear(app.scene.ui)
-    ecs.ui_rect(app.scene.ui, 16.0 as f32, 16.0 as f32, 430.0 as f32, 44.0 as f32, ecs.make_vec3(0.01 as f32, 0.02 as f32, 0.08 as f32), 0.72 as f32)
+    ecs.ui_rect(app.scene.ui, 16.0 as f32, 16.0 as f32, 580.0 as f32, 44.0 as f32, ecs.make_vec3(0.01 as f32, 0.02 as f32, 0.08 as f32), 0.72 as f32)
     ecs.ui_text(app.scene.ui, game.hud, 26.0 as f32, 26.0 as f32, 3.0 as f32, ecs.make_vec3(1.00 as f32, 0.86 as f32, 0.18 as f32), 1.0 as f32)
     if game.state == (1 as i32) {
         ecs.ui_text(app.scene.ui, "YOU WIN!  PRESS R TO PLAY AGAIN", 26.0 as f32, 82.0 as f32, 2.2 as f32, ecs.make_vec3(0.40 as f32, 1.00 as f32, 0.55 as f32), 1.0 as f32)

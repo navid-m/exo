@@ -1599,24 +1599,9 @@ pub fn apply_fxaa(runtime_raw: ref void) bool = trust {
     return true
 }
 
-pub fn debug_dump_scene(runtime_raw: ref void, path: ref u8) void = trust {
-    val runtime: ref Renderer = runtime_raw as ref Renderer
+fn write_mapped_ppm(runtime: ref Renderer, tbuf: ref void, path: ref u8) void = trust {
     val w: u32 = runtime.render_width
     val h: u32 = runtime.render_height
-    val byte_size: u32 = w * h * (4 as u32)
-    val info: mut sdl.SDLGPUTransferBufferCreateInfo = { usage: sdl.SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD, size: byte_size, props: 0 as u32 }
-    val tbuf: ref void = sdl.SDL_CreateGPUTransferBuffer(runtime.device, @addr(info))
-    if tbuf == none {
-        return
-    }
-    val cmd: ref void = sdl.SDL_AcquireGPUCommandBuffer(runtime.device)
-    val pass: ref void = sdl.SDL_BeginGPUCopyPass(cmd)
-    val src: mut sdl.SDLGPUTextureRegion = { texture: runtime.scene_color, mip_level: 0 as u32, layer: 0 as u32, x: 0 as u32, y: 0 as u32, z: 0 as u32, w: w, h: h, d: 1 as u32 }
-    val dst: mut sdl.SDLGPUTextureTransferInfo = { transfer_buffer: tbuf, offset: 0 as u32, pixels_per_row: w, rows_per_layer: h }
-    sdl.SDL_DownloadFromGPUTexture(pass, @addr(src), @addr(dst))
-    sdl.SDL_EndGPUCopyPass(pass)
-    sdl.SDL_SubmitGPUCommandBuffer(cmd)
-    sdl.SDL_WaitForGPUIdle(runtime.device)
     val mapped: ref u8 = sdl.SDL_MapGPUTransferBuffer(runtime.device, tbuf, false) as ref u8
     if mapped != none {
         val rgb: ref u8 = @alloc((w * h * (3 as u32)) as usize) as ref u8
@@ -1644,10 +1629,31 @@ pub fn debug_dump_scene(runtime_raw: ref void, path: ref u8) void = trust {
         @free(rgb)
         sdl.SDL_UnmapGPUTransferBuffer(runtime.device, tbuf)
     }
+}
+
+pub fn debug_dump_scene(runtime_raw: ref void, path: ref u8) void = trust {
+    val runtime: ref Renderer = runtime_raw as ref Renderer
+    val w: u32 = runtime.render_width
+    val h: u32 = runtime.render_height
+    val byte_size: u32 = w * h * (4 as u32)
+    val info: mut sdl.SDLGPUTransferBufferCreateInfo = { usage: sdl.SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD, size: byte_size, props: 0 as u32 }
+    val tbuf: ref void = sdl.SDL_CreateGPUTransferBuffer(runtime.device, @addr(info))
+    if tbuf == none {
+        return
+    }
+    val cmd: ref void = sdl.SDL_AcquireGPUCommandBuffer(runtime.device)
+    val pass: ref void = sdl.SDL_BeginGPUCopyPass(cmd)
+    val src: mut sdl.SDLGPUTextureRegion = { texture: runtime.scene_color, mip_level: 0 as u32, layer: 0 as u32, x: 0 as u32, y: 0 as u32, z: 0 as u32, w: w, h: h, d: 1 as u32 }
+    val dst: mut sdl.SDLGPUTextureTransferInfo = { transfer_buffer: tbuf, offset: 0 as u32, pixels_per_row: w, rows_per_layer: h }
+    sdl.SDL_DownloadFromGPUTexture(pass, @addr(src), @addr(dst))
+    sdl.SDL_EndGPUCopyPass(pass)
+    sdl.SDL_SubmitGPUCommandBuffer(cmd)
+    sdl.SDL_WaitForGPUIdle(runtime.device)
+    write_mapped_ppm(runtime, tbuf, path)
     sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
 }
 
-pub fn submit_frame(runtime_raw: ref void) bool = trust {
+pub fn submit_frame_capture(runtime_raw: ref void, path: ref u8) bool = trust {
     exoerr.clear()
     if runtime_raw == none {
         return exoerr.set("frame not active")
@@ -1657,11 +1663,37 @@ pub fn submit_frame(runtime_raw: ref void) bool = trust {
         return exoerr.set("frame not active")
     }
     end_pass(runtime_raw)
+    val w: u32 = runtime.render_width
+    val h: u32 = runtime.render_height
+    val tbuf: mut ref void = none
+    if path != none && string.len_raw(path) > (0 as usize) && runtime.swapchain_texture != none {
+        val byte_size: u32 = w * h * (4 as u32)
+        val info: mut sdl.SDLGPUTransferBufferCreateInfo = { usage: sdl.SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD, size: byte_size, props: 0 as u32 }
+        tbuf = sdl.SDL_CreateGPUTransferBuffer(runtime.device, @addr(info))
+        if tbuf != none {
+            val pass: ref void = sdl.SDL_BeginGPUCopyPass(runtime.command_buffer)
+            val src: mut sdl.SDLGPUTextureRegion = { texture: runtime.swapchain_texture, mip_level: 0 as u32, layer: 0 as u32, x: 0 as u32, y: 0 as u32, z: 0 as u32, w: w, h: h, d: 1 as u32 }
+            val dst: mut sdl.SDLGPUTextureTransferInfo = { transfer_buffer: tbuf, offset: 0 as u32, pixels_per_row: w, rows_per_layer: h }
+            sdl.SDL_DownloadFromGPUTexture(pass, @addr(src), @addr(dst))
+            sdl.SDL_EndGPUCopyPass(pass)
+        }
+    }
     val its_ok: bool = sdl.SDL_SubmitGPUCommandBuffer(runtime.command_buffer)
     runtime.command_buffer = none
     runtime.swapchain_texture = none
     runtime.frame_active = false
+    if tbuf != none {
+        if its_ok {
+            sdl.SDL_WaitForGPUIdle(runtime.device)
+            write_mapped_ppm(runtime, tbuf, path)
+        }
+        sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
+    }
     return its_ok
+}
+
+pub fn submit_frame(runtime_raw: ref void) bool = trust {
+    return submit_frame_capture(runtime_raw, none as ref u8)
 }
 
 
