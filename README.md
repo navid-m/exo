@@ -87,6 +87,23 @@ fn build_scene() ecs.Scene3D = {
     return scene
 }
 
+type (engine.AppEvents) MyGame = {}
+
+pub fn (MyGame) on_start(_: mut self, _: mut engine.ExoApp) void = {}
+pub fn (MyGame) on_update(_: mut self, _: mut engine.ExoApp, _: f32, _: f32) void = {}
+pub fn (MyGame) on_shutdown(_: mut self, _: mut engine.ExoApp) void = {}
+pub fn (MyGame) on_key_up(_: mut self, _: mut engine.ExoApp, _: i32) void = {}
+pub fn (MyGame) on_mouse_move(_: mut self, _: mut engine.ExoApp, _: f32, _: f32) void = {}
+
+pub fn (MyGame) on_key_down(_: mut self, app: mut engine.ExoApp, key: i32) void = {
+    if key == sdl.SDL_SCANCODE_SPACE {
+        trust @print("jump!\n", {})
+    }
+    if key == sdl.SDL_SCANCODE_R {
+        engine.set_active_scene(app, 0 as usize)
+    }
+}
+
 pub fn main() i32 = {
     val scenes: mut list[ecs.Scene3D] = []
     @append(scenes, build_scene())
@@ -109,12 +126,17 @@ pub fn main() i32 = {
     engine.with_scene_list(builder, scenes)
     engine.with_default_camera(builder)
     engine.with_input(builder, input_cfg)
-    engine.with_next_scene_key(builder, sdl.SDL_SCANCODE_X)
 
     val app: engine.ExoApp = engine.build_app(builder)
-    return trust engine.run_app(app)
+    val game: MyGame = {}
+    return trust engine.run_app_with_events[MyGame](app, game)
 }
 ```
+
+Games own their key bindings through `engine.AppEvents`. The engine provides
+`set_active_scene`, `next_scene`, `key_held`, and `play_sound` helpers but does
+not assign gameplay meaning to any key. See `src/main_game.sx` for a complete
+self-contained example.
 
 Run the bundled showcase with:
 

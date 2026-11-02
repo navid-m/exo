@@ -8,11 +8,33 @@ val sdl       = use("engine/sdl.sx")
 val input     = use("engine/input.sx")
 val audio     = use("engine/audio.sx")
 
-type (engine.SceneUpdater) PhysicsUpdater = {}
+type (engine.AppEvents) ShowcaseEvents = {}
 
-pub fn (PhysicsUpdater) su_update(_: mut self, scene: mut ecs.Scene3D, dt: f32, _: f32) void = {
-    physics.update_physics(scene, dt)
+pub fn (ShowcaseEvents) on_start(_: mut self, _: mut engine.ExoApp) void = {}
+
+pub fn (ShowcaseEvents) on_update(_: mut self, app: mut engine.ExoApp, dt: f32, _: f32) void = {
+    physics.update_physics(app.scene, dt)
 }
+
+pub fn (ShowcaseEvents) on_key_down(_: mut self, app: mut engine.ExoApp, key: i32) void = {
+    if key == sdl.SDL_SCANCODE_X {
+        engine.next_scene(app)
+    }
+    if key >= sdl.SDL_SCANCODE_1 && key <= sdl.SDL_SCANCODE_9 {
+        engine.set_active_scene(app, (key - sdl.SDL_SCANCODE_1) as usize)
+    }
+    if key == sdl.SDL_SCANCODE_Y {
+        if !trust engine.play_sound(app) {
+            trust @print("audio unavailable\n", {})
+        }
+    }
+}
+
+pub fn (ShowcaseEvents) on_key_up(_: mut self, _: mut engine.ExoApp, _: i32) void = {}
+
+pub fn (ShowcaseEvents) on_mouse_move(_: mut self, _: mut engine.ExoApp, _: f32, _: f32) void = {}
+
+pub fn (ShowcaseEvents) on_shutdown(_: mut self, _: mut engine.ExoApp) void = {}
 
 fn build_showcase_scene() ecs.Scene3D = {
     val scene: mut ecs.Scene3D = ecs.new_scene(
@@ -183,7 +205,6 @@ pub fn main() i32 = {
         quit_key: sdl.SDL_SCANCODE_ESCAPE
     }
     val audio_cfg: audio.AudioMixerConfig = {
-        trigger_key: sdl.SDL_SCANCODE_Y,
         music_volume: 96 as i32,
         sample: {
             path: "./assets/example_sound.wav",
@@ -199,13 +220,12 @@ pub fn main() i32 = {
     engine.with_scene_list(app_builder, scenes)
     engine.with_default_camera(app_builder)
     engine.with_input(app_builder, input_cfg)
-    engine.with_next_scene_key(app_builder, sdl.SDL_SCANCODE_X)
     engine.with_audio(app_builder, audio_cfg)
 
     val app: engine.ExoApp = engine.build_app(app_builder)
-    val su: PhysicsUpdater = {}
+    val events: ShowcaseEvents = {}
 
-    return trust engine.run_app_with_scene_updater[PhysicsUpdater](app, su)
+    return trust engine.run_app_with_events[ShowcaseEvents](app, events)
 }
 
 test {
@@ -221,9 +241,7 @@ test {
     engine.with_scene_list(app_builder, scenes)
     engine.with_default_camera(app_builder)
     engine.with_input(app_builder, rendering.default_input_config())
-    engine.with_next_scene_key(app_builder, sdl.SDL_SCANCODE_X)
     val test_audio: audio.AudioMixerConfig = {
-        trigger_key: sdl.SDL_SCANCODE_Y,
         music_volume: 96 as i32,
         sample: {
             path: "./example_sound.mp3",
@@ -239,10 +257,14 @@ test {
     assert @len(game.cubes) == (2 as usize)
     assert @len(app.scenes) == (3 as usize)
     assert app.active_scene_index == (0 as usize)
-    assert app.next_scene_key == sdl.SDL_SCANCODE_X
-    assert app.audio.trigger_key == sdl.SDL_SCANCODE_Y
     assert string.raw_cmp(app.audio.sample.path, "./example_sound.mp3") == 0
     assert app.camera.move_speed > (3.0 as f32)
+
+    val scene_app: mut engine.ExoApp = app
+    engine.set_active_scene(scene_app, 2 as usize)
+    assert scene_app.active_scene_index == (2 as usize)
+    engine.next_scene(scene_app)
+    assert scene_app.active_scene_index == (0 as usize)
 
     if @get(showcase.spheres, 0 as usize) is some s0 {
         assert s0.radius > (0.2 as f32)

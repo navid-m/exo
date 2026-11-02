@@ -13,7 +13,7 @@ val SNOW_MAX_Z: f32 = -0.2
 val SNOW_RESPAWN_Y: f32 = 3.9
 val SNOW_FLOOR_Y: f32 = -0.2
 
-type (engine.SceneUpdater) SnowUpdater = {}
+type (engine.AppEvents) SnowUpdater = {}
 
 fn wrap_range(value: f32, min_v: f32, max_v: f32) f32 = {
     val span: f32 = max_v - min_v
@@ -42,10 +42,12 @@ fn respawn_z(index: i32, time: f32) f32 = {
     return SNOW_MIN_Z + norm * (SNOW_MAX_Z - SNOW_MIN_Z)
 }
 
-pub fn (SnowUpdater) su_update(_: mut self, scene: mut ecs.Scene3D, dt: f32, time: f32) void = {
+pub fn (SnowUpdater) on_start(_: mut self, _: mut engine.ExoApp) void = {}
+
+pub fn (SnowUpdater) on_update(_: mut self, app: mut engine.ExoApp, dt: f32, time: f32) void = {
     val next_spheres: mut list[ecs.SphereEntity] = []
     val index: mut i32 = 0 as i32
-    for sphere in scene.spheres {
+    for sphere in app.scene.spheres {
         if index < SNOW_FLAKE_COUNT {
             val phase: f32 = time * (0.82 as f32) + (index as f32) * (0.63 as f32)
             val fall_speed: f32 = (0.72 as f32) + ((math.sin((phase * (1.33 as f32)) as f64)) as f32) * (0.22 as f32)
@@ -74,8 +76,13 @@ pub fn (SnowUpdater) su_update(_: mut self, scene: mut ecs.Scene3D, dt: f32, tim
         }
         index = index + (1 as i32)
     }
-    scene.spheres = next_spheres
+    app.scene.spheres = next_spheres
 }
+
+pub fn (SnowUpdater) on_key_down(_: mut self, _: mut engine.ExoApp, _: i32) void = {}
+pub fn (SnowUpdater) on_key_up(_: mut self, _: mut engine.ExoApp, _: i32) void = {}
+pub fn (SnowUpdater) on_mouse_move(_: mut self, _: mut engine.ExoApp, _: f32, _: f32) void = {}
+pub fn (SnowUpdater) on_shutdown(_: mut self, _: mut engine.ExoApp) void = {}
 
 fn build_snow_scene() ecs.Scene3D = {
     val scene: mut ecs.Scene3D = ecs.new_scene(
@@ -152,5 +159,5 @@ pub fn main() i32 = {
 
     val app: engine.ExoApp = engine.create_app(config, scene, rendering.default_camera(), input_cfg)
     val su: SnowUpdater = {}
-    return trust engine.run_app_with_scene_updater[SnowUpdater](app, su)
+    return trust engine.run_app_with_events[SnowUpdater](app, su)
 }

@@ -8,7 +8,6 @@ pub type AudioClip = {
 }
 
 pub type AudioMixerConfig = {
-    trigger_key: i32
     music_volume: i32
     sample: AudioClip
 }
@@ -101,7 +100,6 @@ pub fn play_audio(audio_raw: ref void, loops: i32, volume: i32) bool = trust {
 
 pub fn default_audio_mixer() AudioMixerConfig = {
     return {
-        trigger_key: sdl.SDL_SCANCODE_Y,
         music_volume: 96 as i32,
         sample: {
             path: "",
