@@ -1,0 +1,77 @@
+#pragma clang diagnostic ignored "-Wmissing-prototypes"
+
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct FxaaUniforms
+{
+    float4 uTexelSize;
+};
+
+struct main0_out
+{
+    float4 FragColor [[color(0)]];
+};
+
+struct main0_in
+{
+    float2 vTexCoord [[user(locn0)]];
+};
+
+static inline __attribute__((always_inline))
+float3 sample_hdr(thread const float2& uv, texture2d<float> uSceneTex, sampler uSceneTexSmplr)
+{
+    return uSceneTex.sample(uSceneTexSmplr, uv).xyz;
+}
+
+static inline __attribute__((always_inline))
+float3 bloom_sample(thread const float2& uv, thread const float2& texel, texture2d<float> uSceneTex, sampler uSceneTexSmplr)
+{
+    float3 bloom = float3(0.0);
+    float2 param = uv + float2((-2.0) * texel.x, 0.0);
+    bloom += (fast::max(sample_hdr(param, uSceneTex, uSceneTexSmplr) - float3(1.0), float3(0.0)) * 0.06136000156402587890625);
+    float2 param_1 = uv + float2((-1.0) * texel.x, 0.0);
+    bloom += (fast::max(sample_hdr(param_1, uSceneTex, uSceneTexSmplr) - float3(1.0), float3(0.0)) * 0.24477000534534454345703125);
+    float2 param_2 = uv;
+    bloom += (fast::max(sample_hdr(param_2, uSceneTex, uSceneTexSmplr) - float3(1.0), float3(0.0)) * 0.3877399861812591552734375);
+    float2 param_3 = uv + float2(1.0 * texel.x, 0.0);
+    bloom += (fast::max(sample_hdr(param_3, uSceneTex, uSceneTexSmplr) - float3(1.0), float3(0.0)) * 0.24477000534534454345703125);
+    float2 param_4 = uv + float2(2.0 * texel.x, 0.0);
+    bloom += (fast::max(sample_hdr(param_4, uSceneTex, uSceneTexSmplr) - float3(1.0), float3(0.0)) * 0.06136000156402587890625);
+    float2 param_5 = uv + float2(0.0, (-2.0) * texel.y);
+    bloom += (fast::max(sample_hdr(param_5, uSceneTex, uSceneTexSmplr) - float3(1.0), float3(0.0)) * 0.06136000156402587890625);
+    float2 param_6 = uv + float2(0.0, (-1.0) * texel.y);
+    bloom += (fast::max(sample_hdr(param_6, uSceneTex, uSceneTexSmplr) - float3(1.0), float3(0.0)) * 0.24477000534534454345703125);
+    float2 param_7 = uv + float2(0.0, 1.0 * texel.y);
+    bloom += (fast::max(sample_hdr(param_7, uSceneTex, uSceneTexSmplr) - float3(1.0), float3(0.0)) * 0.24477000534534454345703125);
+    float2 param_8 = uv + float2(0.0, 2.0 * texel.y);
+    bloom += (fast::max(sample_hdr(param_8, uSceneTex, uSceneTexSmplr) - float3(1.0), float3(0.0)) * 0.06136000156402587890625);
+    return bloom * 0.5;
+}
+
+static inline __attribute__((always_inline))
+float3 aces_tonemap(thread const float3& x)
+{
+    return fast::clamp((x * ((x * 2.5099999904632568359375) + float3(0.02999999932944774627685546875))) / ((x * ((x * 2.4300000667572021484375) + float3(0.589999973773956298828125))) + float3(0.14000000059604644775390625)), float3(0.0), float3(1.0));
+}
+
+fragment main0_out main0(main0_in in [[stage_in]], constant FxaaUniforms& _195 [[buffer(0)]], texture2d<float> uSceneTex [[texture(0)]], sampler uSceneTexSmplr [[sampler(0)]])
+{
+    main0_out out = {};
+    float2 texel = _195.uTexelSize.xy;
+    float exposure = _195.uTexelSize.z;
+    float bloom_intensity = _195.uTexelSize.w;
+    float2 param = in.vTexCoord;
+    float3 hdr_color = sample_hdr(param, uSceneTex, uSceneTexSmplr);
+    float2 param_1 = in.vTexCoord;
+    float2 param_2 = texel;
+    float3 bloom = bloom_sample(param_1, param_2, uSceneTex, uSceneTexSmplr) * bloom_intensity;
+    float3 param_3 = (hdr_color + bloom) * exposure;
+    float3 mapped = aces_tonemap(param_3);
+    float3 gamma_corrected = powr(mapped, float3(0.4545454680919647216796875));
+    out.FragColor = float4(gamma_corrected, 1.0);
+    return out;
+}
+

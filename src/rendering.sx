@@ -1,27 +1,30 @@
-val ecs    = use("ecs.sx")
-val engine = use("engine.sx")
+val ecs     = use("ecs.sx")
+val engine  = use("engine.sx")
+val cam     = use("engine/camera.sx")
+val input   = use("engine/input.sx")
+val shaders = use("engine/shaders.sx")
 
 pub fn default_config() engine.ExoConfig = {
     return engine.default_config()
 }
 
-pub fn default_camera() engine.Camera = {
+pub fn default_camera() cam.Camera = {
     return engine.default_camera()
 }
 
-pub fn default_input_config() engine.InputConfig = {
+pub fn default_input_config() input.InputConfig = {
     return engine.default_input_config()
 }
 
-pub fn default_shader_config() engine.ExoShaderConfig = {
+pub fn default_shader_config() shaders.ExoShaderConfig = {
     return engine.default_shader_config()
 }
 
-pub fn default_key_bindings() engine.KeyBindings = {
+pub fn default_key_bindings() input.KeyBindings = {
     return engine.default_key_bindings()
 }
 
-pub fn default_mouse_config() engine.MouseConfig = {
+pub fn default_mouse_config() input.MouseConfig = {
     return engine.default_mouse_config()
 }
 
@@ -29,8 +32,8 @@ pub fn create_app(scene: ecs.Scene3D) engine.ExoApp = {
     return engine.create_app(default_config(), scene, default_camera(), default_input_config())
 }
 
-pub fn create_configured_app(config: engine.ExoConfig, scene: ecs.Scene3D, camera: engine.Camera, input: engine.InputConfig) engine.ExoApp = {
-    return engine.create_app(config, scene, camera, input)
+pub fn create_configured_app(config: engine.ExoConfig, scene: ecs.Scene3D, camera: cam.Camera, input_cfg: input.InputConfig) engine.ExoApp = {
+    return engine.create_app(config, scene, camera, input_cfg)
 }
 
 pub fn run(app: engine.ExoApp) i32 = trust {

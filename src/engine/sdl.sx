@@ -1,0 +1,439 @@
+lib "SDL3"
+link "-lSDL3"
+link "-L/usr/local/lib"
+link "-Wl,-rpath,/usr/local/lib"
+link "./src/stb_image_shim.c"
+link "-lm"
+
+pub val SDL_SCANCODE_1: i32 = 30
+pub val SDL_SCANCODE_2: i32 = 31
+pub val SDL_SCANCODE_3: i32 = 32
+pub val SDL_SCANCODE_4: i32 = 33
+pub val SDL_SCANCODE_5: i32 = 34
+pub val SDL_SCANCODE_6: i32 = 35
+pub val SDL_SCANCODE_7: i32 = 36
+pub val SDL_SCANCODE_8: i32 = 37
+pub val SDL_SCANCODE_9: i32 = 38
+pub val SDL_SCANCODE_A: i32 = 4
+pub val SDL_SCANCODE_D: i32 = 7
+pub val SDL_SCANCODE_E: i32 = 8
+pub val SDL_SCANCODE_F: i32 = 9
+pub val SDL_SCANCODE_Q: i32 = 20
+pub val SDL_SCANCODE_R: i32 = 21
+pub val SDL_SCANCODE_S: i32 = 22
+pub val SDL_SCANCODE_W: i32 = 26
+pub val SDL_SCANCODE_X: i32 = 27
+pub val SDL_SCANCODE_Y: i32 = 28
+pub val SDL_SCANCODE_ESCAPE: i32 = 41
+pub val SDL_SCANCODE_SPACE: i32 = 44
+pub val SDL_SCANCODE_RIGHT: i32 = 79
+pub val SDL_SCANCODE_LEFT: i32 = 80
+pub val SDL_SCANCODE_DOWN: i32 = 81
+pub val SDL_SCANCODE_UP: i32 = 82
+pub val SDL_SCANCODE_LSHIFT: i32 = 225
+pub val SDL_SCANCODE_RSHIFT: i32 = 229
+
+pub val SDL_EVENT_QUIT: u32 = 256
+pub val SDL_EVENT_WINDOW_CLOSE_REQUESTED: u32 = 528
+pub val SDL_INIT_AUDIO: u32 = 16
+pub val SDL_INIT_VIDEO: u32 = 32
+pub val SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK: u32 = 0xFFFFFFFF
+pub val SDL_GPU_TEXTUREUSAGE_SAMPLER: u32 = 1
+pub val SDL_GPU_TEXTUREUSAGE_COLOR_TARGET: u32 = 2
+pub val SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET: u32 = 4
+pub val SDL_GPU_BUFFERUSAGE_VERTEX: u32 = 1
+pub val SDL_GPU_BUFFERUSAGE_INDEX: u32 = 2
+pub val SDL_GPU_SHADERFORMAT_SPIRV: u32 = 2
+pub val SDL_GPU_SHADERFORMAT_MSL: u32 = 16
+pub val SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD: i32 = 0
+pub val SDL_GPU_TEXTURETYPE_2D: i32 = 0
+pub val SDL_GPU_SAMPLECOUNT_1: i32 = 0
+pub val SDL_GPU_SHADERSTAGE_VERTEX: i32 = 0
+pub val SDL_GPU_SHADERSTAGE_FRAGMENT: i32 = 1
+pub val SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2: i32 = 10
+pub val SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3: i32 = 11
+pub val SDL_GPU_VERTEXINPUTRATE_VERTEX: i32 = 0
+pub val SDL_GPU_PRIMITIVETYPE_TRIANGLELIST: i32 = 0
+pub val SDL_GPU_FILLMODE_FILL: i32 = 0
+pub val SDL_GPU_CULLMODE_NONE: i32 = 0
+pub val SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE: i32 = 0
+pub val SDL_GPU_COMPAREOP_LESS_OR_EQUAL: i32 = 4
+pub val SDL_GPU_BLENDOP_ADD: i32 = 1
+pub val SDL_GPU_BLENDFACTOR_ZERO: i32 = 1
+pub val SDL_GPU_BLENDFACTOR_ONE: i32 = 2
+pub val SDL_GPU_BLENDFACTOR_SRC_ALPHA: i32 = 7
+pub val SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA: i32 = 8
+pub val SDL_GPU_FILTER_LINEAR: i32 = 1
+pub val SDL_GPU_SAMPLERMIPMAPMODE_LINEAR: i32 = 1
+pub val SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE: i32 = 2
+pub val SDL_GPU_SAMPLERADDRESSMODE_REPEAT: i32 = 0
+pub val SDL_GPU_LOADOP_CLEAR: i32 = 1
+pub val SDL_GPU_LOADOP_DONT_CARE: i32 = 2
+pub val SDL_GPU_STOREOP_STORE: i32 = 0
+pub val SDL_GPU_STOREOP_DONT_CARE: i32 = 1
+pub val SDL_GPU_INDEXELEMENTSIZE_32BIT: i32 = 1
+pub val SDL_GPU_TEXTUREFORMAT_D32_FLOAT: i32 = 60
+
+pub extern (C) fn SDL_Init(flags: u32) bool = "SDL_Init"
+pub extern (C) fn SDL_Quit() void = "SDL_Quit"
+pub extern (C) fn SDL_GetError() ref u8 = "SDL_GetError"
+pub extern (C) fn SDL_CreateWindow(title: ref u8, w: i32, h: i32, flags: u64) ref void = "SDL_CreateWindow"
+pub extern (C) fn SDL_DestroyWindow(window: ref void) void = "SDL_DestroyWindow"
+pub extern (C) fn SDL_PollEvent(event: ref SDLEvent) bool = "SDL_PollEvent"
+pub extern (C) fn SDL_GetTicks() u64 = "SDL_GetTicks"
+pub extern (C) fn SDL_GetKeyboardState(numkeys: ref i32) ref bool = "SDL_GetKeyboardState"
+pub extern (C) fn SDL_SetWindowRelativeMouseMode(window: ref void, enabled: bool) bool = "SDL_SetWindowRelativeMouseMode"
+pub extern (C) fn SDL_GetRelativeMouseState(x: ref f32, y: ref f32) u32 = "SDL_GetRelativeMouseState"
+pub extern (C) fn SDL_CreateGPUDevice(format_flags: u32, debug_mode: bool, name: ref u8) ref void = "SDL_CreateGPUDevice"
+pub extern (C) fn SDL_DestroyGPUDevice(device: ref void) void = "SDL_DestroyGPUDevice"
+pub extern (C) fn SDL_ClaimWindowForGPUDevice(device: ref void, window: ref void) bool = "SDL_ClaimWindowForGPUDevice"
+pub extern (C) fn SDL_ReleaseWindowFromGPUDevice(device: ref void, window: ref void) void = "SDL_ReleaseWindowFromGPUDevice"
+pub extern (C) fn SDL_GetGPUSwapchainTextureFormat(device: ref void, window: ref void) i32 = "SDL_GetGPUSwapchainTextureFormat"
+pub extern (C) fn SDL_CreateGPUSampler(device: ref void, createinfo: ref SDLGPUSamplerCreateInfo) ref void = "SDL_CreateGPUSampler"
+pub extern (C) fn SDL_CreateGPUShader(device: ref void, createinfo: ref SDLGPUShaderCreateInfo) ref void = "SDL_CreateGPUShader"
+pub extern (C) fn SDL_CreateGPUGraphicsPipeline(device: ref void, createinfo: ref SDLGPUGraphicsPipelineCreateInfo) ref void = "SDL_CreateGPUGraphicsPipeline"
+pub extern (C) fn SDL_CreateGPUTexture(device: ref void, createinfo: ref SDLGPUTextureCreateInfo) ref void = "SDL_CreateGPUTexture"
+pub extern (C) fn SDL_CreateGPUBuffer(device: ref void, createinfo: ref SDLGPUBufferCreateInfo) ref void = "SDL_CreateGPUBuffer"
+pub extern (C) fn SDL_CreateGPUTransferBuffer(device: ref void, createinfo: ref SDLGPUTransferBufferCreateInfo) ref void = "SDL_CreateGPUTransferBuffer"
+pub extern (C) fn SDL_ReleaseGPUTexture(device: ref void, texture: ref void) void = "SDL_ReleaseGPUTexture"
+pub extern (C) fn SDL_ReleaseGPUSampler(device: ref void, sampler: ref void) void = "SDL_ReleaseGPUSampler"
+pub extern (C) fn SDL_ReleaseGPUBuffer(device: ref void, buffer: ref void) void = "SDL_ReleaseGPUBuffer"
+pub extern (C) fn SDL_ReleaseGPUTransferBuffer(device: ref void, transfer_buffer: ref void) void = "SDL_ReleaseGPUTransferBuffer"
+pub extern (C) fn SDL_ReleaseGPUShader(device: ref void, shader: ref void) void = "SDL_ReleaseGPUShader"
+pub extern (C) fn SDL_ReleaseGPUGraphicsPipeline(device: ref void, graphics_pipeline: ref void) void = "SDL_ReleaseGPUGraphicsPipeline"
+pub extern (C) fn SDL_AcquireGPUCommandBuffer(device: ref void) ref void = "SDL_AcquireGPUCommandBuffer"
+pub extern (C) fn SDL_PushGPUVertexUniformData(command_buffer: ref void, slot_index: u32, data: ref void, length: u32) void = "SDL_PushGPUVertexUniformData"
+pub extern (C) fn SDL_PushGPUFragmentUniformData(command_buffer: ref void, slot_index: u32, data: ref void, length: u32) void = "SDL_PushGPUFragmentUniformData"
+pub extern (C) fn SDL_BeginGPURenderPass(command_buffer: ref void, color_target_infos: ref SDLGPUColorTargetInfo, num_color_targets: u32, depth_stencil_target_info: ref SDLGPUDepthStencilTargetInfo) ref void = "SDL_BeginGPURenderPass"
+pub extern (C) fn SDL_BindGPUGraphicsPipeline(render_pass: ref void, graphics_pipeline: ref void) void = "SDL_BindGPUGraphicsPipeline"
+pub extern (C) fn SDL_SetGPUViewport(render_pass: ref void, viewport: ref SDLGPUViewport) void = "SDL_SetGPUViewport"
+pub extern (C) fn SDL_BindGPUVertexBuffers(render_pass: ref void, first_slot: u32, bindings: ref SDLGPUBufferBinding, num_bindings: u32) void = "SDL_BindGPUVertexBuffers"
+pub extern (C) fn SDL_BindGPUIndexBuffer(render_pass: ref void, binding: ref SDLGPUBufferBinding, index_element_size: i32) void = "SDL_BindGPUIndexBuffer"
+pub extern (C) fn SDL_BindGPUFragmentSamplers(render_pass: ref void, first_slot: u32, texture_sampler_bindings: ref SDLGPUTextureSamplerBinding, num_bindings: u32) void = "SDL_BindGPUFragmentSamplers"
+pub extern (C) fn SDL_DrawGPUIndexedPrimitives(render_pass: ref void, num_indices: u32, num_instances: u32, first_index: u32, vertex_offset: i32, first_instance: u32) void = "SDL_DrawGPUIndexedPrimitives"
+pub extern (C) fn SDL_DrawGPUPrimitives(render_pass: ref void, num_vertices: u32, num_instances: u32, first_vertex: u32, first_instance: u32) void = "SDL_DrawGPUPrimitives"
+pub extern (C) fn SDL_EndGPURenderPass(render_pass: ref void) void = "SDL_EndGPURenderPass"
+pub extern (C) fn SDL_MapGPUTransferBuffer(device: ref void, transfer_buffer: ref void, cycle: bool) ref void = "SDL_MapGPUTransferBuffer"
+pub extern (C) fn SDL_UnmapGPUTransferBuffer(device: ref void, transfer_buffer: ref void) void = "SDL_UnmapGPUTransferBuffer"
+pub extern (C) fn SDL_BeginGPUCopyPass(command_buffer: ref void) ref void = "SDL_BeginGPUCopyPass"
+pub extern (C) fn SDL_UploadToGPUBuffer(copy_pass: ref void, source: ref SDLGPUTransferBufferLocation, destination: ref SDLGPUBufferRegion, cycle: bool) void = "SDL_UploadToGPUBuffer"
+pub extern (C) fn SDL_EndGPUCopyPass(copy_pass: ref void) void = "SDL_EndGPUCopyPass"
+pub extern (C) fn SDL_WaitAndAcquireGPUSwapchainTexture(command_buffer: ref void, window: ref void, swapchain_texture: ref ref void, swapchain_texture_width: ref u32, swapchain_texture_height: ref u32) bool = "SDL_WaitAndAcquireGPUSwapchainTexture"
+pub extern (C) fn SDL_SubmitGPUCommandBuffer(command_buffer: ref void) bool = "SDL_SubmitGPUCommandBuffer"
+pub extern (C) fn SDL_CancelGPUCommandBuffer(command_buffer: ref void) bool = "SDL_CancelGPUCommandBuffer"
+pub extern (C) fn SDL_LoadWAV(path: ref u8, speci: ref SDLAudioSpec, audio_buf: ref ref u8, audio_len: ref u32) bool = "SDL_LoadWAV"
+pub extern (C) fn SDL_OpenAudioDeviceStream(devid: u32, speci: ref SDLAudioSpec, callback: ref void, userdata: ref void) ref void = "SDL_OpenAudioDeviceStream"
+pub extern (C) fn SDL_SetAudioStreamGain(stream: ref void, gain: f32) bool = "SDL_SetAudioStreamGain"
+pub extern (C) fn SDL_ResumeAudioStreamDevice(stream: ref void) bool = "SDL_ResumeAudioStreamDevice"
+pub extern (C) fn SDL_ClearAudioStream(stream: ref void) bool = "SDL_ClearAudioStream"
+pub extern (C) fn SDL_PutAudioStreamData(stream: ref void, buf: ref void, len: i32) bool = "SDL_PutAudioStreamData"
+pub extern (C) fn SDL_FlushAudioStream(stream: ref void) bool = "SDL_FlushAudioStream"
+pub extern (C) fn SDL_DestroyAudioStream(stream: ref void) void = "SDL_DestroyAudioStream"
+pub extern (C) fn SDL_free(ptr: ref void) void = "SDL_free"
+
+pub extern (C) fn fopen(path: ref u8, mode: ref u8) ref void = "fopen"
+pub extern (C) fn fclose(stream: ref void) i32 = "fclose"
+pub extern (C) fn fread(buf: ref void, size: usize, count: usize, stream: ref void) usize = "fread"
+pub extern (C) fn fseek(stream: ref void, offset: i64, whence: i32) i32 = "fseek"
+pub extern (C) fn ftell(stream: ref void) i64 = "ftell"
+pub extern (C) fn rewind(stream: ref void) void = "rewind"
+
+pub extern (C) fn stbi_load_from_memory(buf: ref u8, len: i32, x: ref i32, y: ref i32, channels: ref i32, desired: i32) ref u8 = "stbi_load_from_memory"
+pub extern (C) fn stbi_image_free(ptr: ref void) void = "stbi_image_free"
+
+pub extern (C) fn SDL_UploadToGPUTexture(copy_pass: ref void, source: ref SDLGPUTextureTransferInfo, destination: ref SDLGPUTextureRegion, cycle: bool) void = "SDL_UploadToGPUTexture"
+pub extern (C) fn SDL_DownloadFromGPUTexture(copy_pass: ref void, source: ref SDLGPUTextureRegion, destination: ref SDLGPUTextureTransferInfo) void = "SDL_DownloadFromGPUTexture"
+pub extern (C) fn SDL_WaitForGPUIdle(device: ref void) bool = "SDL_WaitForGPUIdle"
+pub extern (C) fn fwrite(ptr: ref void, size: usize, count: usize, stream: ref void) usize = "fwrite"
+
+
+pub val SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM: i32 = 4
+pub val SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD: i32 = 1
+
+pub extern type SDLEvent = {
+    typ: mut u32
+    p01: mut u32
+    p02: mut u32
+    p03: mut u32
+    p04: mut u32
+    p05: mut u32
+    p06: mut u32
+    p07: mut u32
+    p08: mut u32
+    p09: mut u32
+    p10: mut u32
+    p11: mut u32
+    p12: mut u32
+    p13: mut u32
+    p14: mut u32
+    p15: mut u32
+    p16: mut u32
+    p17: mut u32
+    p18: mut u32
+    p19: mut u32
+    p20: mut u32
+    p21: mut u32
+    p22: mut u32
+    p23: mut u32
+    p24: mut u32
+    p25: mut u32
+    p26: mut u32
+    p27: mut u32
+    p28: mut u32
+    p29: mut u32
+    p30: mut u32
+    p31: mut u32
+}
+
+pub extern type SDLFColor = {
+    r: mut f32
+    g: mut f32
+    b: mut f32
+    a: mut f32
+}
+
+pub extern type SDLAudioSpec = {
+    format: mut i32
+    channels: mut i32
+    freq: mut i32
+}
+
+pub extern type SDLGPUSamplerCreateInfo = {
+    min_filter: mut i32
+    mag_filter: mut i32
+    mipmap_mode: mut i32
+    address_mode_u: mut i32
+    address_mode_v: mut i32
+    address_mode_w: mut i32
+    mip_lod_bias: mut f32
+    max_anisotropy: mut f32
+    compare_op: mut i32
+    min_lod: mut f32
+    max_lod: mut f32
+    enable_anisotropy: mut bool
+    enable_compare: mut bool
+    padding1: mut u8
+    padding2: mut u8
+    props: mut u32
+}
+
+pub extern type SDLGPUVertexBufferDescription = {
+    slot: mut u32
+    pitch: mut u32
+    input_rate: mut i32
+    instance_step_rate: mut u32
+}
+
+pub extern type SDLGPUVertexAttribute = {
+    location: mut u32
+    buffer_slot: mut u32
+    format: mut i32
+    offset: mut u32
+}
+
+pub extern type SDLGPUVertexInputState = {
+    vertex_buffer_descriptions: mut ref SDLGPUVertexBufferDescription
+    num_vertex_buffers: mut u32
+    vertex_attributes: mut ref SDLGPUVertexAttribute
+    num_vertex_attributes: mut u32
+}
+
+pub extern type SDLGPUStencilOpState = {
+    fail_op: mut i32
+    pass_op: mut i32
+    depth_fail_op: mut i32
+    compare_op: mut i32
+}
+
+pub extern type SDLGPUColorTargetBlendState = {
+    src_color_blendfactor: mut i32
+    dst_color_blendfactor: mut i32
+    color_blend_op: mut i32
+    src_alpha_blendfactor: mut i32
+    dst_alpha_blendfactor: mut i32
+    alpha_blend_op: mut i32
+    color_write_mask: mut u8
+    enable_blend: mut bool
+    enable_color_write_mask: mut bool
+    padding1: mut u8
+    padding2: mut u8
+}
+
+pub extern type SDLGPUShaderCreateInfo = {
+    code_size: mut usize
+    code: mut ref u8
+    entrypoint: mut ref u8
+    format: mut u32
+    stage: mut i32
+    num_samplers: mut u32
+    num_storage_textures: mut u32
+    num_storage_buffers: mut u32
+    num_uniform_buffers: mut u32
+    props: mut u32
+}
+
+pub extern type SDLGPUTextureCreateInfo = {
+    typ: mut i32
+    format: mut i32
+    usage: mut u32
+    width: mut u32
+    height: mut u32
+    layer_count_or_depth: mut u32
+    num_levels: mut u32
+    sample_count: mut i32
+    props: mut u32
+}
+
+pub extern type SDLGPUBufferCreateInfo = {
+    usage: mut u32
+    size: mut u32
+    props: mut u32
+}
+
+pub extern type SDLGPUTransferBufferCreateInfo = {
+    usage: mut i32
+    size: mut u32
+    props: mut u32
+}
+
+pub extern type SDLGPURasterizerState = {
+    fill_mode: mut i32
+    cull_mode: mut i32
+    front_face: mut i32
+    depth_bias_constant_factor: mut f32
+    depth_bias_clamp: mut f32
+    depth_bias_slope_factor: mut f32
+    enable_depth_bias: mut bool
+    enable_depth_clip: mut bool
+    padding1: mut u8
+    padding2: mut u8
+}
+
+pub extern type SDLGPUMultisampleState = {
+    sample_count: mut i32
+    sample_mask: mut u32
+    enable_mask: mut bool
+    enable_alpha_to_coverage: mut bool
+    padding2: mut u8
+    padding3: mut u8
+}
+
+pub extern type SDLGPUDepthStencilState = {
+    compare_op: mut i32
+    back_stencil_state: mut SDLGPUStencilOpState
+    front_stencil_state: mut SDLGPUStencilOpState
+    compare_mask: mut u8
+    write_mask: mut u8
+    enable_depth_test: mut bool
+    enable_depth_write: mut bool
+    enable_stencil_test: mut bool
+    padding1: mut u8
+    padding2: mut u8
+    padding3: mut u8
+}
+
+pub extern type SDLGPUColorTargetDescription = {
+    format: mut i32
+    blend_state: mut SDLGPUColorTargetBlendState
+}
+
+pub extern type SDLGPUGraphicsPipelineTargetInfo = {
+    color_target_descriptions: mut ref SDLGPUColorTargetDescription
+    num_color_targets: mut u32
+    depth_stencil_format: mut i32
+    has_depth_stencil_target: mut bool
+    padding1: mut u8
+    padding2: mut u8
+    padding3: mut u8
+}
+
+pub extern type SDLGPUGraphicsPipelineCreateInfo = {
+    vertex_shader: mut ref void
+    fragment_shader: mut ref void
+    vertex_input_state: mut SDLGPUVertexInputState
+    primitive_type: mut i32
+    rasterizer_state: mut SDLGPURasterizerState
+    multisample_state: mut SDLGPUMultisampleState
+    depth_stencil_state: mut SDLGPUDepthStencilState
+    target_info: mut SDLGPUGraphicsPipelineTargetInfo
+    props: mut u32
+}
+
+pub extern type SDLGPUColorTargetInfo = {
+    texture: mut ref void
+    mip_level: mut u32
+    layer_or_depth_plane: mut u32
+    clear_color: mut SDLFColor
+    load_op: mut i32
+    store_op: mut i32
+    resolve_texture: mut ref void
+    resolve_mip_level: mut u32
+    resolve_layer: mut u32
+    cycle: mut bool
+    cycle_resolve_texture: mut bool
+    padding1: mut u8
+    padding2: mut u8
+}
+
+pub extern type SDLGPUDepthStencilTargetInfo = {
+    texture: mut ref void
+    clear_depth: mut f32
+    load_op: mut i32
+    store_op: mut i32
+    stencil_load_op: mut i32
+    stencil_store_op: mut i32
+    cycle: mut bool
+    clear_stencil: mut u8
+    mip_level: mut u8
+    layer: mut u8
+}
+
+pub extern type SDLGPUBufferBinding = {
+    buffer: mut ref void
+    offset: mut u32
+}
+
+pub extern type SDLGPUTextureSamplerBinding = {
+    texture: mut ref void
+    sampler: mut ref void
+}
+
+pub extern type SDLGPUViewport = {
+    x: mut f32
+    y: mut f32
+    w: mut f32
+    h: mut f32
+    min_depth: mut f32
+    max_depth: mut f32
+}
+
+pub extern type SDLGPUTransferBufferLocation = {
+    transfer_buffer: mut ref void
+    offset: mut u32
+}
+
+pub extern type SDLGPUBufferRegion = {
+    buffer: mut ref void
+    offset: mut u32
+    size: mut u32
+}
+
+pub extern type SDLGPUTextureTransferInfo = {
+    transfer_buffer: mut ref void
+    offset: mut u32
+    pixels_per_row: mut u32
+    rows_per_layer: mut u32
+}
+
+pub extern type SDLGPUTextureRegion = {
+    texture: mut ref void
+    mip_level: mut u32
+    layer: mut u32
+    x: mut u32
+    y: mut u32
+    z: mut u32
+    w: mut u32
+    h: mut u32
+    d: mut u32
+}
+

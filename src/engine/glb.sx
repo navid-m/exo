@@ -1,0 +1,326 @@
+val math   = use("math.sx")
+val ecs    = use("../ecs.sx")
+val sdl    = use("sdl.sx")
+val json   = use("std/json")
+val string = use("std/string")
+val bin    = use("std/encoding/binary")
+
+val GLB_MAGIC: u32 = 0x46546C67
+val GLB_VERSION: u32 = 2
+val GLB_JSON_CHUNK: u32 = 0x4E4F534A
+val GLB_BIN_CHUNK: u32 = 0x004E4942
+
+pub type GlbFixture = {
+    ptr: ref u8
+    len: usize
+}
+
+
+pub fn dup_cstr(src: ref u8) ref u8 = trust {
+    if src == none {
+        return none
+    }
+    val len: usize = string.len_raw(src)
+    val dst: ref u8 = @alloc(len + (1 as usize)) as ref u8
+    if dst == none {
+        return none
+    }
+    if len > 0 {
+        @memcpy(dst as ref void, src as ref void, len)
+    }
+    @store8(@ptradd(dst, len), 0)
+    return dst
+}
+
+pub fn parse_accessor_count(accessors: ref void, idx: i64) i32 = trust {
+    if json.arr_get(accessors, idx as usize) is some accessor {
+        if json.obj_get_int(accessor, "count") is some count {
+            return count as i32
+        }
+    }
+    return 0 as i32
+}
+
+pub fn parse_accessor_offset(accessors: ref void, buffer_views: ref void, idx: i64) usize = trust {
+    val offset: mut usize = 0 as usize
+    if json.arr_get(accessors, idx as usize) is some accessor {
+        if json.obj_get_int(accessor, "byteOffset") is some acc_off {
+            offset = offset + (acc_off as usize)
+        }
+        if json.obj_get_int(accessor, "bufferView") is some bv_idx {
+            if json.arr_get(buffer_views, bv_idx as usize) is some bv {
+                if json.obj_get_int(bv, "byteOffset") is some bv_off {
+                    offset = offset + (bv_off as usize)
+                }
+            }
+        }
+    }
+    return offset
+}
+
+/// Walk the raw GLB position data and compute XYZ bounding box, storing results on the model.
+
+pub fn compute_glb_bounds(model: mut ref ecs.GlbModel) void = trust {
+    if !model.valid || model.vertex_count <= (0 as i32) || model.raw_bytes == none || model.bin_length == (0 as usize) {
+        return
+    }
+    val data: ref u8 = model.raw_bytes
+    val json_offset: usize = 20 as usize
+    val json_len: u32 = bin.read_u32_le(data, 12 as usize)
+    val json_buf: ref u8 = @alloc((json_len as usize) + (1 as usize)) as ref u8
+    if json_buf == none {
+        return
+    }
+    @memcpy(json_buf as ref void, @ptradd(data, json_offset) as ref void, json_len as usize)
+    @store8(@ptradd(json_buf, json_len as usize), 0)
+    if json.parse(json_buf) is some doc {
+        val root: ref void = json.doc_root(doc)
+        val vc: usize = model.vertex_count as usize
+        val pos_offset: mut usize = 0 as usize
+        if json.obj_get(root, "accessors") is some accessors {
+            if json.obj_get(root, "bufferViews") is some buffer_views {
+                if json.obj_get(root, "meshes") is some meshes {
+                    if json.arr_get(meshes, 0 as usize) is some mesh {
+                        if json.obj_get(mesh, "primitives") is some primitives {
+                            if json.arr_get(primitives, 0 as usize) is some prim {
+                                if json.obj_get(prim, "attributes") is some attrs {
+                                    if json.obj_get_int(attrs, "POSITION") is some pi {
+                                        pos_offset = parse_accessor_offset(accessors, buffer_views, pi)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        val bin_base: ref void = @ptradd(data, (json_offset + (json_len as usize) + (8 as usize)) as usize)
+        val vi: mut usize = 0 as usize
+        val min_x: mut f32 = 1e30 as f32
+        val max_x: mut f32 = -1e30 as f32
+        val min_y: mut f32 = 1e30 as f32
+        val max_y: mut f32 = -1e30 as f32
+        val min_z: mut f32 = 1e30 as f32
+        val max_z: mut f32 = -1e30 as f32
+        for vi < vc {
+            val p: ref f32 = @ptradd(bin_base, pos_offset + vi * (12 as usize)) as ref f32
+            val px: f32 = math.read_f32(p, 0 as usize)
+            val py: f32 = math.read_f32(p, 1 as usize)
+            val pz: f32 = math.read_f32(p, 2 as usize)
+            if px < min_x {
+                min_x = px
+            }
+            if px > max_x {
+                max_x = px
+            }
+            if py < min_y {
+                min_y = py
+            }
+            if py > max_y {
+                max_y = py
+            }
+            if pz < min_z {
+                min_z = pz
+            }
+            if pz > max_z {
+                max_z = pz
+            }
+            vi = vi + (1 as usize)
+        }
+        model.bounds_min_x = min_x
+        model.bounds_max_x = max_x
+        model.bounds_min_y = min_y
+        model.bounds_max_y = max_y
+        model.bounds_min_z = min_z
+        model.bounds_max_z = max_z
+        json.doc_free(doc)
+    }
+    @free(json_buf as ref void)
+}
+
+pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
+    if data == none {
+        return none
+    }
+    if len < (20 as usize) {
+        return none
+    }
+    val magic: u32 = bin.read_u32_le(data, 0 as usize)
+    val version: u32 = bin.read_u32_le(data, 4 as usize)
+    val total_len: u32 = bin.read_u32_le(data, 8 as usize)
+    if magic != GLB_MAGIC || version != GLB_VERSION {
+        return none
+    }
+    val total_len_usize: usize = total_len as usize
+    if total_len_usize > len {
+        return none
+    }
+    val json_len: u32 = bin.read_u32_le(data, 12 as usize)
+    val json_type: u32 = bin.read_u32_le(data, 16 as usize)
+    if json_type != GLB_JSON_CHUNK {
+        return none
+    }
+    val json_offset: usize = 20 as usize
+    val json_end: usize = json_offset + (json_len as usize)
+    if json_end > len {
+        return none
+    }
+    val json_buf: ref u8 = @alloc((json_len as usize) + (1 as usize)) as ref u8
+    if json_buf == none {
+        return none
+    }
+    @memcpy(json_buf as ref void, @ptradd(data, json_offset) as ref void, json_len as usize)
+    @store8(@ptradd(json_buf, json_len as usize), 0)
+    val bin_header_offset: usize = json_end
+    if bin_header_offset + (8 as usize) > len {
+        @free(json_buf as ref void)
+        return none
+    }
+    val bin_len: u32 = bin.read_u32_le(data, bin_header_offset)
+    val bin_type: u32 = bin.read_u32_le(data, bin_header_offset + (4 as usize))
+    if bin_type != GLB_BIN_CHUNK {
+        @free(json_buf as ref void)
+        return none
+    }
+    if json.parse(json_buf) is some doc {
+        val root: ref void = json.doc_root(doc)
+        val model: mut ecs.GlbModel = ecs.empty_model()
+        model.valid = true
+        model.byte_length = total_len as usize
+        model.json_length = json_len as usize
+        model.bin_length = bin_len as usize
+        model.mesh_name = dup_cstr("embedded-glb")
+        if json.obj_get(root, "meshes") is some meshes {
+            if json.arr_get(meshes, 0 as usize) is some mesh {
+                if json.obj_get_str(mesh, "name") is some mesh_name {
+                    model.mesh_name = dup_cstr(mesh_name)
+                }
+                if json.obj_get(mesh, "primitives") is some primitives {
+                    model.primitive_count = json.arr_len(primitives) as i32
+                    if json.arr_get(primitives, 0 as usize) is some primitive {
+                        if json.obj_get(primitive, "attributes") is some attributes {
+                            if json.obj_get(root, "accessors") is some accessors {
+                                if json.obj_get_int(attributes, "POSITION") is some pos_accessor {
+                                    model.vertex_count = parse_accessor_count(accessors, pos_accessor)
+                                }
+                                if json.obj_get_int(primitive, "indices") is some idx_accessor {
+                                    model.index_count = parse_accessor_count(accessors, idx_accessor)
+                                }
+                            }
+                            if json.obj_get_int(attributes, "NORMAL") is some _ {
+                                model.has_normals = true
+                            }
+                            if json.obj_get_int(attributes, "TEXCOORD_0") is some _ {
+                                model.has_uvs = true
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        json.doc_free(doc)
+        @free(json_buf as ref void)
+        val raw_copy: ref u8 = @alloc(len) as ref u8
+        if raw_copy != none {
+            @memcpy(raw_copy as ref void, data as ref void, len)
+            model.raw_bytes = raw_copy
+            model.raw_bytes_len = len
+        }
+        val json_buf2: ref u8 = @alloc((json_len as usize) + (1 as usize)) as ref u8
+        if json_buf2 != none {
+            @memcpy(json_buf2 as ref void, @ptradd(data, json_offset) as ref void, json_len as usize)
+            @store8(@ptradd(json_buf2, json_len as usize), 0)
+            if json.parse(json_buf2) is some doc2 {
+                val root2: ref void = json.doc_root(doc2)
+                val bin_data_offset: usize = json_end + (8 as usize)
+                if json.obj_get(root2, "images") is some images {
+                    if json.arr_get(images, 0 as usize) is some img {
+                        if json.obj_get_int(img, "bufferView") is some bv_idx {
+                            if json.obj_get(root2, "bufferViews") is some bvs {
+                                if json.arr_get(bvs, bv_idx as usize) is some bv {
+                                    val img_off: mut i64 = 0
+                                    val img_len: mut i64 = 0
+                                    if json.obj_get_int(bv, "byteOffset") is some o {
+                                        img_off = o
+                                    }
+                                    if json.obj_get_int(bv, "byteLength") is some l {
+                                        img_len = l
+                                    }
+                                    if img_len > (0 as i64) {
+                                        model.texture_offset = bin_data_offset + (img_off as usize)
+                                        model.texture_length = img_len as usize
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                json.doc_free(doc2)
+            }
+            @free(json_buf2 as ref void)
+        }
+        return some model
+    }
+    @free(json_buf as ref void)
+    return none
+}
+
+pub fn load_glb(path: ref u8) option[ecs.GlbModel] = trust {
+    val file: ref void = sdl.fopen(path, "rb")
+    if file == none {
+        return none
+    }
+    sdl.fseek(file, 0, 2 as i32)
+    val size: i64 = sdl.ftell(file)
+    sdl.rewind(file)
+    if size <= 0 {
+        sdl.fclose(file)
+        return none
+    }
+    val buf: ref u8 = @alloc((size as usize) + (1 as usize)) as ref u8
+    if buf == none {
+        sdl.fclose(file)
+        return none
+    }
+    sdl.fread(buf as ref void, 1 as usize, size as usize, file)
+    @store8(@ptradd(buf, size as usize), 0)
+    sdl.fclose(file)
+    val model = parse_glb_bytes(buf, size as usize)
+    @free(buf as ref void)
+    return model
+}
+
+pub fn build_test_glb_fixture() GlbFixture = trust {
+    val json_chunk: ref u8 = \\{"asset":{"version":"2.0"},"buffers":[{"byteLength":36}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":36}],"accessors":[{"bufferView":0,"componentType":5126,"count":3,"type":"VEC3"}],"meshes":[{"name":"fixture","primitives":[{"attributes":{"POSITION":0}}]}]}
+    val json_len_raw: usize = string.len_raw(json_chunk)
+    val json_len: usize = ((json_len_raw + (3 as usize)) / (4 as usize)) * (4 as usize)
+    val bin_len: usize = 36 as usize
+    val total_len: usize = (12 as usize) + (8 as usize) + json_len + (8 as usize) + bin_len
+    val ptr: ref u8 = @alloc(total_len + (1 as usize)) as ref u8
+    @memset(ptr as ref void, 0, total_len + (1 as usize))
+    bin.write_u32_le(ptr, 0 as usize, GLB_MAGIC)
+    bin.write_u32_le(ptr, 4 as usize, GLB_VERSION)
+    bin.write_u32_le(ptr, 8 as usize, total_len as u32)
+    bin.write_u32_le(ptr, 12 as usize, json_len as u32)
+    bin.write_u32_le(ptr, 16 as usize, GLB_JSON_CHUNK)
+    @memcpy(@ptradd(ptr, 20 as usize) as ref void, json_chunk as ref void, json_len_raw)
+    val bin_header: usize = (20 as usize) + json_len
+    bin.write_u32_le(ptr, bin_header, bin_len as u32)
+    bin.write_u32_le(ptr, bin_header + (4 as usize), GLB_BIN_CHUNK)
+    @store8(@ptradd(ptr, total_len), 0)
+    return {
+        ptr: ptr,
+        len: total_len
+    }
+}
+
+pub fn load_embedded_fixture_model() ecs.GlbModel = trust {
+    val fixture: mut GlbFixture = build_test_glb_fixture()
+    if parse_glb_bytes(fixture.ptr, fixture.len) is some model {
+        @free(fixture.ptr as ref void)
+        return model
+    }
+    @free(fixture.ptr as ref void)
+    return ecs.empty_model()
+}
+

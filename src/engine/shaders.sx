@@ -1,0 +1,80 @@
+val sdl = use("sdl.sx")
+
+pub type ShaderProgramConfig = {
+    vertex_path: ref u8
+    fragment_path: ref u8
+}
+
+pub type ExoShaderConfig = {
+    scene: ShaderProgramConfig
+    floor: ShaderProgramConfig
+    glow: ShaderProgramConfig
+    fxaa: ShaderProgramConfig
+    water: ShaderProgramConfig
+}
+
+
+pub fn exo_shader_format() u32 = {
+    when darwin {
+        return sdl.SDL_GPU_SHADERFORMAT_MSL
+    }
+    return sdl.SDL_GPU_SHADERFORMAT_SPIRV
+}
+
+pub fn exo_shader_entrypoint() ref u8 = {
+    when darwin {
+        return "main0"
+    }
+    return "main"
+}
+
+
+pub fn default_shader_config() ExoShaderConfig = {
+    when darwin {
+        return {
+            scene: {
+                vertex_path: "./assets/shaders/scene.vert.msl",
+                fragment_path: "./assets/shaders/scene.frag.msl"
+            },
+            floor: {
+                vertex_path: "./assets/shaders/floor.vert.msl",
+                fragment_path: "./assets/shaders/floor.frag.msl"
+            },
+            glow: {
+                vertex_path: "./assets/shaders/glow.vert.msl",
+                fragment_path: "./assets/shaders/glow.frag.msl"
+            },
+            fxaa: {
+                vertex_path: "./assets/shaders/fxaa.vert.msl",
+                fragment_path: "./assets/shaders/fxaa.frag.msl"
+            },
+            water: {
+                vertex_path: "./assets/shaders/water.vert.msl",
+                fragment_path: "./assets/shaders/water.frag.msl"
+            }
+        }
+    }
+    return {
+        scene: {
+            vertex_path: "./assets/shaders/scene.vert.spv",
+            fragment_path: "./assets/shaders/scene.frag.spv"
+        },
+        floor: {
+            vertex_path: "./assets/shaders/floor.vert.spv",
+            fragment_path: "./assets/shaders/floor.frag.spv"
+        },
+        glow: {
+            vertex_path: "./assets/shaders/glow.vert.spv",
+            fragment_path: "./assets/shaders/glow.frag.spv"
+        },
+        fxaa: {
+            vertex_path: "./assets/shaders/fxaa.vert.spv",
+            fragment_path: "./assets/shaders/fxaa.frag.spv"
+        },
+        water: {
+            vertex_path: "./assets/shaders/water.vert.spv",
+            fragment_path: "./assets/shaders/water.frag.spv"
+        }
+    }
+}
+

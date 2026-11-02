@@ -1,0 +1,149 @@
+val sdl    = use("sdl.sx")
+val string = use("std/string")
+val exoerr = use("error.sx")
+
+pub type AudioClip = {
+    path: ref u8
+    loops: i32
+}
+
+pub type AudioMixerConfig = {
+    trigger_key: i32
+    music_volume: i32
+    sample: AudioClip
+}
+
+
+pub type RuntimeAudioMixer = {
+    initialized: mut bool
+    sample_audio: mut ref void
+}
+
+
+pub type ExoSDL3Audio = {
+    stream: mut ref void
+    speci: mut sdl.SDLAudioSpec
+    buffer: mut ref u8
+    length: mut u32
+}
+
+
+pub fn create_audio(wav_path: ref u8, volume: i32) ref void = trust {
+    exoerr.clear()
+    if wav_path == none || string.len_raw(wav_path) == (0 as usize) {
+        return exoerr.set_ptr("audio path is empty")
+    }
+    val audio: mut ref ExoSDL3Audio = @alloc(@sizeof(ExoSDL3Audio)) as mut ref ExoSDL3Audio
+    if audio == none {
+        return exoerr.set_ptr("failed to allocate audio")
+    }
+    if !sdl.SDL_LoadWAV(wav_path, @addr(audio.speci), @addr(audio.buffer), @addr(audio.length)) {
+        destroy_audio(audio as ref void)
+        return none as ref void
+    }
+    audio.stream = sdl.SDL_OpenAudioDeviceStream(sdl.SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, @addr(audio.speci), none as ref void, none as ref void)
+    if audio.stream == none {
+        destroy_audio(audio as ref void)
+        return none as ref void
+    }
+    sdl.SDL_SetAudioStreamGain(audio.stream, (volume as f32) / (128.0 as f32))
+    if !sdl.SDL_ResumeAudioStreamDevice(audio.stream) {
+        destroy_audio(audio as ref void)
+        return none as ref void
+    }
+    return audio as ref void
+}
+
+pub fn destroy_audio(audio_raw: ref void) void = trust {
+    if audio_raw == none {
+        return
+    }
+    val audio: ref ExoSDL3Audio = audio_raw as ref ExoSDL3Audio
+    if audio.stream != none {
+        sdl.SDL_DestroyAudioStream(audio.stream)
+    }
+    if audio.buffer != none {
+        sdl.SDL_free(audio.buffer as ref void)
+    }
+    @free(audio_raw)
+}
+
+pub fn play_audio(audio_raw: ref void, loops: i32, volume: i32) bool = trust {
+    exoerr.clear()
+    if audio_raw == none {
+        return exoerr.set("audio unavailable")
+    }
+    val audio: ref ExoSDL3Audio = audio_raw as ref ExoSDL3Audio
+    if audio.stream == none || audio.buffer == none || audio.length == (0 as u32) {
+        return exoerr.set("audio unavailable")
+    }
+    val play_loops: mut i32 = loops
+    if play_loops < (0 as i32) {
+        play_loops = 0 as i32
+    }
+    if !sdl.SDL_ClearAudioStream(audio.stream) {
+        return false
+    }
+    sdl.SDL_SetAudioStreamGain(audio.stream, (volume as f32) / (128.0 as f32))
+    val repeats: mut i32 = 0 as i32
+    for {
+        if repeats > play_loops {
+            break
+        }
+        if !sdl.SDL_PutAudioStreamData(audio.stream, audio.buffer as ref void, audio.length as i32) {
+            return false
+        }
+        repeats = repeats + (1 as i32)
+    }
+    return sdl.SDL_FlushAudioStream(audio.stream)
+}
+
+
+pub fn default_audio_mixer() AudioMixerConfig = {
+    return {
+        trigger_key: sdl.SDL_SCANCODE_Y,
+        music_volume: 96 as i32,
+        sample: {
+            path: "",
+            loops: 0 as i32
+        }
+    }
+}
+
+
+pub fn audio_enabled(config: AudioMixerConfig) bool = {
+    if config.sample.path == none {
+        return false
+    }
+    return string.len_raw(config.sample.path) > (0 as usize)
+}
+
+pub fn init_runtime_audio(config: AudioMixerConfig) RuntimeAudioMixer = trust {
+    val runtime: mut RuntimeAudioMixer = {
+        initialized: false,
+        sample_audio: none as ref void
+    }
+    if !audio_enabled(config) {
+        return runtime
+    }
+    runtime.sample_audio = create_audio(config.sample.path, config.music_volume)
+    if runtime.sample_audio == none {
+        return runtime
+    }
+    runtime.initialized = true
+    return runtime
+}
+
+pub fn shutdown_runtime_audio(runtime: RuntimeAudioMixer) void = trust {
+    if runtime.sample_audio != none {
+        destroy_audio(runtime.sample_audio)
+    }
+}
+
+pub fn play_runtime_audio(config: AudioMixerConfig, runtime: RuntimeAudioMixer) bool = trust {
+    if !runtime.initialized || runtime.sample_audio == none {
+        return false
+    }
+    return play_audio(runtime.sample_audio, config.sample.loops, config.music_volume)
+}
+

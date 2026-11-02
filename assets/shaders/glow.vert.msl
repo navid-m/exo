@@ -1,0 +1,34 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct GlowVertexUniforms
+{
+    float4x4 uViewProj;
+    float4 uBillboardPos;
+    float4 uBillboardSize;
+    float4 uCameraRight;
+    float4 uCameraUp;
+};
+
+struct main0_out
+{
+    float3 vLocalPos [[user(locn0)]];
+    float4 gl_Position [[position]];
+};
+
+struct main0_in
+{
+    float3 aPosition [[attribute(0)]];
+};
+
+vertex main0_out main0(main0_in in [[stage_in]], constant GlowVertexUniforms& _19 [[buffer(0)]])
+{
+    main0_out out = {};
+    out.vLocalPos = in.aPosition;
+    float3 world_pos = (_19.uBillboardPos.xyz + (_19.uCameraRight.xyz * (in.aPosition.x * _19.uBillboardSize.x))) + (_19.uCameraUp.xyz * (in.aPosition.y * _19.uBillboardSize.y));
+    out.gl_Position = _19.uViewProj * float4(world_pos, 1.0);
+    return out;
+}
+

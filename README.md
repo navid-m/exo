@@ -1,26 +1,49 @@
 # Exo
 
-A simple 3D game engine for designed for ease of use and performance.
+A simple 3D game engine designed for ease of use and performance.
 
 Built on the <a href="https://github.com/spectrelang/spectre">Spectre</a> programming language.
 
 Currently supports:
 
-- Full ECS
+- Modular engine modules with a small high-level app API
+- Full ECS-style scene model
 - Builtin physics system
 - Audio subsystem
 - Input system
 - GLB model rendering with textures
 - Simple 3D graphical primitives
-- Water effects
-- Particle effects
+- Reflective, animated water effects
+- Particle/glow billboards
 
-Example usage:
+## Library Layout
+
+| Module | Responsibility |
+|--------|----------------|
+| `engine.sx` | App lifecycle, builder API, defaults, main loop |
+| `engine/sdl.sx` | SDL3 bindings, constants, and link directives |
+| `engine/math.sx` | `Vec3`, `Vec4f`, `Mat4`, and math helpers |
+| `engine/camera.sx` | Camera state, movement, and view/projection |
+| `engine/input.sx` | Key bindings, mouse settings, key lookup |
+| `engine/audio.sx` | WAV loading and playback |
+| `engine/shaders.sx` | Shader paths and platform shader format |
+| `engine/io.sx` | Binary file loading |
+| `engine/glb.sx` | GLB parsing and bounds |
+| `engine/mesh.sx` | Procedural meshes and GLB mesh upload |
+| `engine/renderer.sx` | SDL_GPU renderer, pipelines, and passes |
+| `ecs.sx` | Scene/entity data model |
+
+Every module can be imported directly, so gameplay code can depend on only the
+parts it needs.
+
+## Example Usage
 
 ```spectre
 val ecs       = use("ecs.sx")
 val engine    = use("engine.sx")
 val rendering = use("rendering.sx")
+val sdl       = use("engine/sdl.sx")
+val input     = use("engine/input.sx")
 
 fn build_scene() ecs.Scene3D = {
     val scene: mut ecs.Scene3D = ecs.new_scene(
@@ -47,10 +70,19 @@ fn build_scene() ecs.Scene3D = {
         0.7 as f32
     ))
 
-    scene.floor = some ecs.make_floor(
-        -1.0 as f32,
-        0.2 as f32
+    val water = ecs.make_water(
+        -0.2 as f32,
+        0.0 as f32,
+        0.0 as f32,
+        8.0 as f32,
+        8.0 as f32,
+        ecs.make_vec3(0.10 as f32, 0.46 as f32, 0.78 as f32),
+        1.2 as f32,
+        0.02 as f32,
+        3.0 as f32,
+        0.4 as f32
     )
+    scene.water = some water
 
     return scene
 }
@@ -59,27 +91,36 @@ pub fn main() i32 = {
     val scenes: mut list[ecs.Scene3D] = []
     @append(scenes, build_scene())
 
-    val app_builder: mut engine.ExoAppBuilder = engine.new_app()
+    val input_cfg: input.InputConfig = {
+        keys: rendering.default_key_bindings(),
+        mouse: {
+            enabled: true,
+            sensitivity_x: 0.0018 as f32,
+            sensitivity_y: 0.0018 as f32,
+            invert_y: false
+        },
+        quit_key: sdl.SDL_SCANCODE_ESCAPE
+    }
 
-    engine.with_title(app_builder, "Hello World")
-    engine.with_resolution(app_builder, 1280 as i32, 720 as i32)
-    engine.with_scene_list(app_builder, scenes)
-    engine.with_default_camera(app_builder)
-    engine.with_shaders(app_builder, engine.default_shader_config())
+    val builder: mut engine.ExoAppBuilder = engine.new_app()
 
-    engine.with_key_bindings(app_builder, rendering.default_key_bindings())
-    engine.with_mouse_config(app_builder, {
-        enabled:       true,
-        sensitivity_x: 0.002 as f32,
-        sensitivity_y: 0.002 as f32,
-        invert_y:      false
-    })
-    engine.with_quit_key(app_builder, engine.SDL_SCANCODE_ESCAPE)
+    engine.with_title(builder, "Hello World")
+    engine.with_resolution(builder, 1280 as i32, 720 as i32)
+    engine.with_scene_list(builder, scenes)
+    engine.with_default_camera(builder)
+    engine.with_input(builder, input_cfg)
+    engine.with_next_scene_key(builder, sdl.SDL_SCANCODE_X)
 
-    val app: engine.ExoApp = engine.build_app(app_builder)
-
+    val app: engine.ExoApp = engine.build_app(builder)
     return trust engine.run_app(app)
 }
+```
+
+Run the bundled showcase with:
+
+```sh
+spectre build
+./exo-dev
 ```
 
 License: GPL-3.0-only

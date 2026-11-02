@@ -1,0 +1,29 @@
+val sdl   = use("sdl.sx")
+val stdio = use("std/stdio")
+
+val last_error: mut ref u8 = none
+
+pub fn clear() void = {
+    last_error = none
+}
+
+pub fn set(msg: ref u8) bool = {
+    last_error = msg
+    return false
+}
+
+pub fn set_ptr(msg: ref u8) ref void = {
+    last_error = msg
+    return none as ref void
+}
+
+pub fn get() ref u8 = {
+    if last_error != none {
+        return last_error
+    }
+    return trust sdl.SDL_GetError()
+}
+
+pub fn print(prefix: ref u8) void = {
+    trust stdio.eprint("{s}: {s}\n", {prefix, get()})
+}

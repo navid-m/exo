@@ -1,0 +1,69 @@
+val sdl = use("sdl.sx")
+
+pub type KeyBindings = {
+    move_forward: i32
+    move_back: i32
+    move_left: i32
+    move_right: i32
+    turn_left: i32
+    turn_right: i32
+    look_up: i32
+    look_down: i32
+    move_up: i32
+    move_down: i32
+}
+
+pub type MouseConfig = {
+    enabled: bool
+    sensitivity_x: f32
+    sensitivity_y: f32
+    invert_y: bool
+}
+
+pub type InputConfig = {
+    keys: KeyBindings
+    mouse: MouseConfig
+    quit_key: i32
+}
+
+
+pub fn default_key_bindings() KeyBindings = {
+    return {
+        move_forward: sdl.SDL_SCANCODE_W,
+        move_back: sdl.SDL_SCANCODE_S,
+        move_left: sdl.SDL_SCANCODE_A,
+        move_right: sdl.SDL_SCANCODE_D,
+        turn_left: sdl.SDL_SCANCODE_LEFT,
+        turn_right: sdl.SDL_SCANCODE_RIGHT,
+        look_up: sdl.SDL_SCANCODE_UP,
+        look_down: sdl.SDL_SCANCODE_DOWN,
+        move_up: sdl.SDL_SCANCODE_SPACE,
+        move_down: sdl.SDL_SCANCODE_LSHIFT
+    }
+}
+
+pub fn default_mouse_config() MouseConfig = {
+    return {
+        enabled: false,
+        sensitivity_x: 0.0018 as f32,
+        sensitivity_y: 0.0018 as f32,
+        invert_y: false
+    }
+}
+
+pub fn default_input_config() InputConfig = {
+    return {
+        keys: default_key_bindings(),
+        mouse: default_mouse_config(),
+        quit_key: sdl.SDL_SCANCODE_ESCAPE
+    }
+}
+
+
+pub fn safe_key(keys: ref u8, scancode: i32) u8 = trust {
+    if scancode <= (0 as i32) || scancode >= (512 as i32) {
+        return 0 as u8
+    }
+    return @load8(@ptradd(keys, scancode as usize))
+}
+

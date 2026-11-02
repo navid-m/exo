@@ -1,0 +1,37 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct SceneVertexUniforms
+{
+    float4x4 uModel;
+    float4x4 uViewProj;
+};
+
+struct main0_out
+{
+    float3 vWorldPos [[user(locn0)]];
+    float3 vWorldNormal [[user(locn1)]];
+    float2 vTexCoord [[user(locn2)]];
+    float4 gl_Position [[position]];
+};
+
+struct main0_in
+{
+    float3 aPosition [[attribute(0)]];
+    float3 aNormal [[attribute(1)]];
+    float2 aTexCoord [[attribute(2)]];
+};
+
+vertex main0_out main0(main0_in in [[stage_in]], constant SceneVertexUniforms& _13 [[buffer(0)]])
+{
+    main0_out out = {};
+    float4 world = _13.uModel * float4(in.aPosition, 1.0);
+    out.vWorldPos = world.xyz;
+    out.vWorldNormal = fast::normalize((_13.uModel * float4(in.aNormal, 0.0)).xyz);
+    out.vTexCoord = in.aTexCoord;
+    out.gl_Position = _13.uViewProj * world;
+    return out;
+}
+

@@ -1,0 +1,40 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct WaterVertexUniforms
+{
+    float4x4 uModel;
+    float4x4 uViewProj;
+    float4x4 uReflectViewProj;
+    float4 uTimeWave;
+};
+
+struct main0_out
+{
+    float3 vWorldPos [[user(locn0)]];
+    float4 vReflectClip [[user(locn1)]];
+    float2 vUV [[user(locn2)]];
+    float4 gl_Position [[position]];
+};
+
+struct main0_in
+{
+    float3 aPosition [[attribute(0)]];
+};
+
+vertex main0_out main0(main0_in in [[stage_in]], constant WaterVertexUniforms& _23 [[buffer(0)]])
+{
+    main0_out out = {};
+    float3 pos = in.aPosition;
+    float wave = (sin((pos.x * _23.uTimeWave.z) + (_23.uTimeWave.x * 2.0)) * cos(((pos.z * _23.uTimeWave.z) * 0.800000011920928955078125) + (_23.uTimeWave.x * 1.7000000476837158203125))) * _23.uTimeWave.y;
+    pos.y += wave;
+    float4 world = _23.uModel * float4(pos, 1.0);
+    out.vWorldPos = world.xyz;
+    out.vReflectClip = _23.uReflectViewProj * world;
+    out.vUV = world.xz * 0.4000000059604644775390625;
+    out.gl_Position = _23.uViewProj * world;
+    return out;
+}
+

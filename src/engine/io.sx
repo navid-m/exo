@@ -1,0 +1,42 @@
+val sdl   = use("sdl.sx")
+val exoerr = use("error.sx")
+
+pub type BinaryBlob = {
+    data: mut ref u8
+    len: mut usize
+}
+
+
+pub fn load_binary_file(path: ref u8) option[BinaryBlob] = trust {
+    val file: ref void = sdl.fopen(path, "rb")
+    if file == none {
+        exoerr.set(path)
+        return none
+    }
+    sdl.fseek(file, 0, 2 as i32)
+    val size: i64 = sdl.ftell(file)
+    sdl.rewind(file)
+    if size <= 0 {
+        sdl.fclose(file)
+        exoerr.set("failed to read file")
+        return none
+    }
+    val buf: ref u8 = @alloc(size as usize) as ref u8
+    if buf == none {
+        sdl.fclose(file)
+        exoerr.set("failed to allocate file buffer")
+        return none
+    }
+    val read_count: usize = sdl.fread(buf as ref void, 1 as usize, size as usize, file)
+    sdl.fclose(file)
+    if read_count != size as usize {
+        @free(buf as ref void)
+        exoerr.set("failed to read file")
+        return none
+    }
+    return some {
+        data: buf,
+        len: size as usize
+    }
+}
+

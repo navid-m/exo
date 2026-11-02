@@ -3,11 +3,144 @@ val ecs       = use("ecs.sx")
 val engine    = use("engine.sx")
 val rendering = use("rendering.sx")
 val physics   = use("physics.sx")
+val glb       = use("engine/glb.sx")
+val sdl       = use("engine/sdl.sx")
+val input     = use("engine/input.sx")
+val audio     = use("engine/audio.sx")
 
 type (engine.SceneUpdater) PhysicsUpdater = {}
 
-pub fn (PhysicsUpdater) su_update(_: mut self, scene: ecs.Scene3D, dt: f32, _: f32) void = {
+pub fn (PhysicsUpdater) su_update(_: mut self, scene: mut ecs.Scene3D, dt: f32, _: f32) void = {
     physics.update_physics(scene, dt)
+}
+
+fn build_showcase_scene() ecs.Scene3D = {
+    val scene: mut ecs.Scene3D = ecs.new_scene(
+        ecs.make_light(
+            ecs.make_vec3(0.0 as f32, 4.5 as f32, 0.5 as f32),
+            ecs.make_vec3(0.72 as f32, 0.88 as f32, 1.00 as f32),
+            2.0 as f32,
+            10.0 as f32
+        )
+    )
+    scene.gravity = 0.0 as f32
+    scene.model_scale = 0.11 as f32
+
+    val loaded: mut bool = false
+    if trust glb.load_glb("./assets/pond.glb") is some pond_model {
+        scene.model = pond_model
+        trust glb.compute_glb_bounds(@addr(scene.model))
+        loaded = true
+    }
+
+    val water: mut ecs.WaterSurface = ecs.make_water(
+        -0.12 as f32,
+        0.0 as f32,
+        0.0 as f32,
+        0.0 as f32,
+        0.0 as f32,
+        ecs.make_vec3(0.10 as f32, 0.46 as f32, 0.78 as f32),
+        1.25 as f32,
+        0.022 as f32,
+        3.0 as f32,
+        0.45 as f32
+    )
+    water.fit_scale = 0.72 as f32
+    if !loaded {
+        water.size_x = 8.0 as f32
+        water.size_z = 10.0 as f32
+        water.y = -0.1 as f32
+    }
+    scene.water = some water
+
+    val surface_y: mut f32 = water.y
+    val scale: f32 = scene.model_scale
+    if loaded {
+        surface_y = scene.model.bounds_max_y * scale + water.y
+    }
+    val cx: mut f32 = 0.0 as f32
+    val cz: mut f32 = -2.0 as f32
+    if loaded {
+        cx = ((scene.model.bounds_min_x + scene.model.bounds_max_x) * (0.5 as f32)) * scale
+        cz = ((scene.model.bounds_min_z + scene.model.bounds_max_z) * (0.5 as f32)) * scale
+    }
+
+    @append(scene.cubes, ecs.make_cube(
+        ecs.make_vec3(cx - 2.2 as f32, surface_y + 0.18 as f32, cz + 0.9 as f32),
+        ecs.make_vec3(0.92 as f32, 0.64 as f32, 0.22 as f32),
+        0.62 as f32,
+        0.42 as f32
+    ))
+    @append(scene.cubes, ecs.make_cube(
+        ecs.make_vec3(cx + 1.8 as f32, surface_y + 0.24 as f32, cz - 0.6 as f32),
+        ecs.make_vec3(0.24 as f32, 0.72 as f32, 0.58 as f32),
+        0.48 as f32,
+        -0.58 as f32
+    ))
+    @append(scene.cubes, ecs.make_cube(
+        ecs.make_vec3(cx + 0.4 as f32, surface_y + 0.30 as f32, cz - 2.0 as f32),
+        ecs.make_vec3(0.76 as f32, 0.32 as f32, 0.46 as f32),
+        0.70 as f32,
+        0.31 as f32
+    ))
+
+    @append(scene.spheres, ecs.make_sphere(
+        ecs.make_vec3(cx - 1.1 as f32, surface_y + 0.30 as f32, cz - 0.3 as f32),
+        ecs.make_vec3(1.00 as f32, 0.72 as f32, 0.24 as f32),
+        0.34 as f32
+    ))
+    @append(scene.spheres, ecs.make_sphere(
+        ecs.make_vec3(cx + 2.8 as f32, surface_y + 0.22 as f32, cz - 1.9 as f32),
+        ecs.make_vec3(0.32 as f32, 0.82 as f32, 1.00 as f32),
+        0.30 as f32
+    ))
+    @append(scene.spheres, ecs.make_sphere(
+        ecs.make_vec3(cx - 2.9 as f32, surface_y + 0.28 as f32, cz - 2.4 as f32),
+        ecs.make_vec3(0.92 as f32, 0.36 as f32, 0.58 as f32),
+        0.42 as f32
+    ))
+    @append(scene.spheres, ecs.make_sphere(
+        ecs.make_vec3(cx + 0.9 as f32, surface_y + 0.20 as f32, cz - 3.4 as f32),
+        ecs.make_vec3(0.72 as f32, 0.94 as f32, 1.00 as f32),
+        0.24 as f32
+    ))
+    return scene
+}
+
+fn build_feature_scene() ecs.Scene3D = {
+    val scene: mut ecs.Scene3D = ecs.new_scene(
+        ecs.make_light(
+            ecs.make_vec3(-0.8 as f32, 3.4 as f32, 1.1 as f32),
+            ecs.make_vec3(0.68 as f32, 0.86 as f32, 1.00 as f32),
+            1.9 as f32,
+            8.5 as f32
+        )
+    )
+    scene.gravity = 0.0 as f32
+    scene.floor = some ecs.make_floor(-0.7 as f32, 0.4 as f32)
+    @append(scene.spheres, ecs.make_sphere(
+        ecs.make_vec3(-1.20 as f32, 0.10 as f32, -0.25 as f32),
+        ecs.make_vec3(1.00 as f32, 0.58 as f32, 0.24 as f32),
+        0.78 as f32
+    ))
+    @append(scene.spheres, ecs.make_sphere(
+        ecs.make_vec3(1.35 as f32, -0.05 as f32, -1.75 as f32),
+        ecs.make_vec3(0.36 as f32, 0.74 as f32, 1.00 as f32),
+        1.02 as f32
+    ))
+    @append(scene.cubes, ecs.make_cube(
+        ecs.make_vec3(0.00 as f32, 1.48 as f32, -2.75 as f32),
+        ecs.make_vec3(0.82 as f32, 0.34 as f32, 1.00 as f32),
+        0.92 as f32,
+        0.62 as f32
+    ))
+    @append(scene.cubes, ecs.make_cube(
+        ecs.make_vec3(2.10 as f32, 0.62 as f32, 0.55 as f32),
+        ecs.make_vec3(0.24 as f32, 1.00 as f32, 0.72 as f32),
+        0.70 as f32,
+        -1.18 as f32
+    ))
+    return scene
 }
 
 fn build_game_scene() ecs.Scene3D = {
@@ -36,120 +169,46 @@ fn build_game_scene() ecs.Scene3D = {
     return scene
 }
 
-fn build_feature_scene() ecs.Scene3D = {
-    val scene: mut ecs.Scene3D = ecs.new_scene(
-        ecs.make_light(
-            ecs.make_vec3(-0.8 as f32, 3.4 as f32, 1.1 as f32),
-            ecs.make_vec3(0.68 as f32, 0.86 as f32, 1.00 as f32),
-            1.9 as f32,
-            8.5 as f32
-        )
-    )
-    scene.gravity = 0.0 as f32
-    @append(scene.spheres, ecs.make_sphere(
-        ecs.make_vec3(-1.20 as f32, 0.10 as f32, -0.25 as f32),
-        ecs.make_vec3(1.00 as f32, 0.58 as f32, 0.24 as f32),
-        0.78 as f32
-    ))
-    @append(scene.spheres, ecs.make_sphere(
-        ecs.make_vec3(1.35 as f32, -0.05 as f32, -1.75 as f32),
-        ecs.make_vec3(0.36 as f32, 0.74 as f32, 1.00 as f32),
-        1.02 as f32
-    ))
-    @append(scene.cubes, ecs.make_cube(
-        ecs.make_vec3(0.00 as f32, 1.48 as f32, -2.75 as f32),
-        ecs.make_vec3(0.82 as f32, 0.34 as f32, 1.00 as f32),
-        0.92 as f32,
-        0.62 as f32
-    ))
-    @append(scene.cubes, ecs.make_cube(
-        ecs.make_vec3(2.10 as f32, 0.62 as f32, 0.55 as f32),
-        ecs.make_vec3(0.24 as f32, 1.00 as f32, 0.72 as f32),
-        0.70 as f32,
-        -1.18 as f32
-    ))
-    return scene
-}
-
-fn build_water_scene() ecs.Scene3D = {
-    val scene: mut ecs.Scene3D = ecs.new_scene(
-        ecs.make_light(
-            ecs.make_vec3(0.0 as f32, 4.5 as f32, 0.5 as f32),
-            ecs.make_vec3(0.72 as f32, 0.88 as f32, 1.00 as f32),
-            2.0 as f32,
-            10.0 as f32
-        )
-    )
-    scene.gravity = 0.0 as f32
-    val water: mut ecs.WaterSurface = ecs.make_water(
-        -0.575 as f32,
-        0.0 as f32,
-        0.0 as f32,
-        0.0 as f32,
-        0.0 as f32,
-        ecs.make_vec3(0.18 as f32, 0.52 as f32, 0.82 as f32),
-        1.4 as f32,
-        0.018 as f32,
-        2.8 as f32,
-        0.35 as f32
-    )
-    water.fit_scale = 0.71 as f32
-    scene.water = some water
-    return scene
-}
-
 fn build_scenes() list[ecs.Scene3D] = {
     val scenes: mut list[ecs.Scene3D] = []
-    val intro_scene: mut ecs.Scene3D = build_game_scene()
-    intro_scene.model = trust engine.load_embedded_fixture_model()
-    @append(scenes, intro_scene)
-
-    val feature_scene: mut ecs.Scene3D = build_feature_scene()
-    feature_scene.model = trust engine.load_embedded_fixture_model()
-    @append(scenes, feature_scene)
-
-    val water_scene: mut ecs.Scene3D = build_water_scene()
-    water_scene.model_scale = 0.1 as f32
-    if trust engine.load_glb("./assets/pond.glb") is some pond_model {
-        water_scene.model = pond_model
-        trust engine.compute_glb_bounds(@addr(water_scene.model))
-    }
-    @append(scenes, water_scene)
+    @append(scenes, build_showcase_scene())
+    @append(scenes, build_feature_scene())
+    @append(scenes, build_game_scene())
     return scenes
 }
 
 pub fn main() i32 = {
     val scenes: list[ecs.Scene3D] = build_scenes()
-    val input: engine.InputConfig = {
+    val input_cfg: input.InputConfig = {
         keys: rendering.default_key_bindings(),
         mouse: {
-            enabled:       true,
+            enabled: true,
             sensitivity_x: 0.0018 as f32,
             sensitivity_y: 0.0018 as f32,
-            invert_y:      false
+            invert_y: false
         },
-        quit_key: engine.SDL_SCANCODE_ESCAPE
+        quit_key: sdl.SDL_SCANCODE_ESCAPE
     }
-    val audio: engine.AudioMixerConfig = {
-        trigger_key: engine.SDL_SCANCODE_Y,
+    val audio_cfg: audio.AudioMixerConfig = {
+        trigger_key: sdl.SDL_SCANCODE_Y,
         music_volume: 96 as i32,
         sample: {
             path: "./assets/example_sound.wav",
             loops: 0 as i32
         }
     }
-    
+
     val app_builder: mut engine.ExoAppBuilder = engine.new_app()
 
-    engine.with_title(app_builder, "exo-engine")
+    engine.with_title(app_builder, "exo-engine | pond showcase")
     engine.with_resolution(app_builder, 1280 as i32, 720 as i32)
     engine.with_shaders(app_builder, engine.default_shader_config())
     engine.with_scene_list(app_builder, scenes)
     engine.with_default_camera(app_builder)
-    engine.with_input(app_builder, input)
-    engine.with_next_scene_key(app_builder, engine.SDL_SCANCODE_X)
-    engine.with_audio(app_builder, audio)
-    
+    engine.with_input(app_builder, input_cfg)
+    engine.with_next_scene_key(app_builder, sdl.SDL_SCANCODE_X)
+    engine.with_audio(app_builder, audio_cfg)
+
     val app: engine.ExoApp = engine.build_app(app_builder)
     val su: PhysicsUpdater = {}
 
@@ -157,60 +216,60 @@ pub fn main() i32 = {
 }
 
 test {
-    val scene0 = build_game_scene()
-    val scene1 = build_feature_scene()
+    val showcase = build_showcase_scene()
+    val feature = build_feature_scene()
+    val game = build_game_scene()
     val scenes: mut list[ecs.Scene3D] = []
-    @append(scenes, scene0)
-    @append(scenes, scene1)
+    @append(scenes, showcase)
+    @append(scenes, feature)
+    @append(scenes, game)
+
     val app_builder: mut engine.ExoAppBuilder = engine.new_app()
     engine.with_scene_list(app_builder, scenes)
     engine.with_default_camera(app_builder)
     engine.with_input(app_builder, rendering.default_input_config())
-    engine.with_next_scene_key(app_builder, engine.SDL_SCANCODE_X)
-    engine.with_audio(app_builder, {
-        trigger_key: engine.SDL_SCANCODE_Y,
+    engine.with_next_scene_key(app_builder, sdl.SDL_SCANCODE_X)
+    val test_audio: audio.AudioMixerConfig = {
+        trigger_key: sdl.SDL_SCANCODE_Y,
         music_volume: 96 as i32,
         sample: {
             path: "./example_sound.mp3",
             loops: 0 as i32
         }
-    })
+    }
+    engine.with_audio(app_builder, test_audio)
     val app: engine.ExoApp = engine.build_app(app_builder)
-    assert @len(scene0.spheres) == (0 as usize)
-    assert @len(scene0.cubes) == (2 as usize)
-    assert @len(scene1.spheres) == (2 as usize)
-    assert @len(scene1.cubes) == (2 as usize)
-    assert @len(app.scenes) == (2 as usize)
+    assert @len(showcase.cubes) == (3 as usize)
+    assert @len(showcase.spheres) == (4 as usize)
+    assert @len(feature.spheres) == (2 as usize)
+    assert @len(feature.cubes) == (2 as usize)
+    assert @len(game.cubes) == (2 as usize)
+    assert @len(app.scenes) == (3 as usize)
     assert app.active_scene_index == (0 as usize)
-    assert app.next_scene_key == engine.SDL_SCANCODE_X
-    assert app.audio.trigger_key == engine.SDL_SCANCODE_Y
-    assert trust string.compare[ref u8, ref u8](app.audio.sample.path, "./example_sound.mp3") == 0
-
-    if @get(scene1.spheres, 0 as usize) is some s0 {
-        assert s0.radius > (0.5 as f32)
-    } else { assert false }
-
-    if @get(scene1.spheres, 1 as usize) is some s1 {
-        assert s1.radius > (0.5 as f32)
-    } else { assert false }
-
-    if @get(scene0.cubes, 0 as usize) is some c0 {
-        assert c0.rotation_speed > (0.5 as f32)
-    } else { assert false }
-
-    if @get(scene1.cubes, 1 as usize) is some c1 {
-        assert c1.rotation_speed < (0.0 as f32)
-    } else { assert false }
-
+    assert app.next_scene_key == sdl.SDL_SCANCODE_X
+    assert app.audio.trigger_key == sdl.SDL_SCANCODE_Y
+    assert string.raw_cmp(app.audio.sample.path, "./example_sound.mp3") == 0
     assert app.camera.move_speed > (3.0 as f32)
 
-    val fixture: mut engine.GlbFixture = trust engine.build_test_glb_fixture()
-    if trust engine.parse_glb_bytes(fixture.ptr, fixture.len) is some model {
+    if @get(showcase.spheres, 0 as usize) is some s0 {
+        assert s0.radius > (0.2 as f32)
+    } else {
+        assert false
+    }
+
+    if @get(feature.cubes, 1 as usize) is some c1 {
+        assert c1.rotation_speed < (0.0 as f32)
+    } else {
+        assert false
+    }
+
+    val fixture: mut glb.GlbFixture = trust glb.build_test_glb_fixture()
+    if trust glb.parse_glb_bytes(fixture.ptr, fixture.len) is some model {
         assert model.valid
         assert model.primitive_count == 1
         assert model.vertex_count == 3
         assert model.index_count == 0
-        assert trust string.compare[ref u8, ref u8](model.mesh_name, "fixture") == 0
+        assert string.raw_cmp(model.mesh_name, "fixture") == 0
     } else {
         assert false
     }

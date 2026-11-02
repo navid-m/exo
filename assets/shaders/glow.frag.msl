@@ -1,0 +1,30 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct GlowFragmentUniforms
+{
+    float4 uGlowColorIntensity;
+    float4 uAlphaPad;
+};
+
+struct main0_out
+{
+    float4 FragColor [[color(0)]];
+};
+
+struct main0_in
+{
+    float3 vLocalPos [[user(locn0)]];
+};
+
+fragment main0_out main0(main0_in in [[stage_in]], constant GlowFragmentUniforms& _30 [[buffer(0)]])
+{
+    main0_out out = {};
+    float radius = length(in.vLocalPos.xy) * 2.0;
+    float fade = powr(fast::max(1.0 - radius, 0.0), 2.0);
+    out.FragColor = float4(_30.uGlowColorIntensity.xyz * _30.uGlowColorIntensity.w, _30.uAlphaPad.x * fade);
+    return out;
+}
+
