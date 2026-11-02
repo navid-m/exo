@@ -8,28 +8,24 @@ The engine has no built-in notion of a level list, player, camera controller,
 goal, score, or key bindings. Games receive raw input/lifecycle events and own
 all gameplay state.
 
-## Screenshots
+Run the bundled showcase with:
+
+```sh
+spectre run examples/pacman3d.sx
+```
+
+Or:
+
+```sh
+spectre examples/pacman3d.sx
+./s-out/pacman3d
+```
+
+## Screenshot
 
 <img src=".github/assets/exo-pacman.png">
 
-## Features
-
-- Singleton `Scene3D` with arbitrary numbers of lights, floors, water
-  surfaces, GLB models, custom meshes, spheres, and cubes
-- Stable entity IDs plus scene lookup/removal helpers
-- Optional default fly camera, or fully game-controlled camera
-- Keyboard, mouse button, mouse wheel, text input, window/focus, and gamepad
-  events
-- Custom mobile camera helper and fixed-timestep hook
-- Multi-clip audio bank with per-clip loops/volume
-- Scene-owned render settings: background/sky colors, ambient strength,
-  reflection plane, reflections, post-processing, and light glow
-- Multiple per-instance GLB textures and custom CPU mesh uploads
-- Screen-space HUD rectangles and bitmap text with a bundled default font
-- Collision/query helpers and generic gravity/floor physics
-- Configurable debug scene dump (off by default)
-
-## Library Layout
+## Library Layout (as of v0.0.2)
 
 | Module               | Responsibility                                               |
 | -------------------- | ------------------------------------------------------------ |
@@ -154,23 +150,6 @@ pub fn main() i32 = {
 }
 ```
 
-`engine.set_scene` swaps scenes at runtime and reloads GPU resources.
-`engine.reload_scene_resources` handles models/meshes added to the active
-scene. `engine.paused`, `engine.with_fixed_timestep`, `engine.key_held`,
-`engine.mouse_button`, `engine.gamepad_button`, and `engine.play_clip` are
-available to games without adding engine-side gameplay assumptions.
-
-Run the bundled showcase with:
-
-```sh
-spectre run examples/pacman3d.sx
-```
-
-Or:
-
-```sh
-spectre examples/pacman3d.sx
-./s-out/pacman3d
-```
+---
 
 License: GPL-3.0-only
