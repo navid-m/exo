@@ -59,6 +59,58 @@ pub fn parse_accessor_offset(accessors: ref void, buffer_views: ref void, idx: i
     return offset
 }
 
+fn glb_position_offset(root: ref void) usize = trust {
+    val accessors: mut ref void = none
+    if json.obj_get(root, "accessors") is some value {
+        accessors = value
+    } else {
+        return 0 as usize
+    }
+    val buffer_views: mut ref void = none
+    if json.obj_get(root, "bufferViews") is some value {
+        buffer_views = value
+    } else {
+        return 0 as usize
+    }
+    val meshes: mut ref void = none
+    if json.obj_get(root, "meshes") is some value {
+        meshes = value
+    } else {
+        return 0 as usize
+    }
+    val mesh: mut ref void = none
+    if json.arr_get(meshes, 0 as usize) is some value {
+        mesh = value
+    } else {
+        return 0 as usize
+    }
+    val primitives: mut ref void = none
+    if json.obj_get(mesh, "primitives") is some value {
+        primitives = value
+    } else {
+        return 0 as usize
+    }
+    val prim: mut ref void = none
+    if json.arr_get(primitives, 0 as usize) is some value {
+        prim = value
+    } else {
+        return 0 as usize
+    }
+    val attrs: mut ref void = none
+    if json.obj_get(prim, "attributes") is some value {
+        attrs = value
+    } else {
+        return 0 as usize
+    }
+    val position_index: mut i64 = 0 as i64
+    if json.obj_get_int(attrs, "POSITION") is some value {
+        position_index = value
+    } else {
+        return 0 as usize
+    }
+    return parse_accessor_offset(accessors, buffer_views, position_index)
+}
+
 /// Walk the raw GLB position data and compute XYZ bounding box, storing results on the model.
 pub fn compute_glb_bounds(model: mut ref ecs.GlbModel) void = trust {
     if !model.valid || model.vertex_count <= (0 as i32) || model.raw_bytes == none || model.bin_length == (0 as usize) {
@@ -76,24 +128,7 @@ pub fn compute_glb_bounds(model: mut ref ecs.GlbModel) void = trust {
     if json.parse(json_buf) is some doc {
         val root: ref void = json.doc_root(doc)
         val vc: usize = model.vertex_count as usize
-        val pos_offset: mut usize = 0 as usize
-        if json.obj_get(root, "accessors") is some accessors {
-            if json.obj_get(root, "bufferViews") is some buffer_views {
-                if json.obj_get(root, "meshes") is some meshes {
-                    if json.arr_get(meshes, 0 as usize) is some mesh {
-                        if json.obj_get(mesh, "primitives") is some primitives {
-                            if json.arr_get(primitives, 0 as usize) is some prim {
-                                if json.obj_get(prim, "attributes") is some attrs {
-                                    if json.obj_get_int(attrs, "POSITION") is some pi {
-                                        pos_offset = parse_accessor_offset(accessors, buffer_views, pi)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        val pos_offset: usize = glb_position_offset(root)
         val bin_base: ref void = @ptradd(data, (json_offset + (json_len as usize) + (8 as usize)) as usize)
         val vi: mut usize = 0 as usize
         val min_x: mut f32 = 1e30 as f32
