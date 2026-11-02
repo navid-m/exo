@@ -70,18 +70,31 @@ type (AppEvents) NoAppEvents = {
 }
 
 pub fn (NoAppEvents) on_start(_: mut self, _: mut ExoApp) void = {}
+
 pub fn (NoAppEvents) on_update(_: mut self, _: mut ExoApp, _: f32, _: f32) void = {}
+
 pub fn (NoAppEvents) on_fixed_update(_: mut self, _: mut ExoApp, _: f32) void = {}
+
 pub fn (NoAppEvents) on_key_down(_: mut self, _: mut ExoApp, _: i32, _: bool, _: u16) void = {}
+
 pub fn (NoAppEvents) on_key_up(_: mut self, _: mut ExoApp, _: i32, _: u16) void = {}
+
 pub fn (NoAppEvents) on_mouse_move(_: mut self, _: mut ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+
 pub fn (NoAppEvents) on_mouse_button(_: mut self, _: mut ExoApp, _: u8, _: bool, _: u8, _: f32, _: f32) void = {}
+
 pub fn (NoAppEvents) on_mouse_wheel(_: mut self, _: mut ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+
 pub fn (NoAppEvents) on_text_input(_: mut self, _: mut ExoApp, _: ref u8) void = {}
+
 pub fn (NoAppEvents) on_window_resize(_: mut self, _: mut ExoApp, _: i32, _: i32) void = {}
+
 pub fn (NoAppEvents) on_focus_changed(_: mut self, _: mut ExoApp, _: bool) void = {}
+
 pub fn (NoAppEvents) on_gamepad_button(_: mut self, _: mut ExoApp, _: i32, _: bool) void = {}
+
 pub fn (NoAppEvents) on_gamepad_axis(_: mut self, _: mut ExoApp, _: i32, _: f32) void = {}
+
 pub fn (NoAppEvents) on_shutdown(_: mut self, _: mut ExoApp) void = {}
 
 type SceneResources = {
@@ -399,12 +412,12 @@ fn load_scene_resources(runtime: ref void, scene: ecs.Scene3D) SceneResources = 
     }
     for instance in scene.mesh_instances {
         @append(resources.custom, renderer.upload_mesh(
-            runtime,
-            instance.geometry.vertices as ref void,
-            instance.geometry.vertex_float_count,
-            instance.geometry.indices as ref void,
-            instance.geometry.index_count
-        ))
+                runtime,
+                instance.geometry.vertices as ref void,
+                instance.geometry.vertex_float_count,
+                instance.geometry.indices as ref void,
+                instance.geometry.index_count
+            ))
     }
     resources.loaded = true
     return resources
@@ -633,8 +646,8 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
         }
 
         if app.scene_revision != resources.revision || !resources.loaded
-            || @len(resources.models) != @len(app.scene.models)
-            || @len(resources.custom) != @len(app.scene.mesh_instances) {
+        || @len(resources.models) != @len(app.scene.models)
+        || @len(resources.custom) != @len(app.scene.mesh_instances) {
             release_scene_resources(runtime, resources)
             resources = load_scene_resources(runtime, app.scene)
             resources.revision = app.scene_revision
@@ -658,31 +671,20 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             renderer.render_reflection_scene(runtime, meshes, app.scene, app.camera, frame_w as i32, frame_h as i32, app.time)
         }
         renderer.end_pass(runtime)
-        if app.scene.render.enable_fxaa {
-            if !renderer.begin_scene_pass(runtime, app.scene.render.clear_top.x, app.scene.render.clear_top.y, app.scene.render.clear_top.z, 1.0 as f32) {
-                exoerr.print("SDL3 scene pass failed")
-                exit_code = 1 as i32
-                break
-            }
-            renderer.render_scene(runtime, meshes, app.scene, app.camera, frame_w as i32, frame_h as i32, app.time)
-            renderer.end_pass(runtime)
-            if !renderer.apply_fxaa(runtime) {
-                exoerr.print("SDL3 postprocess pass failed")
-                exit_code = 1 as i32
-                break
-            }
-            renderer.render_ui(runtime, meshes, app.scene, frame_w as i32, frame_h as i32)
-            renderer.end_pass(runtime)
-        } else {
-            if !renderer.begin_swapchain_scene_pass(runtime, app.scene.render.clear_top.x, app.scene.render.clear_top.y, app.scene.render.clear_top.z, 1.0 as f32) {
-                exoerr.print("SDL3 scene pass failed")
-                exit_code = 1 as i32
-                break
-            }
-            renderer.render_scene(runtime, meshes, app.scene, app.camera, frame_w as i32, frame_h as i32, app.time)
-            renderer.render_ui(runtime, meshes, app.scene, frame_w as i32, frame_h as i32)
-            renderer.end_pass(runtime)
+        if !renderer.begin_scene_pass(runtime, app.scene.render.clear_top.x, app.scene.render.clear_top.y, app.scene.render.clear_top.z, 1.0 as f32) {
+            exoerr.print("SDL3 scene pass failed")
+            exit_code = 1 as i32
+            break
         }
+        renderer.render_scene(runtime, meshes, app.scene, app.camera, frame_w as i32, frame_h as i32, app.time)
+        renderer.end_pass(runtime)
+        if !renderer.apply_post_process(runtime, app.scene.render.post_process, app.scene.render.enable_fxaa, app.time) {
+            exoerr.print("SDL3 postprocess pass failed")
+            exit_code = 1 as i32
+            break
+        }
+        renderer.render_ui(runtime, meshes, app.scene, frame_w as i32, frame_h as i32)
+        renderer.end_pass(runtime)
         val capture_path: mut ref u8 = none as ref u8
         if app.screenshot_requested {
             if app.screenshot_path != none && string.len_raw(app.screenshot_path) > (0 as usize) {

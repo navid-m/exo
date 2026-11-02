@@ -1,0 +1,33 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct BloomThresholdUniforms
+{
+    float4 uParams;
+};
+
+struct main0_out
+{
+    float4 FragColor [[color(0)]];
+};
+
+struct main0_in
+{
+    float2 vTexCoord [[user(locn0)]];
+};
+
+fragment main0_out main0(main0_in in [[stage_in]], constant BloomThresholdUniforms& u [[buffer(0)]], texture2d<float> uSceneTex [[texture(0)]], sampler uSceneTexSmplr [[sampler(0)]])
+{
+    main0_out out = {};
+    float3 color_value = uSceneTex.sample(uSceneTexSmplr, in.vTexCoord).rgb;
+    float brightness = max(color_value.r, max(color_value.g, color_value.b));
+    float threshold = max(u.uParams.x, 0.0);
+    float knee = max(u.uParams.y, 0.0001);
+    float soft = clamp(brightness - threshold + knee, 0.0, 2.0 * knee);
+    soft = (soft * soft) / (4.0 * knee);
+    float contribution = max(soft, brightness - threshold) / max(brightness, 0.0001);
+    out.FragColor = float4(color_value * max(contribution, 0.0), 1.0);
+    return out;
+}

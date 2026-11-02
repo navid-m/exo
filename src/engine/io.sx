@@ -1,4 +1,5 @@
-val sdl   = use("sdl.sx")
+val sdl    = use("sdl.sx")
+val string = use("std/string")
 val exoerr = use("error.sx")
 
 pub type BinaryBlob = {
@@ -6,9 +7,43 @@ pub type BinaryBlob = {
     len: mut usize
 }
 
+/// Resolve relative asset paths against the current directory and a small
+/// number of parent directories. This lets an executable run from a nested
+/// directory (for example ./examples) while still finding ./assets.
+pub fn resolve_path(path: ref u8) ref u8 = trust {
+    if path == none {
+        return path
+    }
+    val probe: ref void = sdl.fopen(path, "rb")
+    if probe != none {
+        sdl.fclose(probe)
+        return path
+    }
+    if string.len_raw(path) == 0 || @load8(path) == (47 as u8) {
+        return path
+    }
+    val name: mut ref u8 = path
+    if string.len_raw(path) > 2 && @load8(path) == (46 as u8) && @load8(@ptradd(path, 1)) == (47 as u8) {
+        name = @ptradd(path, 2) as ref u8
+    }
+    val prefix: mut ref u8 = "."
+    val depth: mut i32 = 0 as i32
+    for depth < (4 as i32) {
+        val candidate: ref u8 = @fmt("{s}/{s}", {prefix, name})
+        val candidate_file: ref void = sdl.fopen(candidate, "rb")
+        if candidate_file != none {
+            sdl.fclose(candidate_file)
+            return candidate
+        }
+        prefix = @fmt("{s}/..", {prefix})
+        depth = depth + (1 as i32)
+    }
+    return path
+}
 
 pub fn load_binary_file(path: ref u8) option[BinaryBlob] = trust {
-    val file: ref void = sdl.fopen(path, "rb")
+    val resolved: ref u8 = resolve_path(path)
+    val file: ref void = sdl.fopen(resolved, "rb")
     if file == none {
         exoerr.set(path)
         return none
@@ -39,4 +74,3 @@ pub fn load_binary_file(path: ref u8) option[BinaryBlob] = trust {
         len: size as usize
     }
 }
-

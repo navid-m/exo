@@ -353,5 +353,3 @@ pub fn build_quad_mesh(runtime: ref void) renderer.MeshGPU = trust {
     @free(indices)
     return mesh
 }
-
-

@@ -614,6 +614,25 @@ fn build_scene(rows: list[ref u8]) ecs.Scene3D = {
     scene.render.enable_fxaa = true
     scene.render.enable_light_glow = true
     scene.render.reflection_plane = -0.2 as f32
+
+    scene.render.post_process.enabled = true
+    scene.render.post_process.bloom.enabled = true
+    scene.render.post_process.bloom.threshold = 0.72 as f32
+    scene.render.post_process.bloom.knee = 0.28 as f32
+    scene.render.post_process.bloom.intensity = 1.15 as f32
+    scene.render.post_process.bloom.radius = 1.50 as f32
+    scene.render.post_process.bloom.iterations = 2 as i32
+    scene.render.post_process.vignette.enabled = true
+    scene.render.post_process.vignette.intensity = 0.28 as f32
+    scene.render.post_process.vignette.smoothness = 0.60 as f32
+    scene.render.post_process.vignette.color = ecs.make_vec3(0.0 as f32, 0.0 as f32, 0.0 as f32)
+    scene.render.post_process.exposure = 1.06 as f32
+    scene.render.post_process.contrast = 1.05 as f32
+    scene.render.post_process.saturation = 1.12 as f32
+    scene.render.post_process.chromatic_aberration = 0.00045 as f32
+    scene.render.post_process.film_grain = 0.012 as f32
+    scene.render.post_process.fxaa = true
+
     ecs.add_light(scene, ecs.make_light(
         ecs.make_vec3(0.0 as f32, 11.0 as f32, 0.0 as f32),
         ecs.make_vec3(0.82 as f32, 0.88 as f32, 1.00 as f32),

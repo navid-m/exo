@@ -5,12 +5,18 @@ pub type ShaderProgramConfig = {
     fragment_path: ref u8
 }
 
+pub type PostProcessShaderConfig = {
+    threshold: ShaderProgramConfig
+    blur: ShaderProgramConfig
+    composite: ShaderProgramConfig
+}
+
 pub type ExoShaderConfig = {
     scene: ShaderProgramConfig
     floor: ShaderProgramConfig
     glow: ShaderProgramConfig
-    fxaa: ShaderProgramConfig
     water: ShaderProgramConfig
+    post_process: PostProcessShaderConfig
 }
 
 
@@ -44,13 +50,23 @@ pub fn default_shader_config() ExoShaderConfig = {
                 vertex_path: "./assets/shaders/glow.vert.msl",
                 fragment_path: "./assets/shaders/glow.frag.msl"
             },
-            fxaa: {
-                vertex_path: "./assets/shaders/fxaa.vert.msl",
-                fragment_path: "./assets/shaders/fxaa.frag.msl"
-            },
             water: {
                 vertex_path: "./assets/shaders/water.vert.msl",
                 fragment_path: "./assets/shaders/water.frag.msl"
+            },
+            post_process: {
+                threshold: {
+                    vertex_path: "./assets/shaders/fullscreen.vert.msl",
+                    fragment_path: "./assets/shaders/bloom_threshold.frag.msl"
+                },
+                blur: {
+                    vertex_path: "./assets/shaders/fullscreen.vert.msl",
+                    fragment_path: "./assets/shaders/bloom_blur.frag.msl"
+                },
+                composite: {
+                    vertex_path: "./assets/shaders/fullscreen.vert.msl",
+                    fragment_path: "./assets/shaders/composite.frag.msl"
+                }
             }
         }
     }
@@ -67,14 +83,23 @@ pub fn default_shader_config() ExoShaderConfig = {
             vertex_path: "./assets/shaders/glow.vert.spv",
             fragment_path: "./assets/shaders/glow.frag.spv"
         },
-        fxaa: {
-            vertex_path: "./assets/shaders/fxaa.vert.spv",
-            fragment_path: "./assets/shaders/fxaa.frag.spv"
-        },
         water: {
             vertex_path: "./assets/shaders/water.vert.spv",
             fragment_path: "./assets/shaders/water.frag.spv"
+        },
+        post_process: {
+            threshold: {
+                vertex_path: "./assets/shaders/fullscreen.vert.spv",
+                fragment_path: "./assets/shaders/bloom_threshold.frag.spv"
+            },
+            blur: {
+                vertex_path: "./assets/shaders/fullscreen.vert.spv",
+                fragment_path: "./assets/shaders/bloom_blur.frag.spv"
+            },
+            composite: {
+                vertex_path: "./assets/shaders/fullscreen.vert.spv",
+                fragment_path: "./assets/shaders/composite.frag.spv"
+            }
         }
     }
 }
-

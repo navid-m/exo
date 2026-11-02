@@ -577,4 +577,3 @@ pub extern type SDLGPUTextureRegion = {
     h: mut u32
     d: mut u32
 }
-

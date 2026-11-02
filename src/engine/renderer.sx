@@ -1,11 +1,12 @@
-val sdl     = use("sdl.sx")
-val math    = use("math.sx")
-val ecs     = use("../ecs.sx")
-val cam     = use("camera.sx")
-val shaders = use("shaders.sx")
-val io      = use("io.sx")
-val exoerr  = use("error.sx")
-val string  = use("std/string")
+val sdl         = use("sdl.sx")
+val math        = use("math.sx")
+val ecs         = use("../ecs.sx")
+val cam         = use("camera.sx")
+val shaders     = use("shaders.sx")
+val postprocess = use("postprocess.sx")
+val io          = use("io.sx")
+val exoerr      = use("error.sx")
+val string      = use("std/string")
 
 pub type MeshGPU = {
     raw: ref void
@@ -147,8 +148,20 @@ pub type GlowFragmentUniforms = {
     alpha_pad: mut math.Vec4f
 }
 
-pub type FxaaFragmentUniforms = {
-    texel_size: mut math.Vec4f
+pub type BloomThresholdUniforms = {
+    params: mut math.Vec4f
+}
+
+pub type BloomBlurUniforms = {
+    texel_direction: mut math.Vec4f
+}
+
+pub type CompositeUniforms = {
+    bloom: mut math.Vec4f
+    vignette: mut math.Vec4f
+    color: mut math.Vec4f
+    screen: mut math.Vec4f
+    vignette_color: mut math.Vec4f
 }
 
 pub type WaterVertexUniforms = {
@@ -178,7 +191,9 @@ pub type Renderer = {
     scene_pipeline: mut ref void
     floor_pipeline: mut ref void
     glow_pipeline: mut ref void
-    fxaa_pipeline: mut ref void
+    bloom_threshold_pipeline: mut ref void
+    bloom_blur_pipeline: mut ref void
+    post_pipeline: mut ref void
     water_pipeline: mut ref void
     ui_pipeline: mut ref void
     normal_map_texture: mut ref void
@@ -190,6 +205,8 @@ pub type Renderer = {
     reflection_depth: mut ref void
     scene_color: mut ref void
     scene_depth: mut ref void
+    bloom_a: mut ref void
+    bloom_b: mut ref void
     swapchain_texture: mut ref void
     command_buffer: mut ref void
     current_pass: mut ref void
@@ -267,6 +284,14 @@ pub fn create_texture(runtime: ref Renderer, format: i32, usage: u32, width: u32
     return trust sdl.SDL_CreateGPUTexture(runtime.device, @addr(info))
 }
 
+fn half_extent(value: u32) u32 = {
+    val half: u32 = value / (2 as u32)
+    if half < (1 as u32) {
+        return 1 as u32
+    }
+    return half
+}
+
 pub fn release_render_targets(runtime: mut ref Renderer) void = trust {
     if runtime.scene_depth != none {
         sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.scene_depth)
@@ -283,6 +308,14 @@ pub fn release_render_targets(runtime: mut ref Renderer) void = trust {
     if runtime.reflection_color != none {
         sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.reflection_color)
         runtime.reflection_color = none
+    }
+    if runtime.bloom_a != none {
+        sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.bloom_a)
+        runtime.bloom_a = none
+    }
+    if runtime.bloom_b != none {
+        sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.bloom_b)
+        runtime.bloom_b = none
     }
 }
 
@@ -327,7 +360,29 @@ pub fn recreate_render_targets(runtime: mut ref Renderer, width: u32, height: u3
         width,
         height
     )
-    return runtime.scene_color != none
+    if runtime.scene_color == none {
+        return false
+    }
+    val bloom_width: u32 = half_extent(width)
+    val bloom_height: u32 = half_extent(height)
+    runtime.bloom_a = create_texture(
+        runtime,
+        runtime.swapchain_format,
+        sdl.SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | sdl.SDL_GPU_TEXTUREUSAGE_SAMPLER,
+        bloom_width,
+        bloom_height
+    )
+    if runtime.bloom_a == none {
+        return false
+    }
+    runtime.bloom_b = create_texture(
+        runtime,
+        runtime.swapchain_format,
+        sdl.SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | sdl.SDL_GPU_TEXTUREUSAGE_SAMPLER,
+        bloom_width,
+        bloom_height
+    )
+    return runtime.bloom_b != none
 }
 
 pub fn create_pipeline(
@@ -902,15 +957,37 @@ pub fn create_pipelines(runtime: mut ref Renderer, shader_cfg: shaders.ExoShader
     if runtime.glow_pipeline == none {
         return false
     }
-    runtime.fxaa_pipeline = create_postprocess_pipeline(
+    runtime.bloom_threshold_pipeline = create_postprocess_pipeline(
         runtime,
-        shader_cfg.fxaa.vertex_path,
-        shader_cfg.fxaa.fragment_path,
+        shader_cfg.post_process.threshold.vertex_path,
+        shader_cfg.post_process.threshold.fragment_path,
         runtime.swapchain_format,
         1 as u32,
         1 as u32
     )
-    if runtime.fxaa_pipeline == none {
+    if runtime.bloom_threshold_pipeline == none {
+        return false
+    }
+    runtime.bloom_blur_pipeline = create_postprocess_pipeline(
+        runtime,
+        shader_cfg.post_process.blur.vertex_path,
+        shader_cfg.post_process.blur.fragment_path,
+        runtime.swapchain_format,
+        1 as u32,
+        1 as u32
+    )
+    if runtime.bloom_blur_pipeline == none {
+        return false
+    }
+    runtime.post_pipeline = create_postprocess_pipeline(
+        runtime,
+        shader_cfg.post_process.composite.vertex_path,
+        shader_cfg.post_process.composite.fragment_path,
+        runtime.swapchain_format,
+        2 as u32,
+        1 as u32
+    )
+    if runtime.post_pipeline == none {
         return false
     }
     runtime.water_pipeline = create_pipeline(
@@ -930,9 +1007,17 @@ pub fn create_pipelines(runtime: mut ref Renderer, shader_cfg: shaders.ExoShader
 }
 
 pub fn destroy_pipelines(runtime: mut ref Renderer) void = trust {
-    if runtime.fxaa_pipeline != none {
-        sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.fxaa_pipeline)
-        runtime.fxaa_pipeline = none
+    if runtime.post_pipeline != none {
+        sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.post_pipeline)
+        runtime.post_pipeline = none
+    }
+    if runtime.bloom_blur_pipeline != none {
+        sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.bloom_blur_pipeline)
+        runtime.bloom_blur_pipeline = none
+    }
+    if runtime.bloom_threshold_pipeline != none {
+        sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.bloom_threshold_pipeline)
+        runtime.bloom_threshold_pipeline = none
     }
     if runtime.water_pipeline != none {
         sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.water_pipeline)
@@ -1027,7 +1112,7 @@ pub fn begin_pass(runtime: mut ref Renderer, color_target: ref void, depth_targe
     return true
 }
 
-pub fn begin_pass_no_depth(runtime: mut ref Renderer, color_target: ref void) bool = trust {
+pub fn begin_pass_no_depth_sized(runtime: mut ref Renderer, color_target: ref void, width: u32, height: u32) bool = trust {
     exoerr.clear()
     if !runtime.frame_active || runtime.command_buffer == none {
         return exoerr.set("no active frame")
@@ -1068,12 +1153,16 @@ pub fn begin_pass_no_depth(runtime: mut ref Renderer, color_target: ref void) bo
     }
     viewport.x = 0.0 as f32
     viewport.y = 0.0 as f32
-    viewport.w = runtime.render_width as f32
-    viewport.h = runtime.render_height as f32
+    viewport.w = width as f32
+    viewport.h = height as f32
     viewport.min_depth = 0.0 as f32
     viewport.max_depth = 1.0 as f32
     sdl.SDL_SetGPUViewport(runtime.current_pass, @addr(viewport))
     return true
+}
+
+pub fn begin_pass_no_depth(runtime: mut ref Renderer, color_target: ref void) bool = trust {
+    return begin_pass_no_depth_sized(runtime, color_target, runtime.render_width, runtime.render_height)
 }
 
 pub fn bind_mesh(runtime: ref Renderer, mesh: ref GpuMesh) void = trust {
@@ -1573,30 +1662,170 @@ pub fn end_pass(runtime_raw: ref void) void = trust {
     }
 }
 
-pub fn apply_fxaa(runtime_raw: ref void) bool = trust {
+fn bloom_blur_pass(
+    runtime: mut ref Renderer,
+    source: ref void,
+    target: ref void,
+    dir_x: f32,
+    dir_y: f32,
+    radius: f32,
+    width: u32,
+    height: u32
+) bool = trust {
+    if !begin_pass_no_depth_sized(runtime, target, width, height) {
+        return false
+    }
+    sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.bloom_blur_pipeline)
+    val binding: mut sdl.SDLGPUTextureSamplerBinding = {
+        texture: source,
+        sampler: runtime.linear_sampler
+    }
+    sdl.SDL_BindGPUFragmentSamplers(runtime.current_pass, 0 as u32, @addr(binding), 1 as u32)
+    val fu: mut BloomBlurUniforms = {
+        texel_direction: {
+            x: dir_x / (width as f32),
+            y: dir_y / (height as f32),
+            z: radius,
+            w: 0.0 as f32
+        }
+    }
+    sdl.SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(BloomBlurUniforms) as u32)
+    sdl.SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
+    end_pass(runtime as ref void)
+    return true
+}
+
+/// Run the engine post-process stack and leave the swapchain pass open so UI
+/// can be drawn on top. The engine owns the implementation; games only provide
+/// generic PostProcessSettings.
+pub fn apply_post_process(runtime_raw: ref void, settings: postprocess.PostProcessSettings, enabled: bool, time: f32) bool = trust {
     if runtime_raw == none {
         exoerr.clear()
         return exoerr.set("runtime unavailable")
     }
     val runtime: mut ref Renderer = runtime_raw as mut ref Renderer
-    if !begin_pass_no_depth(runtime, runtime.swapchain_texture) {
-        return false
+    if runtime.post_pipeline == none || !runtime.frame_active || runtime.command_buffer == none {
+        return exoerr.set("postprocess unavailable")
     }
-    sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.fxaa_pipeline)
-    val binding: mut sdl.SDLGPUTextureSamplerBinding = {
-        texture: runtime.scene_color,
-        sampler: runtime.linear_sampler
-    }
-    sdl.SDL_BindGPUFragmentSamplers(runtime.current_pass, 0 as u32, @addr(binding), 1 as u32)
-    val fu: mut FxaaFragmentUniforms = {
-        texel_size: {
-            x: (1.0 as f32) / (runtime.render_width as f32),
-            y: (1.0 as f32) / (runtime.render_height as f32),
-            z: 1.05 as f32,
-            w: 0.85 as f32
+
+    val active: bool = enabled && settings.enabled
+    val bloom_active: bool = active && settings.bloom.enabled && runtime.bloom_threshold_pipeline != none && runtime.bloom_blur_pipeline != none && runtime.bloom_a != none && runtime.bloom_b != none && runtime.linear_sampler != none
+
+    val bloom_width: u32 = half_extent(runtime.render_width)
+    val bloom_height: u32 = half_extent(runtime.render_height)
+
+    if bloom_active {
+        if !begin_pass_no_depth_sized(runtime, runtime.bloom_a, bloom_width, bloom_height) {
+            return false
+        }
+        sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.bloom_threshold_pipeline)
+        val scene_binding: mut sdl.SDLGPUTextureSamplerBinding = {
+            texture: runtime.scene_color,
+            sampler: runtime.linear_sampler
+        }
+        sdl.SDL_BindGPUFragmentSamplers(runtime.current_pass, 0 as u32, @addr(scene_binding), 1 as u32)
+        val threshold_uniforms: mut BloomThresholdUniforms = {
+            params: {
+                x: settings.bloom.threshold,
+                y: settings.bloom.knee,
+                z: 0.0 as f32,
+                w: 0.0 as f32
+            }
+        }
+        sdl.SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(threshold_uniforms) as ref void, @sizeof(BloomThresholdUniforms) as u32)
+        sdl.SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
+        end_pass(runtime as ref void)
+
+        val iterations_raw: i32 = settings.bloom.iterations
+        val iterations: mut i32 = iterations_raw
+        if iterations < (0 as i32) {
+            iterations = 0 as i32
+        }
+        if iterations > (4 as i32) {
+            iterations = 4 as i32
+        }
+        val iteration_index: mut i32 = 0 as i32
+        for iteration_index < iterations {
+            if !bloom_blur_pass(runtime, runtime.bloom_a, runtime.bloom_b, 1.0 as f32, 0.0 as f32, settings.bloom.radius, bloom_width, bloom_height) {
+                return false
+            }
+            if !bloom_blur_pass(runtime, runtime.bloom_b, runtime.bloom_a, 0.0 as f32, 1.0 as f32, settings.bloom.radius, bloom_width, bloom_height) {
+                return false
+            }
+            iteration_index = iteration_index + (1 as i32)
         }
     }
-    sdl.SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(FxaaFragmentUniforms) as u32)
+
+    if !begin_pass_no_depth_sized(runtime, runtime.swapchain_texture, runtime.render_width, runtime.render_height) {
+        return false
+    }
+    sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.post_pipeline)
+
+    val bloom_texture: mut ref void = runtime.scene_color
+    if bloom_active {
+        bloom_texture = runtime.bloom_a
+    }
+    val bindings_raw: ref void = @alloc(2 as usize * @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize)
+    val b0: mut ref sdl.SDLGPUTextureSamplerBinding = bindings_raw as mut ref sdl.SDLGPUTextureSamplerBinding
+    val b1: mut ref sdl.SDLGPUTextureSamplerBinding = @ptradd(bindings_raw, @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize) as mut ref sdl.SDLGPUTextureSamplerBinding
+    b0.texture = runtime.scene_color
+    b0.sampler = runtime.linear_sampler
+    b1.texture = bloom_texture
+    b1.sampler = runtime.linear_sampler
+    sdl.SDL_BindGPUFragmentSamplers(runtime.current_pass, 0 as u32, bindings_raw as ref sdl.SDLGPUTextureSamplerBinding, 2 as u32)
+    @free(bindings_raw)
+
+    val bloom_on: mut f32 = 0.0 as f32
+    if bloom_active {
+        bloom_on = 1.0 as f32
+    }
+    val vignette_on: mut f32 = 0.0 as f32
+    if active && settings.vignette.enabled {
+        vignette_on = 1.0 as f32
+    }
+    val fxaa_on: mut f32 = 0.0 as f32
+    if active && settings.fxaa {
+        fxaa_on = 1.0 as f32
+    }
+    val bloom_intensity: mut f32 = 0.0 as f32
+    if bloom_active {
+        bloom_intensity = settings.bloom.intensity
+    }
+    val vignette_intensity: mut f32 = 0.0 as f32
+    if active && settings.vignette.enabled {
+        vignette_intensity = settings.vignette.intensity
+    }
+    val exposure: mut f32 = 1.0 as f32
+    val contrast: mut f32 = 1.0 as f32
+    val saturation: mut f32 = 1.0 as f32
+    val aberration: mut f32 = 0.0 as f32
+    val grain: mut f32 = 0.0 as f32
+    if active {
+        exposure = settings.exposure
+        contrast = settings.contrast
+        saturation = settings.saturation
+        aberration = settings.chromatic_aberration
+        grain = settings.film_grain
+    }
+
+    val fu: mut CompositeUniforms = {
+        bloom: { x: bloom_intensity, y: bloom_on, z: 0.0 as f32, w: fxaa_on },
+        vignette: { x: vignette_intensity, y: settings.vignette.smoothness, z: vignette_on, w: 0.0 as f32 },
+        color: { x: exposure, y: contrast, z: saturation, w: aberration },
+        screen: {
+            x: (1.0 as f32) / (runtime.render_width as f32),
+            y: (1.0 as f32) / (runtime.render_height as f32),
+            z: time,
+            w: grain
+        },
+        vignette_color: {
+            x: settings.vignette.color.x,
+            y: settings.vignette.color.y,
+            z: settings.vignette.color.z,
+            w: 0.0 as f32
+        }
+    }
+    sdl.SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(CompositeUniforms) as u32)
     sdl.SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
     return true
 }

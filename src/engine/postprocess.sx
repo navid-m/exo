@@ -1,0 +1,57 @@
+val math = use("math.sx")
+
+pub type BloomSettings = {
+    enabled: bool
+    threshold: f32
+    knee: f32
+    intensity: f32
+    radius: f32
+    iterations: i32
+}
+
+pub type VignetteSettings = {
+    enabled: bool
+    intensity: f32
+    smoothness: f32
+    color: math.Vec3
+}
+
+/// Engine-owned post-processing settings. Games may tune these, but the
+/// engine does not attach any gameplay meaning to them.
+pub type PostProcessSettings = {
+    enabled: bool
+    bloom: BloomSettings
+    vignette: VignetteSettings
+    exposure: f32
+    contrast: f32
+    saturation: f32
+    chromatic_aberration: f32
+    film_grain: f32
+    fxaa: bool
+}
+
+pub fn default_settings() PostProcessSettings = {
+    return {
+        enabled: true,
+        bloom: {
+            enabled: true,
+            threshold: 0.85 as f32,
+            knee: 0.35 as f32,
+            intensity: 0.85 as f32,
+            radius: 1.25 as f32,
+            iterations: 2 as i32
+        },
+        vignette: {
+            enabled: true,
+            intensity: 0.18 as f32,
+            smoothness: 0.65 as f32,
+            color: math.vec3(0.0 as f32, 0.0 as f32, 0.0 as f32)
+        },
+        exposure: 1.0 as f32,
+        contrast: 1.0 as f32,
+        saturation: 1.0 as f32,
+        chromatic_aberration: 0.0 as f32,
+        film_grain: 0.0 as f32,
+        fxaa: true
+    }
+}

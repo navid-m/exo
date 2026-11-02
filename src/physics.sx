@@ -19,11 +19,11 @@ pub fn sphere_sphere_overlap(a: math.Vec3, a_radius: f32, b: math.Vec3, b_radius
 pub fn point_in_cube(point: math.Vec3, cube: ecs.CubeEntity) bool = {
     val half: f32 = cube.size * (0.5 as f32)
     return point.x >= cube.position.x - half
-        && point.x <= cube.position.x + half
-        && point.y >= cube.position.y - half
-        && point.y <= cube.position.y + half
-        && point.z >= cube.position.z - half
-        && point.z <= cube.position.z + half
+    && point.x <= cube.position.x + half
+    && point.y >= cube.position.y - half
+    && point.y <= cube.position.y + half
+    && point.z >= cube.position.z - half
+    && point.z <= cube.position.z + half
 }
 
 pub fn sphere_cube_overlap(center: math.Vec3, radius: f32, cube: ecs.CubeEntity) bool = {
@@ -39,8 +39,8 @@ pub fn point_in_floor(point: math.Vec3, floor: ecs.FloorCollider) bool = {
     val half_x: f32 = floor.size_x * (0.5 as f32)
     val half_z: f32 = floor.size_z * (0.5 as f32)
     return point.x >= floor.center_x - half_x
-        && point.x <= floor.center_x + half_x
-        && point.z >= floor.center_z - half_z
+    && point.x <= floor.center_x + half_x
+    && point.z >= floor.center_z - half_z
 }
 
 /// Highest floor at the given XZ position.
@@ -74,14 +74,18 @@ pub fn query_sphere(scene: ecs.Scene3D, center: math.Vec3, radius: f32) option[C
     val si: mut usize = 0 as usize
     for sphere in scene.spheres {
         if sphere_sphere_overlap(center, radius, sphere.position, sphere.radius) {
-            return some { kind: HIT_SPHERE, id: sphere.id, index: si }
+            return some {
+                kind: HIT_SPHERE, id: sphere.id, index: si
+            }
         }
         si = si + (1 as usize)
     }
     val ci: mut usize = 0 as usize
     for cube in scene.cubes {
         if sphere_cube_overlap(center, radius, cube) {
-            return some { kind: HIT_CUBE, id: cube.id, index: ci }
+            return some {
+                kind: HIT_CUBE, id: cube.id, index: ci
+            }
         }
         ci = ci + (1 as usize)
     }
@@ -93,14 +97,18 @@ pub fn query_point(scene: ecs.Scene3D, point: math.Vec3) option[CollisionHit] = 
     for sphere in scene.spheres {
         val delta: math.Vec3 = math.vec3_sub(point, sphere.position)
         if math.vec3_dot(delta, delta) <= sphere.radius * sphere.radius {
-            return some { kind: HIT_SPHERE, id: sphere.id, index: si }
+            return some {
+                kind: HIT_SPHERE, id: sphere.id, index: si
+            }
         }
         si = si + (1 as usize)
     }
     val ci: mut usize = 0 as usize
     for cube in scene.cubes {
         if point_in_cube(point, cube) {
-            return some { kind: HIT_CUBE, id: cube.id, index: ci }
+            return some {
+                kind: HIT_CUBE, id: cube.id, index: ci
+            }
         }
         ci = ci + (1 as usize)
     }

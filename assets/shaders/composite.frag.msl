@@ -1,0 +1,98 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct CompositeUniforms
+{
+    float4 uBloom;
+    float4 uVignette;
+    float4 uColor;
+    float4 uScreen;
+    float4 uVignetteColor;
+};
+
+struct main0_out
+{
+    float4 FragColor [[color(0)]];
+};
+
+struct main0_in
+{
+    float2 vTexCoord [[user(locn0)]];
+};
+
+static inline float luma(float3 color_value)
+{
+    return dot(color_value, float3(0.299, 0.587, 0.114));
+}
+
+static inline float3 aces_tonemap(float3 x)
+{
+    const float a = 2.51;
+    const float b = 0.03;
+    const float c = 2.43;
+    const float d = 0.59;
+    const float e = 0.14;
+    return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+
+static inline float3 sample_scene(texture2d<float> tex, sampler smp, float2 uv, float2 texel, float fxaa_enabled)
+{
+    float3 center = tex.sample(smp, uv).rgb;
+    if (fxaa_enabled < 0.5) {
+        return center;
+    }
+    float3 nw = tex.sample(smp, uv + float2(-texel.x, -texel.y)).rgb;
+    float3 ne = tex.sample(smp, uv + float2( texel.x, -texel.y)).rgb;
+    float3 sw = tex.sample(smp, uv + float2(-texel.x,  texel.y)).rgb;
+    float3 se = tex.sample(smp, uv + float2( texel.x,  texel.y)).rgb;
+    float luma_center = luma(center);
+    float luma_min = min(luma_center, min(min(luma(nw), luma(ne)), min(luma(sw), luma(se))));
+    float luma_max = max(luma_center, max(max(luma(nw), luma(ne)), max(luma(sw), luma(se))));
+    float edge = luma_max - luma_min;
+    if (edge > max(0.0312, luma_max * 0.125)) {
+        float3 blurred = (nw + ne + sw + se) * 0.25;
+        return mix(center, blurred, 0.35);
+    }
+    return center;
+}
+
+fragment main0_out main0(main0_in in [[stage_in]], constant CompositeUniforms& u [[buffer(0)]], texture2d<float> uSceneTex [[texture(0)]], sampler uSceneTexSmplr [[sampler(0)]], texture2d<float> uBloomTex [[texture(1)]], sampler uBloomTexSmplr [[sampler(1)]])
+{
+    main0_out out = {};
+    float2 from_center = in.vTexCoord - float2(0.5);
+    float aberration = u.uColor.w;
+    float3 scene_color;
+    if (aberration > 0.0) {
+        scene_color.r = sample_scene(uSceneTex, uSceneTexSmplr, in.vTexCoord - from_center * aberration, u.uScreen.xy, u.uBloom.w).r;
+        scene_color.g = sample_scene(uSceneTex, uSceneTexSmplr, in.vTexCoord, u.uScreen.xy, u.uBloom.w).g;
+        scene_color.b = sample_scene(uSceneTex, uSceneTexSmplr, in.vTexCoord + from_center * aberration, u.uScreen.xy, u.uBloom.w).b;
+    } else {
+        scene_color = sample_scene(uSceneTex, uSceneTexSmplr, in.vTexCoord, u.uScreen.xy, u.uBloom.w);
+    }
+
+    float3 bloom = uBloomTex.sample(uBloomTexSmplr, in.vTexCoord).rgb * u.uBloom.x * u.uBloom.y;
+    float3 color_value = (scene_color + bloom) * u.uColor.x;
+    color_value = aces_tonemap(color_value);
+
+    float luminance = luma(color_value);
+    color_value = mix(float3(luminance), color_value, u.uColor.z);
+    color_value = (color_value - float3(0.5)) * u.uColor.y + float3(0.5);
+    color_value = clamp(color_value, 0.0, 1.0);
+
+    float dist = length(from_center * float2(1.0, 1.25));
+    float vignette = powr(smoothstep(0.25, 0.90, dist), max(u.uVignette.y, 0.001));
+    if (u.uVignette.z > 0.5) {
+        color_value = mix(color_value, u.uVignetteColor.rgb, vignette * u.uVignette.x);
+    }
+
+    if (u.uScreen.w > 0.0) {
+        float grain = fract(sin(dot(in.vTexCoord * u.uScreen.z, float2(12.9898, 78.233))) * 43758.5453);
+        color_value += (grain - 0.5) * u.uScreen.w;
+    }
+
+    color_value = powr(max(color_value, float3(0.0)), float3(1.0 / 2.2));
+    out.FragColor = float4(color_value, 1.0);
+    return out;
+}

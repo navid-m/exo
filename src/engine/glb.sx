@@ -1,6 +1,7 @@
 val math   = use("math.sx")
 val ecs    = use("../ecs.sx")
 val sdl    = use("sdl.sx")
+val io     = use("io.sx")
 val json   = use("std/json")
 val string = use("std/string")
 val bin    = use("std/encoding/binary")
@@ -266,7 +267,8 @@ pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
 }
 
 pub fn load_glb(path: ref u8) option[ecs.GlbModel] = trust {
-    val file: ref void = sdl.fopen(path, "rb")
+    val resolved: ref u8 = io.resolve_path(path)
+    val file: ref void = sdl.fopen(resolved, "rb")
     if file == none {
         return none
     }
@@ -323,4 +325,3 @@ pub fn load_embedded_fixture_model() ecs.GlbModel = trust {
     @free(fixture.ptr as ref void)
     return ecs.empty_model()
 }
-

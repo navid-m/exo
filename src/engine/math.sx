@@ -220,4 +220,3 @@ pub fn model_matrix(position: Vec3, uniform_scale: f32, rotation_y: f32) Mat4 = 
 pub fn reflect_position_y(position: Vec3, plane_y: f32) Vec3 = {
     return vec3(position.x, ((2.0 as f32) * plane_y) - position.y, position.z)
 }
-

@@ -1,4 +1,5 @@
-val math = use("engine/math.sx")
+val math        = use("engine/math.sx")
+val postprocess = use("engine/postprocess.sx")
 
 pub spec SceneEntity = {
     pub fn se_position(e: self) math.Vec3
@@ -181,6 +182,7 @@ pub type RenderSettings = {
     enable_fxaa: bool
     enable_light_glow: bool
     ambient: f32
+    post_process: postprocess.PostProcessSettings
 }
 
 pub type UiText = {
@@ -320,7 +322,8 @@ pub fn default_render_settings() RenderSettings = {
         reflect_models: false,
         enable_fxaa: true,
         enable_light_glow: true,
-        ambient: 0.30 as f32
+        ambient: 0.30 as f32,
+        post_process: postprocess.default_settings()
     }
 }
 
@@ -338,24 +341,24 @@ pub fn ui_clear(ui: mut Ui) void = {
 
 pub fn ui_text(ui: mut Ui, text: ref u8, x: f32, y: f32, scale: f32, color: math.Vec3, alpha: f32) void = {
     @append(ui.texts, {
-        text: text,
-        x: x,
-        y: y,
-        scale: scale,
-        color: color,
-        alpha: alpha
-    })
+            text: text,
+            x: x,
+            y: y,
+            scale: scale,
+            color: color,
+            alpha: alpha
+        })
 }
 
 pub fn ui_rect(ui: mut Ui, x: f32, y: f32, width: f32, height: f32, color: math.Vec3, alpha: f32) void = {
     @append(ui.rects, {
-        x: x,
-        y: y,
-        width: width,
-        height: height,
-        color: color,
-        alpha: alpha
-    })
+            x: x,
+            y: y,
+            width: width,
+            height: height,
+            color: color,
+            alpha: alpha
+        })
 }
 
 pub fn default_light() PointLight = {

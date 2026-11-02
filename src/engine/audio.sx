@@ -1,4 +1,5 @@
 val sdl    = use("sdl.sx")
+val io     = use("io.sx")
 val string = use("std/string")
 val exoerr = use("error.sx")
 
@@ -42,7 +43,8 @@ pub fn create_audio(wav_path: ref u8, volume: i32) ref void = trust {
         return exoerr.set_ptr("failed to allocate audio")
     }
     @memset(audio as ref void, 0, @sizeof(ExoSDL3Audio))
-    if !sdl.SDL_LoadWAV(wav_path, @addr(audio.speci), @addr(audio.buffer), @addr(audio.length)) {
+    val resolved_path: ref u8 = io.resolve_path(wav_path)
+    if !sdl.SDL_LoadWAV(resolved_path, @addr(audio.speci), @addr(audio.buffer), @addr(audio.length)) {
         destroy_audio(audio as ref void)
         return none as ref void
     }
@@ -144,11 +146,11 @@ pub fn init_runtime_audio(config: AudioBankConfig) RuntimeAudioBank = trust {
         }
         val audio: ref void = create_audio(clip.path, volume)
         @append(runtime.clips, {
-            loaded: audio != none,
-            audio: audio,
-            loops: clip.loops,
-            volume: volume
-        })
+                loaded: audio != none,
+                audio: audio,
+                loops: clip.loops,
+                volume: volume
+            })
         if audio != none {
             loaded_count = loaded_count + (1 as i32)
         }

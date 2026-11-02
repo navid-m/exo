@@ -114,4 +114,3 @@ pub fn view_projection(camera: Camera, width: i32, height: i32) math.Mat4 = {
     val view: math.Mat4 = math.mat_look_at(camera.position, center, math.vec3(0.0 as f32, 1.0 as f32, 0.0 as f32))
     return math.mat_mul(projection, view)
 }
-
