@@ -41,6 +41,8 @@ pub type ExoApp = {
     dt: mut f32
     frame: mut u64
     scene_revision: mut u64
+    screenshot_requested: mut bool
+    screenshot_path: mut ref u8
 }
 
 /// Application lifecycle and input hooks. The engine assigns no gameplay
@@ -172,7 +174,9 @@ pub fn create_app(
         time: 0.0 as f32,
         dt: 0.0 as f32,
         frame: 0 as u64,
-        scene_revision: 0 as u64
+        scene_revision: 0 as u64,
+        screenshot_requested: false,
+        screenshot_path: none as ref u8
     }
 }
 
@@ -306,6 +310,12 @@ pub fn reload_scene_resources(app: mut ExoApp) void = {
 
 pub fn request_quit(app: mut ExoApp) void = {
     app.should_quit = true
+}
+
+/// Ask the engine to save the next rendered frame to a PPM file.
+pub fn request_screenshot(app: mut ExoApp, path: ref u8) void = {
+    app.screenshot_path = path
+    app.screenshot_requested = true
 }
 
 pub fn key_held(app: ExoApp, key: i32) bool = trust {
@@ -677,6 +687,12 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             exoerr.print("SDL3 submit frame failed")
             exit_code = 1 as i32
             break
+        }
+        if app.screenshot_requested {
+            if app.screenshot_path != none && string.len_raw(app.screenshot_path) > (0 as usize) {
+                renderer.debug_dump_scene(runtime, app.screenshot_path)
+            }
+            app.screenshot_requested = false
         }
         if app.config.debug_frame >= (0 as i32) && app.frame == (app.config.debug_frame as u64) && app.config.debug_dump_path != none && string.len_raw(app.config.debug_dump_path) > (0 as usize) {
             renderer.debug_dump_scene(runtime, app.config.debug_dump_path)
