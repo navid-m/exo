@@ -60,7 +60,6 @@ pub fn parse_accessor_offset(accessors: ref void, buffer_views: ref void, idx: i
 }
 
 /// Walk the raw GLB position data and compute XYZ bounding box, storing results on the model.
-
 pub fn compute_glb_bounds(model: mut ref ecs.GlbModel) void = trust {
     if !model.valid || model.vertex_count <= (0 as i32) || model.raw_bytes == none || model.bin_length == (0 as usize) {
         return
