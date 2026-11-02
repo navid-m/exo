@@ -1,9 +1,9 @@
-val ecs       = use("ecs.sx")
-val engine    = use("engine.sx")
 val math      = use("std/math")
-val rendering = use("rendering.sx")
-val sdl       = use("engine/sdl.sx")
-val input     = use("engine/input.sx")
+val ecs       = use("../src/ecs.sx")
+val engine    = use("../src/engine.sx")
+val rendering = use("../src/rendering.sx")
+val sdl       = use("../src/engine/sdl.sx")
+val input     = use("../src/engine/input.sx")
 
 val SNOW_FLAKE_COUNT: i32 = 17
 val SNOW_MIN_X: f32 = -3.2

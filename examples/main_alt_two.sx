@@ -1,7 +1,7 @@
-val ecs       = use("ecs.sx")
-val engine    = use("engine.sx")
-val rendering = use("rendering.sx")
-val sdl       = use("engine/sdl.sx")
+val ecs       = use("../src/ecs.sx")
+val engine    = use("../src/engine.sx")
+val rendering = use("../src/rendering.sx")
+val sdl       = use("../src/engine/sdl.sx")
 
 fn build_scene() ecs.Scene3D = {
     val scene: mut ecs.Scene3D = ecs.new_scene()
