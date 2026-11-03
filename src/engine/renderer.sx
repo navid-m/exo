@@ -6,11 +6,29 @@ val shaders     = use("shaders.sx")
 val postprocess = use("postprocess.sx")
 val io          = use("io.sx")
 val exoerr      = use("error.sx")
+val animation   = use("animation.sx")
 val string      = use("std/string")
 
 pub type MeshGPU = {
     raw: ref void
     index_count: i32
+}
+
+pub type ModelSubmesh = {
+    index_offset: u32
+    index_count: u32
+    texture: ref void
+}
+
+pub type ModelGPU = {
+    mesh: MeshGPU
+    submeshes: list[ModelSubmesh]
+    textures: list[ref void]
+    asset: ecs.ModelAsset
+    base_vertices: ref f32
+    draw_vertices: ref f32
+    vertex_float_count: usize
+    skinned: bool
 }
 
 pub type SceneMeshes = {
@@ -19,6 +37,7 @@ pub type SceneMeshes = {
     quad: MeshGPU
     models: list[MeshGPU]
     model_textures: list[ref void]
+    model_draws: list[ModelGPU]
     custom: list[MeshGPU]
 }
 
@@ -183,6 +202,7 @@ pub type GpuMesh = {
     vertex_buffer: mut ref void
     index_buffer: mut ref void
     index_count: mut u32
+    vertex_bytes: mut u32
 }
 
 pub type Renderer = {
@@ -1213,16 +1233,15 @@ pub fn destroy_runtime_resources(runtime: mut ref Renderer) void = trust {
     destroy_pipelines(runtime)
 }
 
-/// Upload an embedded GLB image (PNG/JPEG bytes in the BIN chunk) as a GPU texture.
-pub fn create_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) ref void = trust {
-    if model.texture_length == (0 as usize) || model.raw_bytes == none {
+/// Upload an image blob (PNG/JPEG bytes) as a GPU texture.
+pub fn create_texture_from_memory(runtime: mut ref Renderer, img_ptr: ref u8, img_len: usize) ref void = trust {
+    if img_len == (0 as usize) || img_ptr == none {
         return none as ref void
     }
-    val img_ptr: ref u8 = @ptradd(model.raw_bytes, model.texture_offset) as ref u8
     val w: mut i32 = 0 as i32
     val h: mut i32 = 0 as i32
     val ch: mut i32 = 0 as i32
-    val pixels: ref u8 = sdl.stbi_load_from_memory(img_ptr, model.texture_length as i32, @addr(w), @addr(h), @addr(ch), 4 as i32)
+    val pixels: ref u8 = sdl.stbi_load_from_memory(img_ptr, img_len as i32, @addr(w), @addr(h), @addr(ch), 4 as i32)
     if pixels == none {
         return none as ref void
     }
@@ -1285,6 +1304,14 @@ pub fn create_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) ref vo
     sdl.SDL_SubmitGPUCommandBuffer(cmd)
     sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
     return texture
+}
+
+/// Upload an embedded GLB image (PNG/JPEG bytes in the BIN chunk) as a GPU texture.
+pub fn create_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) ref void = trust {
+    if model.texture_length == (0 as usize) || model.raw_bytes == none {
+        return none as ref void
+    }
+    return create_texture_from_memory(runtime, @ptradd(model.raw_bytes, model.texture_offset) as ref u8, model.texture_length)
 }
 
 pub fn upload_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) void = trust {
@@ -1559,6 +1586,7 @@ pub fn create_mesh(runtime_raw: ref void, vertices: ref void, vertex_bytes: u32,
     }
     sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, transfer)
     mesh.index_count = index_count
+    mesh.vertex_bytes = vertex_bytes
     return mesh as ref void
 }
 
@@ -1942,7 +1970,9 @@ pub fn draw_scene_mesh(
     light_color: ref f32,
     light_intensity: f32,
     light_radius: f32,
-    texture_raw: ref void
+    texture_raw: ref void,
+    first_index: u32,
+    draw_index_count: u32
 ) void = trust {
     if runtime_raw == none || mesh_raw == none {
         return
@@ -1995,8 +2025,13 @@ pub fn draw_scene_mesh(
     sdl.SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(SceneFragmentUniforms) as u32)
     sdl.SDL_BindGPUFragmentSamplers(runtime.current_pass, 0 as u32, @addr(tex_binding), 1 as u32)
     bind_mesh(runtime, mesh)
-    sdl.SDL_DrawGPUIndexedPrimitives(runtime.current_pass, mesh.index_count, 1 as u32, 0 as u32, 0 as i32, 0 as u32)
+    val draw_count: mut u32 = draw_index_count
+    if draw_count == (0 as u32) {
+        draw_count = mesh.index_count
+    }
+    sdl.SDL_DrawGPUIndexedPrimitives(runtime.current_pass, draw_count, 1 as u32, first_index, 0 as i32, 0 as u32)
 }
+
 
 pub fn draw_floor_raw(runtime_raw: ref void, mesh_raw: ref void, model: ref f32, view_proj: ref f32, reflect_view_proj: ref f32, camera_pos: ref f32, floor_color: ref f32) void = trust {
     if runtime_raw == none || mesh_raw == none {
@@ -2086,6 +2121,69 @@ pub fn mesh_valid(mesh: MeshGPU) bool = {
     return mesh.raw != none && mesh.index_count > (0 as i32)
 }
 
+/// Replace an existing mesh's vertex data in place. Used by CPU skinning and
+/// other per-frame deformations.
+pub fn update_mesh_vertices(runtime_raw: ref void, mesh: MeshGPU, vertices: ref void, vertex_float_count: usize) bool = trust {
+    if runtime_raw == none || mesh.raw == none || vertices == none {
+        return false
+    }
+    if vertex_float_count == (0 as usize) {
+        return false
+    }
+    val runtime: ref Renderer = runtime_raw as ref Renderer
+    val gpu: ref GpuMesh = mesh.raw as ref GpuMesh
+    val byte_size: u32 = (vertex_float_count * (@sizeof(f32) as usize)) as u32
+    if byte_size > gpu.vertex_bytes {
+        return false
+    }
+    val transfer_info: mut sdl.SDLGPUTransferBufferCreateInfo = {
+        usage: 0 as i32,
+        size: 0 as u32,
+        props: 0 as u32
+    }
+    transfer_info.usage = sdl.SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
+    transfer_info.size = byte_size
+    val transfer: ref void = sdl.SDL_CreateGPUTransferBuffer(runtime.device, @addr(transfer_info))
+    if transfer == none {
+        return false
+    }
+    val mapped: ref void = sdl.SDL_MapGPUTransferBuffer(runtime.device, transfer, false)
+    if mapped == none {
+        sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, transfer)
+        return false
+    }
+    @memcpy(mapped, vertices, byte_size as usize)
+    sdl.SDL_UnmapGPUTransferBuffer(runtime.device, transfer)
+    val command_buffer: ref void = sdl.SDL_AcquireGPUCommandBuffer(runtime.device)
+    if command_buffer == none {
+        sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, transfer)
+        return false
+    }
+    val copy_pass: ref void = sdl.SDL_BeginGPUCopyPass(command_buffer)
+    if copy_pass == none {
+        sdl.SDL_CancelGPUCommandBuffer(command_buffer)
+        sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, transfer)
+        return false
+    }
+    val src: mut sdl.SDLGPUTransferBufferLocation = {
+        transfer_buffer: transfer,
+        offset: 0 as u32
+    }
+    val dst: mut sdl.SDLGPUBufferRegion = {
+        buffer: gpu.vertex_buffer,
+        offset: 0 as u32,
+        size: byte_size
+    }
+    sdl.SDL_UploadToGPUBuffer(copy_pass, @addr(src), @addr(dst), false)
+    sdl.SDL_EndGPUCopyPass(copy_pass)
+    if !sdl.SDL_SubmitGPUCommandBuffer(command_buffer) {
+        sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, transfer)
+        return false
+    }
+    sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, transfer)
+    return true
+}
+
 
 pub fn draw_mesh_textured(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj: math.Mat4, color: math.Vec3, camera_pos: math.Vec3, reflective: f32, glow: f32, alpha: f32, light: ecs.PointLight, texture: ref void) void = trust {
     draw_scene_mesh(
@@ -2102,7 +2200,30 @@ pub fn draw_mesh_textured(runtime: ref void, mesh: MeshGPU, model: math.Mat4, vi
         @addr(light.color.x),
         light.intensity,
         light.radius,
-        texture
+        texture,
+        0 as u32,
+        0 as u32
+    )
+}
+
+pub fn draw_mesh_textured_range(runtime: ref void, mesh: MeshGPU, first_index: u32, draw_index_count: u32, model: math.Mat4, view_proj: math.Mat4, color: math.Vec3, camera_pos: math.Vec3, reflective: f32, glow: f32, alpha: f32, light: ecs.PointLight, texture: ref void) void = trust {
+    draw_scene_mesh(
+        runtime,
+        mesh.raw,
+        @addr(model.m00),
+        @addr(view_proj.m00),
+        @addr(color.x),
+        @addr(camera_pos.x),
+        reflective,
+        glow,
+        alpha,
+        @addr(light.position.x),
+        @addr(light.color.x),
+        light.intensity,
+        light.radius,
+        texture,
+        first_index,
+        draw_index_count
     )
 }
 
@@ -2183,6 +2304,54 @@ pub fn draw_custom_meshes(runtime: ref void, resources: SceneMeshes, scene: ecs.
     }
 }
 
+/// Update all CPU-skinned model instances once per frame.
+pub fn prepare_models(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, time: f32) void = trust {
+    val index: mut usize = 0 as usize
+    for draw in scene.model_draws {
+        if draw.visible {
+            if @get(resources.model_draws, index) is some gpu {
+                if gpu.skinned && gpu.base_vertices != none && gpu.draw_vertices != none {
+                    val animation_time: f32 = time * draw.animation_speed + draw.animation_offset
+                    animation.skin_vertices(gpu.asset, draw.animation, animation_time, gpu.base_vertices, gpu.draw_vertices)
+                    update_mesh_vertices(runtime, gpu.mesh, gpu.draw_vertices as ref void, gpu.vertex_float_count)
+                }
+            }
+        }
+        index = index + (1 as usize)
+    }
+}
+
+pub fn draw_model_instances(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, camera: cam.Camera, view_proj: math.Mat4, glow_scale: f32) void = trust {
+    val light: ecs.PointLight = primary_light(scene)
+    val index: mut usize = 0 as usize
+    for draw in scene.model_draws {
+        if draw.visible {
+            if @get(resources.model_draws, index) is some gpu {
+                if mesh_valid(gpu.mesh) {
+                    for submesh in gpu.submeshes {
+                        draw_mesh_textured_range(
+                            runtime,
+                            gpu.mesh,
+                            submesh.index_offset,
+                            submesh.index_count,
+                            draw.transform,
+                            view_proj,
+                            draw.color,
+                            camera.position,
+                            0.10 as f32,
+                            glow_scale * draw.glow,
+                            draw.alpha,
+                            light,
+                            submesh.texture
+                        )
+                    }
+                }
+            }
+        }
+        index = index + (1 as usize)
+    }
+}
+
 pub fn draw_scene_entities(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, camera: cam.Camera, view_proj: math.Mat4, time: f32, glow_scale: f32, include_models: bool) void = trust {
     val light: ecs.PointLight = primary_light(scene)
     draw_typed_entities[ecs.SphereEntity](runtime, resources.sphere, scene.spheres, camera, view_proj, time, glow_scale, light)
@@ -2190,6 +2359,7 @@ pub fn draw_scene_entities(runtime: ref void, resources: SceneMeshes, scene: ecs
     if include_models {
         draw_models(runtime, resources, scene, camera, view_proj, glow_scale)
         draw_custom_meshes(runtime, resources, scene, camera, view_proj, glow_scale)
+        draw_model_instances(runtime, resources, scene, camera, view_proj, glow_scale)
     }
 }
 

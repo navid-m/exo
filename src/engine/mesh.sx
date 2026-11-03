@@ -30,6 +30,104 @@ fn write_vertex_uv(base: ref void, vertex_index: usize, position: math.Vec3, nor
     math.store_f32(base, offset + (7 as usize), v)
 }
 
+/// Upload a fully parsed model asset. All primitives share one vertex/index
+/// buffer; each primitive becomes a draw range with its own material texture.
+pub fn upload_model_asset(runtime: ref void, asset: ecs.ModelAsset) renderer.ModelGPU = trust {
+    val rt: mut ref renderer.Renderer = runtime as mut ref renderer.Renderer
+    val textures: mut list[ref void] = []
+    val material_index: mut usize = 0 as usize
+    for image_index in asset.material_images {
+        val texture: mut ref void = none as ref void
+        if image_index >= (0 as i32) && (image_index as usize) < @len(asset.image_offsets) {
+            if @get(asset.image_offsets, image_index as usize) is some offset {
+                if @get(asset.image_lengths, image_index as usize) is some length {
+                    if length > (0 as usize) && asset.raw_bytes != none {
+                        texture = renderer.create_texture_from_memory(rt, @ptradd(asset.raw_bytes, offset) as ref u8, length)
+                    }
+                }
+            }
+        }
+        @append(textures, texture)
+        material_index = material_index + (1 as usize)
+    }
+
+    val total_vertices: mut usize = 0 as usize
+    val total_indices: mut usize = 0 as usize
+    for mesh in asset.meshes {
+        total_vertices = total_vertices + mesh.vertex_count
+        total_indices = total_indices + mesh.index_count
+    }
+
+    val result: mut renderer.ModelGPU = {
+        mesh: { raw: none as ref void, index_count: 0 as i32 },
+        submeshes: [],
+        textures: textures,
+        asset: asset,
+        base_vertices: none as ref f32,
+        draw_vertices: none as ref f32,
+        vertex_float_count: 0 as usize,
+        skinned: asset.has_skinning
+    }
+    if total_vertices == (0 as usize) || total_indices == (0 as usize) {
+        return result
+    }
+
+    val vertex_float_count: usize = total_vertices * (8 as usize)
+    val base_vertices: ref f32 = @alloc(vertex_float_count * (@sizeof(f32) as usize)) as ref f32
+    val indices: ref u32 = @alloc(total_indices * (@sizeof(u32) as usize)) as ref u32
+    if base_vertices == none || indices == none {
+        if base_vertices != none {
+            @free(base_vertices as ref void)
+        }
+        if indices != none {
+            @free(indices as ref void)
+        }
+        return result
+    }
+
+    val vertex_base: mut usize = 0 as usize
+    val index_base: mut usize = 0 as usize
+    for mesh in asset.meshes {
+        val float_count: usize = mesh.vertex_count * (8 as usize)
+        if mesh.vertices != none {
+            val source: ref void = mesh.vertices as ref void
+            val target: ref void = @ptradd(base_vertices as ref void, vertex_base * (8 as usize) * (@sizeof(f32) as usize)) as ref void
+            @memcpy(target, source, float_count * (@sizeof(f32) as usize))
+        }
+        val index: mut usize = 0 as usize
+        for index < mesh.index_count {
+            val value: u32 = bin.read_u32_le(mesh.indices as ref u8, index * (4 as usize)) + (vertex_base as u32)
+            math.store_u32(indices, index_base + index, value)
+            index = index + (1 as usize)
+        }
+        val texture: mut ref void = none as ref void
+        if mesh.material >= (0 as i32) && (mesh.material as usize) < @len(textures) {
+            if @get(textures, mesh.material as usize) is some value {
+                texture = value
+            }
+        }
+        @append(result.submeshes, {
+                index_offset: index_base as u32,
+                index_count: mesh.index_count as u32,
+                texture: texture
+            })
+        vertex_base = vertex_base + mesh.vertex_count
+        index_base = index_base + mesh.index_count
+    }
+
+    result.base_vertices = base_vertices
+    result.vertex_float_count = vertex_float_count
+    if asset.has_skinning {
+        result.draw_vertices = @alloc(vertex_float_count * (@sizeof(f32) as usize)) as ref f32
+        if result.draw_vertices != none {
+            @memcpy(result.draw_vertices as ref void, base_vertices as ref void, vertex_float_count * (@sizeof(f32) as usize))
+        }
+    }
+    result.mesh = renderer.upload_mesh(runtime, base_vertices as ref void, vertex_float_count, indices as ref void, total_indices as i32)
+    @free(indices as ref void)
+    return result
+}
+
 pub fn upload_glb_model(runtime: ref void, model: ecs.GlbModel) renderer.MeshGPU = trust {
     if !model.valid || model.vertex_count <= (0 as i32) || model.raw_bytes == none || model.bin_length == (0 as usize) {
         return { raw: none as ref void, index_count: 0 as i32 }

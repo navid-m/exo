@@ -138,6 +138,95 @@ pub type MeshInstance = {
     alpha: f32
 }
 
+/// One accessor from a glTF/GLB file. Offsets are absolute byte offsets into
+/// the asset's raw GLB buffer.
+pub type ModelAccessor = {
+    offset: usize
+    count: i32
+    component_type: i32
+    components: i32
+    stride: usize
+    normalized: bool
+}
+
+/// A single draw range from a model asset. Vertices are interleaved
+/// position/normal/uv (8 floats each) and indices are 32-bit.
+pub type ModelMesh = {
+    vertices: ref f32
+    vertex_count: usize
+    indices: ref u32
+    index_count: usize
+    material: i32
+    skin: i32
+    joints: ref u16
+    weights: ref f32
+}
+
+pub type ModelNode = {
+    translation: math.Vec3
+    rotation: math.Vec4f
+    scale: math.Vec3
+    matrix: math.Mat4
+    has_matrix: bool
+    parent: i32
+    mesh: i32
+    skin: i32
+}
+
+pub type ModelSkin = {
+    joints: list[i32]
+    inverse_bind: ref f32
+    inverse_bind_count: usize
+    joint_offset: usize
+}
+
+pub type ModelAnimChannel = {
+    node: i32
+    path: i32
+    input: i32
+    output: i32
+    interpolation: i32
+}
+
+pub type ModelAnimation = {
+    name: ref u8
+    channels: list[ModelAnimChannel]
+    duration: f32
+}
+
+/// A fully parsed GLB scene: meshes, materials, node hierarchy, skinning and
+/// animation clips. Rendering a model asset is entirely engine-owned.
+pub type ModelAsset = {
+    meshes: list[ModelMesh]
+    nodes: list[ModelNode]
+    skins: list[ModelSkin]
+    animations: list[ModelAnimation]
+    accessors: list[ModelAccessor]
+    material_images: list[i32]
+    image_offsets: list[usize]
+    image_lengths: list[usize]
+    raw_bytes: ref u8
+    raw_len: usize
+    has_skinning: bool
+    bounds_min: math.Vec3
+    bounds_max: math.Vec3
+}
+
+/// A model placed in the world. The transform is applied after any skeletal
+/// animation, so the same asset can be instanced many times.
+pub type ModelDraw = {
+    asset: ModelAsset
+    transform: math.Mat4
+    color: math.Vec3
+    glow: f32
+    alpha: f32
+    visible: bool
+    animation: i32
+    animation_speed: f32
+    animation_offset: f32
+    animation_loop: bool
+}
+
 /// A flat floor at a given Y height that entities collide with.
 ///
 ///    - restitution: 0.0 = entities stop dead
@@ -212,6 +301,7 @@ pub type Scene3D = {
     spheres: mut list[SphereEntity]
     cubes: mut list[CubeEntity]
     models: mut list[ModelInstance]
+    model_draws: mut list[ModelDraw]
     mesh_instances: mut list[MeshInstance]
     lights: mut list[PointLight]
     gravity: mut f32
@@ -399,11 +489,45 @@ pub fn empty_model() GlbModel = {
     }
 }
 
+pub fn empty_model_asset() ModelAsset = {
+    return {
+        meshes: [],
+        nodes: [],
+        skins: [],
+        animations: [],
+        accessors: [],
+        material_images: [],
+        image_offsets: [],
+        image_lengths: [],
+        raw_bytes: none as ref u8,
+        raw_len: 0 as usize,
+        has_skinning: false,
+        bounds_min: math.vec3(0.0 as f32, 0.0 as f32, 0.0 as f32),
+        bounds_max: math.vec3(0.0 as f32, 0.0 as f32, 0.0 as f32)
+    }
+}
+
+pub fn make_model_draw(asset: ModelAsset, transform: math.Mat4) ModelDraw = {
+    return {
+        asset: asset,
+        transform: transform,
+        color: math.vec3(1.0 as f32, 1.0 as f32, 1.0 as f32),
+        glow: 0.0 as f32,
+        alpha: 1.0 as f32,
+        visible: true,
+        animation: -1 as i32,
+        animation_speed: 1.0 as f32,
+        animation_offset: 0.0 as f32,
+        animation_loop: true
+    }
+}
+
 pub fn new_scene() Scene3D = {
     return {
         spheres: [],
         cubes: [],
         models: [],
+        model_draws: [],
         mesh_instances: [],
         lights: [],
         gravity: 9.8 as f32,
@@ -421,6 +545,10 @@ pub fn add_light(scene: mut Scene3D, light: PointLight) void = {
 
 pub fn add_model(scene: mut Scene3D, instance: ModelInstance) void = {
     @append(scene.models, instance)
+}
+
+pub fn add_model_draw(scene: mut Scene3D, instance: ModelDraw) void = {
+    @append(scene.model_draws, instance)
 }
 
 pub fn add_mesh(scene: mut Scene3D, instance: MeshInstance) void = {

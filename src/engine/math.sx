@@ -175,6 +175,114 @@ pub fn mat_rotation_y(angle: f32) Mat4 = {
     )
 }
 
+pub fn mat_rotation_x(angle: f32) Mat4 = {
+    val c: f32 = math.cos(angle as f64) as f32
+    val s: f32 = math.sin(angle as f64) as f32
+    return mat4(
+        1.0 as f32, 0.0 as f32, 0.0 as f32, 0.0 as f32,
+        0.0 as f32, c, -s, 0.0 as f32,
+        0.0 as f32, s, c, 0.0 as f32,
+        0.0 as f32, 0.0 as f32, 0.0 as f32, 1.0 as f32
+    )
+}
+
+pub fn mat_rotation_z(angle: f32) Mat4 = {
+    val c: f32 = math.cos(angle as f64) as f32
+    val s: f32 = math.sin(angle as f64) as f32
+    return mat4(
+        c, -s, 0.0 as f32, 0.0 as f32,
+        s, c, 0.0 as f32, 0.0 as f32,
+        0.0 as f32, 0.0 as f32, 1.0 as f32, 0.0 as f32,
+        0.0 as f32, 0.0 as f32, 0.0 as f32, 1.0 as f32
+    )
+}
+
+pub fn quat(x: f32, y: f32, z: f32, w: f32) Vec4f = {
+    return { x: x, y: y, z: z, w: w }
+}
+
+pub fn quat_normalize(q: Vec4f) Vec4f = {
+    val len: f32 = math.sqrt((q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w) as f64) as f32
+    if len < (0.000001 as f32) {
+        return quat(0.0 as f32, 0.0 as f32, 0.0 as f32, 1.0 as f32)
+    }
+    val inv: f32 = (1.0 as f32) / len
+    return quat(q.x * inv, q.y * inv, q.z * inv, q.w * inv)
+}
+
+pub fn quat_slerp(a: Vec4f, b: Vec4f, t: f32) Vec4f = {
+    val av: Vec4f = quat_normalize(a)
+    val bv0: Vec4f = quat_normalize(b)
+    val dot: f32 = av.x * bv0.x + av.y * bv0.y + av.z * bv0.z + av.w * bv0.w
+    val sign: mut f32 = 1.0 as f32
+    if dot < (0.0 as f32) {
+        sign = -1.0 as f32
+    }
+    val bv: Vec4f = quat(bv0.x * sign, bv0.y * sign, bv0.z * sign, bv0.w * sign)
+    val d: f32 = dot * sign
+    if d > (0.9995 as f32) {
+        return quat_normalize(quat(
+                av.x + (bv.x - av.x) * t,
+                av.y + (bv.y - av.y) * t,
+                av.z + (bv.z - av.z) * t,
+                av.w + (bv.w - av.w) * t
+            ))
+    }
+    val theta: f64 = math.acos(d as f64)
+    val st: f32 = math.sin(theta) as f32
+    val wa: f32 = (math.sin((1.0 - (t as f64)) * theta) as f32) / st
+    val wb: f32 = (math.sin((t as f64) * theta) as f32) / st
+    return quat(
+        av.x * wa + bv.x * wb,
+        av.y * wa + bv.y * wb,
+        av.z * wa + bv.z * wb,
+        av.w * wa + bv.w * wb
+    )
+}
+
+pub fn mat_from_quat(q: Vec4f) Mat4 = {
+    val n: Vec4f = quat_normalize(q)
+    val x: f32 = n.x
+    val y: f32 = n.y
+    val z: f32 = n.z
+    val w: f32 = n.w
+    return mat4(
+        1.0 as f32 - (2.0 as f32) * (y * y + z * z), (2.0 as f32) * (x * y - z * w), (2.0 as f32) * (x * z + y * w), 0.0 as f32,
+        (2.0 as f32) * (x * y + z * w), 1.0 as f32 - (2.0 as f32) * (x * x + z * z), (2.0 as f32) * (y * z - x * w), 0.0 as f32,
+        (2.0 as f32) * (x * z - y * w), (2.0 as f32) * (y * z + x * w), 1.0 as f32 - (2.0 as f32) * (x * x + y * y), 0.0 as f32,
+        0.0 as f32, 0.0 as f32, 0.0 as f32, 1.0 as f32
+    )
+}
+
+pub fn mat_from_trs(translation: Vec3, rotation: Vec4f, scale: Vec3) Mat4 = {
+    return mat_mul(mat_translation(translation), mat_mul(mat_from_quat(rotation), mat_scale(scale)))
+}
+
+pub fn mat_transform_point(m: Mat4, v: Vec3) Vec3 = {
+    return vec3(
+        m.m00 * v.x + m.m01 * v.y + m.m02 * v.z + m.m03,
+        m.m10 * v.x + m.m11 * v.y + m.m12 * v.z + m.m13,
+        m.m20 * v.x + m.m21 * v.y + m.m22 * v.z + m.m23
+    )
+}
+
+pub fn mat_transform_direction(m: Mat4, v: Vec3) Vec3 = {
+    return vec3(
+        m.m00 * v.x + m.m01 * v.y + m.m02 * v.z,
+        m.m10 * v.x + m.m11 * v.y + m.m12 * v.z,
+        m.m20 * v.x + m.m21 * v.y + m.m22 * v.z
+    )
+}
+
+pub fn mat4_identity() Mat4 = {
+    return mat4(
+        1.0 as f32, 0.0 as f32, 0.0 as f32, 0.0 as f32,
+        0.0 as f32, 1.0 as f32, 0.0 as f32, 0.0 as f32,
+        0.0 as f32, 0.0 as f32, 1.0 as f32, 0.0 as f32,
+        0.0 as f32, 0.0 as f32, 0.0 as f32, 1.0 as f32
+    )
+}
+
 pub fn mat_perspective(fov_y: f32, aspect: f32, near_z: f32, far_z: f32) Mat4 = {
     val f: f32 = (1.0 as f32) / (math.tan(((fov_y as f64) * 0.5)) as f32)
     val nf: f32 = (1.0 as f32) / (near_z - far_z)

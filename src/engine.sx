@@ -7,6 +7,7 @@ val input    = use("engine/input.sx")
 val audio    = use("engine/audio.sx")
 val shaders  = use("engine/shaders.sx")
 val glb      = use("engine/glb.sx")
+val model    = use("engine/model.sx")
 val renderer = use("engine/renderer.sx")
 val mesh     = use("engine/mesh.sx")
 val exoerr   = use("engine/error.sx")
@@ -100,6 +101,7 @@ pub fn (NoAppEvents) on_shutdown(_: mut self, _: mut ExoApp) void = {}
 type SceneResources = {
     models: mut list[renderer.MeshGPU]
     model_textures: mut list[ref void]
+    model_draws: mut list[renderer.ModelGPU]
     custom: mut list[renderer.MeshGPU]
     revision: mut u64
     loaded: mut bool
@@ -135,6 +137,19 @@ pub fn load_glb(path: ref u8) option[ecs.GlbModel] = trust {
 
 pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
     return glb.parse_glb_bytes(data, len)
+}
+
+/// Load a complete GLB scene with all meshes, materials, skins and animations.
+pub fn load_model(path: ref u8) option[ecs.ModelAsset] = trust {
+    return model.load_model(path)
+}
+
+pub fn parse_model_bytes(data: ref u8, len: usize) option[ecs.ModelAsset] = trust {
+    return model.parse_model_bytes(data, len)
+}
+
+pub fn model_animation_index(asset: ecs.ModelAsset, name: ref u8) i32 = trust {
+    return model.find_animation(asset, name)
 }
 
 pub fn build_test_glb_fixture() glb.GlbFixture = trust {
@@ -382,6 +397,7 @@ fn empty_scene_resources() SceneResources = {
     return {
         models: [],
         model_textures: [],
+        model_draws: [],
         custom: [],
         revision: 0 as u64,
         loaded: false
@@ -395,11 +411,26 @@ fn release_scene_resources(runtime: ref void, resources: mut SceneResources) voi
     for texture in resources.model_textures {
         renderer.release_texture(runtime, texture)
     }
+    for model_gpu in resources.model_draws {
+        renderer.destroy_mesh(runtime, model_gpu.mesh)
+        for texture in model_gpu.textures {
+            renderer.release_texture(runtime, texture)
+        }
+        if model_gpu.base_vertices != none {
+            val base_ptr: mut ref f32 = model_gpu.base_vertices
+            @free(base_ptr as ref void)
+        }
+        if model_gpu.draw_vertices != none {
+            val draw_ptr: mut ref f32 = model_gpu.draw_vertices
+            @free(draw_ptr as ref void)
+        }
+    }
     for custom_mesh in resources.custom {
         renderer.destroy_mesh(runtime, custom_mesh)
     }
     resources.models = []
     resources.model_textures = []
+    resources.model_draws = []
     resources.custom = []
 }
 
@@ -409,6 +440,9 @@ fn load_scene_resources(runtime: ref void, scene: ecs.Scene3D) SceneResources = 
     for instance in scene.models {
         @append(resources.models, mesh.upload_glb_model(runtime, instance.model))
         @append(resources.model_textures, renderer.create_glb_texture(rt, instance.model))
+    }
+    for instance in scene.model_draws {
+        @append(resources.model_draws, mesh.upload_model_asset(runtime, instance.asset))
     }
     for instance in scene.mesh_instances {
         @append(resources.custom, renderer.upload_mesh(
@@ -435,6 +469,7 @@ fn scene_meshes(
         quad: base_quad,
         models: resources.models,
         model_textures: resources.model_textures,
+        model_draws: resources.model_draws,
         custom: resources.custom
     }
 }
@@ -647,12 +682,14 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
 
         if app.scene_revision != resources.revision || !resources.loaded
         || @len(resources.models) != @len(app.scene.models)
+        || @len(resources.model_draws) != @len(app.scene.model_draws)
         || @len(resources.custom) != @len(app.scene.mesh_instances) {
             release_scene_resources(runtime, resources)
             resources = load_scene_resources(runtime, app.scene)
             resources.revision = app.scene_revision
         }
         val meshes: renderer.SceneMeshes = scene_meshes(base_cube, base_sphere, base_quad, resources)
+        renderer.prepare_models(runtime, meshes, app.scene, app.time)
         renderer.configure_scene_style(runtime, app.scene.render.clear_top, app.scene.render.clear_bottom, app.scene.render.ambient, app.scene.lights)
 
         val frame_w: mut u32 = app.config.width as u32
