@@ -377,6 +377,14 @@ pub extern (C) fn fwrite(
     stream: ref void
 ) usize = "fwrite"
 
+pub extern (C) fn SDL_CreateProperties() u32 = "SDL_CreateProperties"
+pub extern (C) fn SDL_SetBooleanProperty(props: u32, name: ref u8, value: bool) bool = "SDL_SetBooleanProperty"
+pub extern (C) fn SDL_DestroyProperties(props: u32) void = "SDL_DestroyProperties"
+pub extern (C) fn SDL_CreateGPUDeviceWithProperties(props: u32) ref void = "SDL_CreateGPUDeviceWithProperties"
+
+pub val PROP_GPU_CREATE_DEBUGMODE: ref u8 = "SDL.gpu.device.create.debugmode"
+pub val PROP_GPU_CREATE_SHADERS_MSL: ref u8 = "SDL.gpu.device.create.shaders.msl"
+pub val PROP_GPU_CREATE_METAL_ALLOW_MACFAMILY1: ref u8 = "SDL.gpu.device.create.metal.allowmacfamily1"
 
 pub val SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM: i32 = 4
 pub val SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD: i32 = 1

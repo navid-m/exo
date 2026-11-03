@@ -1445,6 +1445,24 @@ pub fn upload_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) void =
     runtime.glb_texture = create_glb_texture(runtime, model)
 }
 
+fn create_gpu_device(debug: bool) ref void = trust {
+    val props: u32 = sdl.SDL_CreateProperties()
+    if props == (0 as u32) {
+        return exoerr.set_ptr("SDL_CreateProperties failed")
+    }
+    sdl.SDL_SetBooleanProperty(props, sdl.PROP_GPU_CREATE_METAL_ALLOW_MACFAMILY1, true)
+    sdl.SDL_SetBooleanProperty(props, sdl.PROP_GPU_CREATE_DEBUGMODE, debug)
+    when darwin {
+        sdl.SDL_SetBooleanProperty(props, sdl.PROP_GPU_CREATE_SHADERS_MSL, true)
+    }
+    val dev: ref void = sdl.SDL_CreateGPUDeviceWithProperties(props)
+    sdl.SDL_DestroyProperties(props)
+    if dev == none as ref void {
+        return exoerr.set_ptr("SDL_CreateGPUDeviceWithProperties failed")
+    }
+    return dev
+}
+
 pub fn create(
     title: ref u8,
     width: i32,
@@ -1471,7 +1489,7 @@ pub fn create(
         destroy(runtime as ref void)
         return none as ref void
     }
-    runtime.device = sdl.SDL_CreateGPUDevice(shaders.exo_shader_format(), true, none as ref u8)
+    runtime.device = create_gpu_device(true)
     if runtime.device == none {
         destroy(runtime as ref void)
         return none as ref void
