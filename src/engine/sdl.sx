@@ -170,6 +170,8 @@ pub extern (C) fn SDL_WaitAndAcquireGPUSwapchainTexture(command_buffer: ref void
 pub extern (C) fn SDL_SubmitGPUCommandBuffer(command_buffer: ref void) bool = "SDL_SubmitGPUCommandBuffer"
 pub extern (C) fn SDL_CancelGPUCommandBuffer(command_buffer: ref void) bool = "SDL_CancelGPUCommandBuffer"
 pub extern (C) fn SDL_LoadWAV(path: ref u8, speci: ref SDLAudioSpec, audio_buf: ref ref u8, audio_len: ref u32) bool = "SDL_LoadWAV"
+pub extern (C) fn SDL_IOFromMem(mem: ref void, size: usize) ref void = "SDL_IOFromMem"
+pub extern (C) fn SDL_LoadWAV_IO(src: ref void, closeio: bool, speci: ref SDLAudioSpec, audio_buf: ref ref u8, audio_len: ref u32) bool = "SDL_LoadWAV_IO"
 pub extern (C) fn SDL_OpenAudioDeviceStream(devid: u32, speci: ref SDLAudioSpec, callback: ref void, userdata: ref void) ref void = "SDL_OpenAudioDeviceStream"
 pub extern (C) fn SDL_SetAudioStreamGain(stream: ref void, gain: f32) bool = "SDL_SetAudioStreamGain"
 pub extern (C) fn SDL_ResumeAudioStreamDevice(stream: ref void) bool = "SDL_ResumeAudioStreamDevice"

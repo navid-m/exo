@@ -1,7 +1,8 @@
-val sdl    = use("sdl.sx")
-val io     = use("io.sx")
-val string = use("std/string")
-val exoerr = use("error.sx")
+val sdl      = use("sdl.sx")
+val io       = use("io.sx")
+val string   = use("std/string")
+val exoerr   = use("error.sx")
+val embedded = use("../embedded.sx")
 
 pub type AudioClip = {
     path: ref u8
@@ -43,8 +44,17 @@ pub fn create_audio(wav_path: ref u8, volume: i32) ref void = trust {
         return exoerr.set_ptr("failed to allocate audio")
     }
     @memset(audio as ref void, 0, @sizeof(ExoSDL3Audio))
-    val resolved_path: ref u8 = io.resolve_path(wav_path)
-    if !sdl.SDL_LoadWAV(resolved_path, @addr(audio.speci), @addr(audio.buffer), @addr(audio.length)) {
+    val loaded: mut bool = false
+    if embedded.find(wav_path) is some asset {
+        val stream: ref void = sdl.SDL_IOFromMem(asset.data as ref void, asset.len)
+        if stream != none {
+            loaded = sdl.SDL_LoadWAV_IO(stream, true, @addr(audio.speci), @addr(audio.buffer), @addr(audio.length))
+        }
+    } else {
+        val resolved_path: ref u8 = io.resolve_path(wav_path)
+        loaded = sdl.SDL_LoadWAV(resolved_path, @addr(audio.speci), @addr(audio.buffer), @addr(audio.length))
+    }
+    if !loaded {
         destroy_audio(audio as ref void)
         return none as ref void
     }

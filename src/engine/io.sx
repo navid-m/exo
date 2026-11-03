@@ -1,6 +1,7 @@
-val sdl    = use("sdl.sx")
-val string = use("std/string")
-val exoerr = use("error.sx")
+val sdl      = use("sdl.sx")
+val string   = use("std/string")
+val exoerr   = use("error.sx")
+val embedded = use("../embedded.sx")
 
 pub type BinaryBlob = {
     data: mut ref u8
@@ -45,6 +46,16 @@ pub fn load_binary_file(path: ref u8) option[BinaryBlob] = trust {
     val resolved: ref u8 = resolve_path(path)
     val file: ref void = sdl.fopen(resolved, "rb")
     if file == none {
+        if embedded.find(path) is some asset {
+            val buf: ref u8 = @alloc(asset.len) as ref u8
+            if buf != none {
+                @memcpy(buf as ref void, asset.data as ref void, asset.len)
+                return some {
+                    data: buf,
+                    len: asset.len
+                }
+            }
+        }
         exoerr.set(path)
         return none
     }
