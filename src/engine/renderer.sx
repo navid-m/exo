@@ -1450,15 +1450,25 @@ fn create_gpu_device(debug: bool) ref void = trust {
     if props == (0 as u32) {
         return exoerr.set_ptr("SDL_CreateProperties failed")
     }
-    sdl.SDL_SetBooleanProperty(props, sdl.PROP_GPU_CREATE_METAL_ALLOW_MACFAMILY1, true)
+    val formats: u32 = shaders.exo_shader_format()
+    sdl.SDL_SetBooleanProperty(
+        props,
+        sdl.PROP_GPU_CREATE_SHADERS_SPIRV,
+        (formats & sdl.SDL_GPU_SHADERFORMAT_SPIRV) != (0 as u32)
+    )
+    sdl.SDL_SetBooleanProperty(
+        props,
+        sdl.PROP_GPU_CREATE_SHADERS_MSL,
+        (formats & sdl.SDL_GPU_SHADERFORMAT_MSL) != (0 as u32)
+    )
     sdl.SDL_SetBooleanProperty(props, sdl.PROP_GPU_CREATE_DEBUGMODE, debug)
     when darwin {
-        sdl.SDL_SetBooleanProperty(props, sdl.PROP_GPU_CREATE_SHADERS_MSL, true)
+        sdl.SDL_SetBooleanProperty(props, sdl.PROP_GPU_CREATE_METAL_ALLOW_MACFAMILY1, true)
     }
     val dev: ref void = sdl.SDL_CreateGPUDeviceWithProperties(props)
     sdl.SDL_DestroyProperties(props)
     if dev == none as ref void {
-        return exoerr.set_ptr("SDL_CreateGPUDeviceWithProperties failed")
+        return exoerr.set_ptr(sdl.SDL_GetError())
     }
     return dev
 }

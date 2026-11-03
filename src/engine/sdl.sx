@@ -383,6 +383,7 @@ pub extern (C) fn SDL_DestroyProperties(props: u32) void = "SDL_DestroyPropertie
 pub extern (C) fn SDL_CreateGPUDeviceWithProperties(props: u32) ref void = "SDL_CreateGPUDeviceWithProperties"
 
 pub val PROP_GPU_CREATE_DEBUGMODE: ref u8 = "SDL.gpu.device.create.debugmode"
+pub val PROP_GPU_CREATE_SHADERS_SPIRV: ref u8 = "SDL.gpu.device.create.shaders.spirv"
 pub val PROP_GPU_CREATE_SHADERS_MSL: ref u8 = "SDL.gpu.device.create.shaders.msl"
 pub val PROP_GPU_CREATE_METAL_ALLOW_MACFAMILY1: ref u8 = "SDL.gpu.device.create.metal.allowmacfamily1"
 
