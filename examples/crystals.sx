@@ -1,10 +1,10 @@
-val ecs       = use("ecs.sx")
-val engine    = use("engine.sx")
-val rendering = use("rendering.sx")
-val sdl       = use("engine/sdl.sx")
-val input     = use("engine/input.sx")
-val audio     = use("engine/audio.sx")
-val physics   = use("physics.sx")
+val ecs       = use("../src/ecs.sx")
+val engine    = use("../src/engine.sx")
+val rendering = use("../src/rendering.sx")
+val sdl       = use("../src/engine/sdl.sx")
+val input     = use("../src/engine/input.sx")
+val audio     = use("../src/engine/audio.sx")
+val physics   = use("../src/physics.sx")
 val math      = use("std/math")
 
 val ORB_COUNT: i32 = 9
