@@ -12,8 +12,10 @@ val renderer = use("engine/renderer.sx")
 val mesh     = use("engine/mesh.sx")
 val exoerr   = use("engine/error.sx")
 
-val DEFAULT_SCREEN_WIDTH: i32 = 1440
-val DEFAULT_SCREEN_HEIGHT: i32 = 900
+val (
+    DEFAULT_SCREEN_WIDTH: i32  = 1440
+    DEFAULT_SCREEN_HEIGHT: i32 = 900
+)
 
 pub type ExoConfig = {
     title: ref u8

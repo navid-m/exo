@@ -7,8 +7,10 @@ val audio     = use("../src/engine/audio.sx")
 val physics   = use("../src/physics.sx")
 val math      = use("std/math")
 
-val ORB_COUNT: i32 = 9
-val COLLECT_RADIUS: f32 = 1.10
+val (
+    ORB_COUNT: i32      = 9
+    COLLECT_RADIUS: f32 = 1.10
+)
 
 // Crystal Run is a small self-contained game. It only talks to the engine
 // through the public ExoApp/AppEvents API: no engine file knows about this

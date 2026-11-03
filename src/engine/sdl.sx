@@ -5,122 +5,126 @@ link "-Wl,-rpath,/usr/local/lib"
 link "./src/stb_image_shim.c"
 link "-lm"
 
-pub val SDL_SCANCODE_1: i32 = 30
-pub val SDL_SCANCODE_2: i32 = 31
-pub val SDL_SCANCODE_3: i32 = 32
-pub val SDL_SCANCODE_4: i32 = 33
-pub val SDL_SCANCODE_5: i32 = 34
-pub val SDL_SCANCODE_6: i32 = 35
-pub val SDL_SCANCODE_7: i32 = 36
-pub val SDL_SCANCODE_8: i32 = 37
-pub val SDL_SCANCODE_9: i32 = 38
-pub val SDL_SCANCODE_A: i32 = 4
-pub val SDL_SCANCODE_D: i32 = 7
-pub val SDL_SCANCODE_E: i32 = 8
-pub val SDL_SCANCODE_F: i32 = 9
-pub val SDL_SCANCODE_Q: i32 = 20
-pub val SDL_SCANCODE_R: i32 = 21
-pub val SDL_SCANCODE_S: i32 = 22
-pub val SDL_SCANCODE_W: i32 = 26
-pub val SDL_SCANCODE_X: i32 = 27
-pub val SDL_SCANCODE_Y: i32 = 28
-pub val SDL_SCANCODE_ESCAPE: i32 = 41
-pub val SDL_SCANCODE_SPACE: i32 = 44
-pub val SDL_SCANCODE_RIGHT: i32 = 79
-pub val SDL_SCANCODE_LEFT: i32 = 80
-pub val SDL_SCANCODE_DOWN: i32 = 81
-pub val SDL_SCANCODE_UP: i32 = 82
-pub val SDL_SCANCODE_LSHIFT: i32 = 225
-pub val SDL_SCANCODE_RSHIFT: i32 = 229
+pub val (
+    SDL_SCANCODE_1: i32      = 30
+    SDL_SCANCODE_2: i32      = 31
+    SDL_SCANCODE_3: i32      = 32
+    SDL_SCANCODE_4: i32      = 33
+    SDL_SCANCODE_5: i32      = 34
+    SDL_SCANCODE_6: i32      = 35
+    SDL_SCANCODE_7: i32      = 36
+    SDL_SCANCODE_8: i32      = 37
+    SDL_SCANCODE_9: i32      = 38
+    SDL_SCANCODE_A: i32      = 4
+    SDL_SCANCODE_D: i32      = 7
+    SDL_SCANCODE_E: i32      = 8
+    SDL_SCANCODE_F: i32      = 9
+    SDL_SCANCODE_Q: i32      = 20
+    SDL_SCANCODE_R: i32      = 21
+    SDL_SCANCODE_S: i32      = 22
+    SDL_SCANCODE_W: i32      = 26
+    SDL_SCANCODE_X: i32      = 27
+    SDL_SCANCODE_Y: i32      = 28
+    SDL_SCANCODE_ESCAPE: i32 = 41
+    SDL_SCANCODE_SPACE: i32  = 44
+    SDL_SCANCODE_RIGHT: i32  = 79
+    SDL_SCANCODE_LEFT: i32   = 80
+    SDL_SCANCODE_DOWN: i32   = 81
+    SDL_SCANCODE_UP: i32     = 82
+    SDL_SCANCODE_LSHIFT: i32 = 225
+    SDL_SCANCODE_RSHIFT: i32 = 229
+)
 
-pub val SDL_EVENT_QUIT: u32 = 256
-pub val SDL_EVENT_WINDOW_RESIZED: u32 = 518
-pub val SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED: u32 = 519
-pub val SDL_EVENT_WINDOW_FOCUS_GAINED: u32 = 526
-pub val SDL_EVENT_WINDOW_FOCUS_LOST: u32 = 527
-pub val SDL_EVENT_WINDOW_CLOSE_REQUESTED: u32 = 528
-pub val SDL_EVENT_KEY_DOWN: u32 = 768
-pub val SDL_EVENT_KEY_UP: u32 = 769
-pub val SDL_EVENT_TEXT_INPUT: u32 = 771
-pub val SDL_EVENT_MOUSE_MOTION: u32 = 1024
-pub val SDL_EVENT_MOUSE_BUTTON_DOWN: u32 = 1025
-pub val SDL_EVENT_MOUSE_BUTTON_UP: u32 = 1026
-pub val SDL_EVENT_MOUSE_WHEEL: u32 = 1027
-pub val SDL_BUTTON_LEFT: u8 = 1
-pub val SDL_BUTTON_MIDDLE: u8 = 2
-pub val SDL_BUTTON_RIGHT: u8 = 3
-pub val SDL_BUTTON_X1: u8 = 4
-pub val SDL_BUTTON_X2: u8 = 5
-pub val SDL_KMOD_LSHIFT: u16 = 0x0001
-pub val SDL_KMOD_RSHIFT: u16 = 0x0002
-pub val SDL_KMOD_LCTRL: u16 = 0x0040
-pub val SDL_KMOD_RCTRL: u16 = 0x0080
-pub val SDL_KMOD_LALT: u16 = 0x0100
-pub val SDL_KMOD_RALT: u16 = 0x0200
-pub val SDL_KMOD_LGUI: u16 = 0x0400
-pub val SDL_KMOD_RGUI: u16 = 0x0800
-pub val SDL_GAMEPAD_BUTTON_SOUTH: i32 = 0
-pub val SDL_GAMEPAD_BUTTON_EAST: i32 = 1
-pub val SDL_GAMEPAD_BUTTON_WEST: i32 = 2
-pub val SDL_GAMEPAD_BUTTON_NORTH: i32 = 3
-pub val SDL_GAMEPAD_BUTTON_BACK: i32 = 4
-pub val SDL_GAMEPAD_BUTTON_GUIDE: i32 = 5
-pub val SDL_GAMEPAD_BUTTON_START: i32 = 6
-pub val SDL_GAMEPAD_BUTTON_LEFT_STICK: i32 = 7
-pub val SDL_GAMEPAD_BUTTON_RIGHT_STICK: i32 = 8
-pub val SDL_GAMEPAD_BUTTON_LEFT_SHOULDER: i32 = 9
-pub val SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER: i32 = 10
-pub val SDL_GAMEPAD_BUTTON_DPAD_UP: i32 = 11
-pub val SDL_GAMEPAD_BUTTON_DPAD_DOWN: i32 = 12
-pub val SDL_GAMEPAD_BUTTON_DPAD_LEFT: i32 = 13
-pub val SDL_GAMEPAD_BUTTON_DPAD_RIGHT: i32 = 14
-pub val SDL_GAMEPAD_AXIS_LEFTX: i32 = 0
-pub val SDL_GAMEPAD_AXIS_LEFTY: i32 = 1
-pub val SDL_GAMEPAD_AXIS_RIGHTX: i32 = 2
-pub val SDL_GAMEPAD_AXIS_RIGHTY: i32 = 3
-pub val SDL_GAMEPAD_AXIS_LEFT_TRIGGER: i32 = 4
-pub val SDL_GAMEPAD_AXIS_RIGHT_TRIGGER: i32 = 5
-pub val SDL_INIT_AUDIO: u32 = 16
-pub val SDL_INIT_VIDEO: u32 = 32
-pub val SDL_INIT_JOYSTICK: u32 = 512
-pub val SDL_INIT_GAMEPAD: u32 = 8192
-pub val SDL_INIT_EVENTS: u32 = 16384
-pub val SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK: u32 = 0xFFFFFFFF
-pub val SDL_GPU_TEXTUREUSAGE_SAMPLER: u32 = 1
-pub val SDL_GPU_TEXTUREUSAGE_COLOR_TARGET: u32 = 2
-pub val SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET: u32 = 4
-pub val SDL_GPU_BUFFERUSAGE_VERTEX: u32 = 1
-pub val SDL_GPU_BUFFERUSAGE_INDEX: u32 = 2
-pub val SDL_GPU_SHADERFORMAT_SPIRV: u32 = 2
-pub val SDL_GPU_SHADERFORMAT_MSL: u32 = 16
-pub val SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD: i32 = 0
-pub val SDL_GPU_TEXTURETYPE_2D: i32 = 0
-pub val SDL_GPU_SAMPLECOUNT_1: i32 = 0
-pub val SDL_GPU_SHADERSTAGE_VERTEX: i32 = 0
-pub val SDL_GPU_SHADERSTAGE_FRAGMENT: i32 = 1
-pub val SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2: i32 = 10
-pub val SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3: i32 = 11
-pub val SDL_GPU_VERTEXINPUTRATE_VERTEX: i32 = 0
-pub val SDL_GPU_PRIMITIVETYPE_TRIANGLELIST: i32 = 0
-pub val SDL_GPU_FILLMODE_FILL: i32 = 0
-pub val SDL_GPU_CULLMODE_NONE: i32 = 0
-pub val SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE: i32 = 0
-pub val SDL_GPU_COMPAREOP_LESS_OR_EQUAL: i32 = 4
-pub val SDL_GPU_BLENDOP_ADD: i32 = 1
-pub val SDL_GPU_BLENDFACTOR_ZERO: i32 = 1
-pub val SDL_GPU_BLENDFACTOR_ONE: i32 = 2
-pub val SDL_GPU_BLENDFACTOR_SRC_ALPHA: i32 = 7
-pub val SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA: i32 = 8
-pub val SDL_GPU_FILTER_LINEAR: i32 = 1
-pub val SDL_GPU_SAMPLERMIPMAPMODE_LINEAR: i32 = 1
-pub val SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE: i32 = 2
-pub val SDL_GPU_SAMPLERADDRESSMODE_REPEAT: i32 = 0
-pub val SDL_GPU_LOADOP_CLEAR: i32 = 1
-pub val SDL_GPU_LOADOP_DONT_CARE: i32 = 2
-pub val SDL_GPU_STOREOP_STORE: i32 = 0
-pub val SDL_GPU_STOREOP_DONT_CARE: i32 = 1
-pub val SDL_GPU_INDEXELEMENTSIZE_32BIT: i32 = 1
-pub val SDL_GPU_TEXTUREFORMAT_D32_FLOAT: i32 = 60
+pub val (
+    SDL_EVENT_QUIT: u32                            = 256
+    SDL_EVENT_WINDOW_RESIZED: u32                  = 518
+    SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED: u32       = 519
+    SDL_EVENT_WINDOW_FOCUS_GAINED: u32             = 526
+    SDL_EVENT_WINDOW_FOCUS_LOST: u32               = 527
+    SDL_EVENT_WINDOW_CLOSE_REQUESTED: u32          = 528
+    SDL_EVENT_KEY_DOWN: u32                        = 768
+    SDL_EVENT_KEY_UP: u32                          = 769
+    SDL_EVENT_TEXT_INPUT: u32                      = 771
+    SDL_EVENT_MOUSE_MOTION: u32                    = 1024
+    SDL_EVENT_MOUSE_BUTTON_DOWN: u32               = 1025
+    SDL_EVENT_MOUSE_BUTTON_UP: u32                 = 1026
+    SDL_EVENT_MOUSE_WHEEL: u32                     = 1027
+    SDL_BUTTON_LEFT: u8                            = 1
+    SDL_BUTTON_MIDDLE: u8                          = 2
+    SDL_BUTTON_RIGHT: u8                           = 3
+    SDL_BUTTON_X1: u8                              = 4
+    SDL_BUTTON_X2: u8                              = 5
+    SDL_KMOD_LSHIFT: u16                           = 0x0001
+    SDL_KMOD_RSHIFT: u16                           = 0x0002
+    SDL_KMOD_LCTRL: u16                            = 0x0040
+    SDL_KMOD_RCTRL: u16                            = 0x0080
+    SDL_KMOD_LALT: u16                             = 0x0100
+    SDL_KMOD_RALT: u16                             = 0x0200
+    SDL_KMOD_LGUI: u16                             = 0x0400
+    SDL_KMOD_RGUI: u16                             = 0x0800
+    SDL_GAMEPAD_BUTTON_SOUTH: i32                  = 0
+    SDL_GAMEPAD_BUTTON_EAST: i32                   = 1
+    SDL_GAMEPAD_BUTTON_WEST: i32                   = 2
+    SDL_GAMEPAD_BUTTON_NORTH: i32                  = 3
+    SDL_GAMEPAD_BUTTON_BACK: i32                   = 4
+    SDL_GAMEPAD_BUTTON_GUIDE: i32                  = 5
+    SDL_GAMEPAD_BUTTON_START: i32                  = 6
+    SDL_GAMEPAD_BUTTON_LEFT_STICK: i32             = 7
+    SDL_GAMEPAD_BUTTON_RIGHT_STICK: i32            = 8
+    SDL_GAMEPAD_BUTTON_LEFT_SHOULDER: i32          = 9
+    SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER: i32         = 10
+    SDL_GAMEPAD_BUTTON_DPAD_UP: i32                = 11
+    SDL_GAMEPAD_BUTTON_DPAD_DOWN: i32              = 12
+    SDL_GAMEPAD_BUTTON_DPAD_LEFT: i32              = 13
+    SDL_GAMEPAD_BUTTON_DPAD_RIGHT: i32             = 14
+    SDL_GAMEPAD_AXIS_LEFTX: i32                    = 0
+    SDL_GAMEPAD_AXIS_LEFTY: i32                    = 1
+    SDL_GAMEPAD_AXIS_RIGHTX: i32                   = 2
+    SDL_GAMEPAD_AXIS_RIGHTY: i32                   = 3
+    SDL_GAMEPAD_AXIS_LEFT_TRIGGER: i32             = 4
+    SDL_GAMEPAD_AXIS_RIGHT_TRIGGER: i32            = 5
+    SDL_INIT_AUDIO: u32                            = 16
+    SDL_INIT_VIDEO: u32                            = 32
+    SDL_INIT_JOYSTICK: u32                         = 512
+    SDL_INIT_GAMEPAD: u32                          = 8192
+    SDL_INIT_EVENTS: u32                           = 16384
+    SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK: u32         = 0xFFFFFFFF
+    SDL_GPU_TEXTUREUSAGE_SAMPLER: u32              = 1
+    SDL_GPU_TEXTUREUSAGE_COLOR_TARGET: u32         = 2
+    SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET: u32 = 4
+    SDL_GPU_BUFFERUSAGE_VERTEX: u32                = 1
+    SDL_GPU_BUFFERUSAGE_INDEX: u32                 = 2
+    SDL_GPU_SHADERFORMAT_SPIRV: u32                = 2
+    SDL_GPU_SHADERFORMAT_MSL: u32                  = 16
+    SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD: i32        = 0
+    SDL_GPU_TEXTURETYPE_2D: i32                    = 0
+    SDL_GPU_SAMPLECOUNT_1: i32                     = 0
+    SDL_GPU_SHADERSTAGE_VERTEX: i32                = 0
+    SDL_GPU_SHADERSTAGE_FRAGMENT: i32              = 1
+    SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2: i32        = 10
+    SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3: i32        = 11
+    SDL_GPU_VERTEXINPUTRATE_VERTEX: i32            = 0
+    SDL_GPU_PRIMITIVETYPE_TRIANGLELIST: i32        = 0
+    SDL_GPU_FILLMODE_FILL: i32                     = 0
+    SDL_GPU_CULLMODE_NONE: i32                     = 0
+    SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE: i32       = 0
+    SDL_GPU_COMPAREOP_LESS_OR_EQUAL: i32           = 4
+    SDL_GPU_BLENDOP_ADD: i32                       = 1
+    SDL_GPU_BLENDFACTOR_ZERO: i32                  = 1
+    SDL_GPU_BLENDFACTOR_ONE: i32                   = 2
+    SDL_GPU_BLENDFACTOR_SRC_ALPHA: i32             = 7
+    SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA: i32   = 8
+    SDL_GPU_FILTER_LINEAR: i32                     = 1
+    SDL_GPU_SAMPLERMIPMAPMODE_LINEAR: i32          = 1
+    SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE: i32  = 2
+    SDL_GPU_SAMPLERADDRESSMODE_REPEAT: i32         = 0
+    SDL_GPU_LOADOP_CLEAR: i32                      = 1
+    SDL_GPU_LOADOP_DONT_CARE: i32                  = 2
+    SDL_GPU_STOREOP_STORE: i32                     = 0
+    SDL_GPU_STOREOP_DONT_CARE: i32                 = 1
+    SDL_GPU_INDEXELEMENTSIZE_32BIT: i32            = 1
+    SDL_GPU_TEXTUREFORMAT_D32_FLOAT: i32           = 60
+)
 
 pub extern (C) fn SDL_Init(flags: u32) bool = "SDL_Init"
 pub extern (C) fn SDL_Quit() void = "SDL_Quit"
@@ -336,14 +340,25 @@ pub extern (C) fn SDL_GetGamepads(count: ref i32) ref u32 = "SDL_GetGamepads"
 pub extern (C) fn SDL_OpenGamepad(instance_id: u32) ref void = "SDL_OpenGamepad"
 pub extern (C) fn SDL_CloseGamepad(gamepad: ref void) void = "SDL_CloseGamepad"
 pub extern (C) fn SDL_UpdateGamepads() void = "SDL_UpdateGamepads"
-pub extern (C) fn SDL_GamepadHasButton(gamepad: ref void, button: i32) bool = "SDL_GamepadHasButton"
-pub extern (C) fn SDL_GetGamepadButton(gamepad: ref void, button: i32) bool = "SDL_GetGamepadButton"
+pub extern (C) fn SDL_GamepadHasButton(
+    gamepad: ref void,
+    button: i32
+) bool = "SDL_GamepadHasButton"
+pub extern (C) fn SDL_GetGamepadButton(
+    gamepad: ref void,
+    button: i32
+) bool = "SDL_GetGamepadButton"
 pub extern (C) fn SDL_GamepadHasAxis(gamepad: ref void, axis: i32) bool = "SDL_GamepadHasAxis"
 pub extern (C) fn SDL_GetGamepadAxis(gamepad: ref void, axis: i32) i16 = "SDL_GetGamepadAxis"
 
 pub extern (C) fn fopen(path: ref u8, mode: ref u8) ref void = "fopen"
 pub extern (C) fn fclose(stream: ref void) i32 = "fclose"
-pub extern (C) fn fread(buf: ref void, size: usize, count: usize, stream: ref void) usize = "fread"
+pub extern (C) fn fread(
+    buf: ref void,
+    size: usize,
+    count: usize,
+    stream: ref void
+) usize = "fread"
 pub extern (C) fn fseek(stream: ref void, offset: i64, whence: i32) i32 = "fseek"
 pub extern (C) fn ftell(stream: ref void) i64 = "ftell"
 pub extern (C) fn rewind(stream: ref void) void = "rewind"
@@ -378,7 +393,11 @@ pub extern (C) fn fwrite(
 ) usize = "fwrite"
 
 pub extern (C) fn SDL_CreateProperties() u32 = "SDL_CreateProperties"
-pub extern (C) fn SDL_SetBooleanProperty(props: u32, name: ref u8, value: bool) bool = "SDL_SetBooleanProperty"
+pub extern (C) fn SDL_SetBooleanProperty(
+    props: u32,
+    name: ref u8,
+    value: bool
+) bool = "SDL_SetBooleanProperty"
 pub extern (C) fn SDL_DestroyProperties(props: u32) void = "SDL_DestroyProperties"
 pub extern (C) fn SDL_CreateGPUDeviceWithProperties(props: u32) ref void = "SDL_CreateGPUDeviceWithProperties"
 
