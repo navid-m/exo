@@ -44,16 +44,31 @@ pub type Vec4f = {
 
 
 pub fn read_f32(base: ref f32, index: usize) f32 = trust {
-    val slot: ref F32Slot = @ptradd(base as ref void, index * (@sizeof(f32) as usize)) as ref F32Slot
+    val slot: ref F32Slot = @ptradd(
+        base as ref void,
+        index * (@sizeof(f32) as usize)
+    ) as ref F32Slot
     return slot.value
 }
 
 pub fn transpose_mat4_ptr(src: ref f32) Mat4 = trust {
     return mat4(
-        read_f32(src, 0 as usize), read_f32(src, 4 as usize), read_f32(src, 8 as usize), read_f32(src, 12 as usize),
-        read_f32(src, 1 as usize), read_f32(src, 5 as usize), read_f32(src, 9 as usize), read_f32(src, 13 as usize),
-        read_f32(src, 2 as usize), read_f32(src, 6 as usize), read_f32(src, 10 as usize), read_f32(src, 14 as usize),
-        read_f32(src, 3 as usize), read_f32(src, 7 as usize), read_f32(src, 11 as usize), read_f32(src, 15 as usize)
+        read_f32(
+            src,
+            0 as usize
+        ), read_f32(src, 4 as usize), read_f32(src, 8 as usize), read_f32(src, 12 as usize),
+        read_f32(
+            src,
+            1 as usize
+        ), read_f32(src, 5 as usize), read_f32(src, 9 as usize), read_f32(src, 13 as usize),
+        read_f32(
+            src,
+            2 as usize
+        ), read_f32(src, 6 as usize), read_f32(src, 10 as usize), read_f32(src, 14 as usize),
+        read_f32(
+            src,
+            3 as usize
+        ), read_f32(src, 7 as usize), read_f32(src, 11 as usize), read_f32(src, 15 as usize)
     )
 }
 
@@ -322,7 +337,11 @@ pub fn model_matrix_scaled(position: Vec3, scale: Vec3, rotation_y: f32) Mat4 = 
 }
 
 pub fn model_matrix(position: Vec3, uniform_scale: f32, rotation_y: f32) Mat4 = {
-    return model_matrix_scaled(position, vec3(uniform_scale, uniform_scale, uniform_scale), rotation_y)
+    return model_matrix_scaled(
+        position,
+        vec3(uniform_scale, uniform_scale, uniform_scale),
+        rotation_y
+    )
 }
 
 pub fn reflect_position_y(position: Vec3, plane_y: f32) Vec3 = {

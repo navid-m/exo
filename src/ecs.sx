@@ -312,7 +312,18 @@ pub type Scene3D = {
     next_entity_id: mut u64
 }
 
-pub fn make_water(y: f32, offset_x: f32, offset_z: f32, size_x: f32, size_z: f32, color: math.Vec3, wave_speed: f32, wave_amplitude: f32, wave_frequency: f32, corner_radius: f32) WaterSurface = {
+pub fn make_water(
+    y: f32,
+    offset_x: f32,
+    offset_z: f32,
+    size_x: f32,
+    size_z: f32,
+    color: math.Vec3,
+    wave_speed: f32,
+    wave_amplitude: f32,
+    wave_frequency: f32,
+    corner_radius: f32
+) WaterSurface = {
     return {
         y: y,
         offset_x: offset_x,
@@ -340,7 +351,15 @@ pub fn make_floor(y: f32, restitution: f32) FloorCollider = {
     }
 }
 
-pub fn make_floor_sized(y: f32, restitution: f32, center_x: f32, center_z: f32, size_x: f32, size_z: f32, color: math.Vec3) FloorCollider = {
+pub fn make_floor_sized(
+    y: f32,
+    restitution: f32,
+    center_x: f32,
+    center_z: f32,
+    size_x: f32,
+    size_z: f32,
+    color: math.Vec3
+) FloorCollider = {
     return {
         y: y,
         restitution: restitution,
@@ -366,7 +385,12 @@ pub fn make_sphere(position: math.Vec3, color: math.Vec3, radius: f32) SphereEnt
     }
 }
 
-pub fn make_cube(position: math.Vec3, color: math.Vec3, size: f32, rotation_speed: f32) CubeEntity = {
+pub fn make_cube(
+    position: math.Vec3,
+    color: math.Vec3,
+    size: f32,
+    rotation_speed: f32
+) CubeEntity = {
     return {
         id: 0 as u64,
         position: position,
@@ -377,7 +401,13 @@ pub fn make_cube(position: math.Vec3, color: math.Vec3, size: f32, rotation_spee
     }
 }
 
-pub fn make_model(model: GlbModel, position: math.Vec3, rotation_y: f32, scale: f32, color: math.Vec3) ModelInstance = {
+pub fn make_model(
+    model: GlbModel,
+    position: math.Vec3,
+    rotation_y: f32,
+    scale: f32,
+    color: math.Vec3
+) ModelInstance = {
     return {
         model: model,
         position: position,
@@ -390,7 +420,13 @@ pub fn make_model(model: GlbModel, position: math.Vec3, rotation_y: f32, scale: 
     }
 }
 
-pub fn make_mesh(geometry: MeshGeometry, position: math.Vec3, rotation_y: f32, scale: math.Vec3, color: math.Vec3) MeshInstance = {
+pub fn make_mesh(
+    geometry: MeshGeometry,
+    position: math.Vec3,
+    rotation_y: f32,
+    scale: math.Vec3,
+    color: math.Vec3
+) MeshInstance = {
     return {
         geometry: geometry,
         position: position,
@@ -429,7 +465,15 @@ pub fn ui_clear(ui: mut Ui) void = {
     ui.rects = []
 }
 
-pub fn ui_text(ui: mut Ui, text: ref u8, x: f32, y: f32, scale: f32, color: math.Vec3, alpha: f32) void = {
+pub fn ui_text(
+    ui: mut Ui,
+    text: ref u8,
+    x: f32,
+    y: f32,
+    scale: f32,
+    color: math.Vec3,
+    alpha: f32
+) void = {
     @append(ui.texts, {
             text: text,
             x: x,
@@ -440,7 +484,15 @@ pub fn ui_text(ui: mut Ui, text: ref u8, x: f32, y: f32, scale: f32, color: math
         })
 }
 
-pub fn ui_rect(ui: mut Ui, x: f32, y: f32, width: f32, height: f32, color: math.Vec3, alpha: f32) void = {
+pub fn ui_rect(
+    ui: mut Ui,
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+    color: math.Vec3,
+    alpha: f32
+) void = {
     @append(ui.rects, {
             x: x,
             y: y,

@@ -58,7 +58,11 @@ pub fn (SnowEvents) on_update(_: mut self, app: mut engine.ExoApp, dt: f32, time
             val next_y: f32 = sphere.position.y - fall_speed * dt
             if next_y <= SNOW_FLOOR_Y {
                 @append(next_spheres, ecs.make_sphere(
-                        ecs.make_vec3(respawn_x(index, time), SNOW_RESPAWN_Y, respawn_z(index, time)),
+                        ecs.make_vec3(
+                            respawn_x(index, time),
+                            SNOW_RESPAWN_Y,
+                            respawn_z(index, time)
+                        ),
                         sphere.color,
                         sphere.radius
                     ))
@@ -81,26 +85,60 @@ pub fn (SnowEvents) on_update(_: mut self, app: mut engine.ExoApp, dt: f32, time
     app.scene.spheres = next_spheres
 }
 
-pub fn (SnowEvents) on_key_down(_: mut self, _: mut engine.ExoApp, _: i32, _: bool, _: u16) void = {}
+pub fn (SnowEvents) on_key_down(
+    _: mut self,
+    _: mut engine.ExoApp,
+    _: i32,
+    _: bool,
+    _: u16
+) void = {}
 pub fn (SnowEvents) on_key_up(_: mut self, _: mut engine.ExoApp, _: i32, _: u16) void = {}
-pub fn (SnowEvents) on_mouse_move(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
-pub fn (SnowEvents) on_mouse_button(_: mut self, _: mut engine.ExoApp, _: u8, _: bool, _: u8, _: f32, _: f32) void = {}
-pub fn (SnowEvents) on_mouse_wheel(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+
+pub fn (SnowEvents) on_mouse_move(
+    _: mut self,
+    _: mut engine.ExoApp,
+    _: f32,
+    _: f32,
+    _: f32,
+    _: f32
+) void = {}
+pub fn (SnowEvents) on_mouse_button(
+    _: mut self,
+    _: mut engine.ExoApp,
+    _: u8,
+    _: bool,
+    _: u8,
+    _: f32,
+    _: f32
+) void = {}
+pub fn (SnowEvents) on_mouse_wheel(
+    _: mut self,
+    _: mut engine.ExoApp,
+    _: f32,
+    _: f32,
+    _: f32,
+    _: f32
+) void = {}
 pub fn (SnowEvents) on_text_input(_: mut self, _: mut engine.ExoApp, _: ref u8) void = {}
+
 pub fn (SnowEvents) on_window_resize(_: mut self, _: mut engine.ExoApp, _: i32, _: i32) void = {}
+
 pub fn (SnowEvents) on_focus_changed(_: mut self, _: mut engine.ExoApp, _: bool) void = {}
+
 pub fn (SnowEvents) on_gamepad_button(_: mut self, _: mut engine.ExoApp, _: i32, _: bool) void = {}
+
 pub fn (SnowEvents) on_gamepad_axis(_: mut self, _: mut engine.ExoApp, _: i32, _: f32) void = {}
+
 pub fn (SnowEvents) on_shutdown(_: mut self, _: mut engine.ExoApp) void = {}
 
 fn build_snow_scene() ecs.Scene3D = {
     val scene: mut ecs.Scene3D = ecs.new_scene()
     ecs.add_light(scene, ecs.make_light(
-        ecs.make_vec3(-1.2 as f32, 4.5 as f32, 1.8 as f32),
-        ecs.make_vec3(0.96 as f32, 0.98 as f32, 1.00 as f32),
-        2.2 as f32,
-        10.0 as f32
-    ))
+            ecs.make_vec3(-1.2 as f32, 4.5 as f32, 1.8 as f32),
+            ecs.make_vec3(0.96 as f32, 0.98 as f32, 1.00 as f32),
+            2.2 as f32,
+            10.0 as f32
+        ))
 
     @append(scene.cubes, ecs.make_cube(
             ecs.make_vec3(0.0 as f32, -4.4 as f32, -1.8 as f32),
@@ -109,27 +147,167 @@ fn build_snow_scene() ecs.Scene3D = {
             0.0 as f32
         ))
 
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(-2.8 as f32, 2.8 as f32, -0.3 as f32), ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32), 0.07 as f32))
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(-2.1 as f32, 3.4 as f32, -1.4 as f32), ecs.make_vec3(0.98 as f32, 0.99 as f32, 1.00 as f32), 0.06 as f32))
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(-1.3 as f32, 2.5 as f32, -2.1 as f32), ecs.make_vec3(0.96 as f32, 0.99 as f32, 1.00 as f32), 0.08 as f32))
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(-0.6 as f32, 3.1 as f32, -3.0 as f32), ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32), 0.06 as f32))
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(0.2 as f32, 2.4 as f32, -0.8 as f32), ecs.make_vec3(0.98 as f32, 0.99 as f32, 1.00 as f32), 0.07 as f32))
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(0.8 as f32, 3.6 as f32, -1.7 as f32), ecs.make_vec3(0.97 as f32, 0.99 as f32, 1.00 as f32), 0.05 as f32))
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(1.5 as f32, 2.7 as f32, -2.8 as f32), ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32), 0.07 as f32))
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(2.2 as f32, 3.2 as f32, -0.6 as f32), ecs.make_vec3(0.97 as f32, 0.99 as f32, 1.00 as f32), 0.06 as f32))
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(2.9 as f32, 2.5 as f32, -1.9 as f32), ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32), 0.08 as f32))
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(-2.5 as f32, 1.8 as f32, -3.3 as f32), ecs.make_vec3(0.97 as f32, 0.99 as f32, 1.00 as f32), 0.07 as f32))
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(-1.7 as f32, 1.3 as f32, -0.9 as f32), ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32), 0.06 as f32))
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(-0.9 as f32, 1.9 as f32, -2.2 as f32), ecs.make_vec3(0.98 as f32, 0.99 as f32, 1.00 as f32), 0.07 as f32))
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(-0.1 as f32, 1.5 as f32, -3.4 as f32), ecs.make_vec3(0.97 as f32, 1.00 as f32, 1.00 as f32), 0.06 as f32))
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(0.6 as f32, 1.1 as f32, -1.2 as f32), ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32), 0.07 as f32))
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(1.4 as f32, 1.7 as f32, -2.4 as f32), ecs.make_vec3(0.97 as f32, 0.99 as f32, 1.00 as f32), 0.06 as f32))
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(2.1 as f32, 1.2 as f32, -3.1 as f32), ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32), 0.08 as f32))
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(2.7 as f32, 1.9 as f32, -1.5 as f32), ecs.make_vec3(0.97 as f32, 0.99 as f32, 1.00 as f32), 0.06 as f32))
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(-2.8 as f32, 2.8 as f32, -0.3 as f32),
+            ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32),
+            0.07 as f32
+        )
+    )
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(-2.1 as f32, 3.4 as f32, -1.4 as f32),
+            ecs.make_vec3(0.98 as f32, 0.99 as f32, 1.00 as f32),
+            0.06 as f32
+        )
+    )
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(-1.3 as f32, 2.5 as f32, -2.1 as f32),
+            ecs.make_vec3(0.96 as f32, 0.99 as f32, 1.00 as f32),
+            0.08 as f32
+        )
+    )
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(-0.6 as f32, 3.1 as f32, -3.0 as f32),
+            ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32),
+            0.06 as f32
+        )
+    )
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(0.2 as f32, 2.4 as f32, -0.8 as f32),
+            ecs.make_vec3(0.98 as f32, 0.99 as f32, 1.00 as f32),
+            0.07 as f32
+        )
+    )
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(0.8 as f32, 3.6 as f32, -1.7 as f32),
+            ecs.make_vec3(0.97 as f32, 0.99 as f32, 1.00 as f32),
+            0.05 as f32
+        )
+    )
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(1.5 as f32, 2.7 as f32, -2.8 as f32),
+            ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32),
+            0.07 as f32
+        )
+    )
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(2.2 as f32, 3.2 as f32, -0.6 as f32),
+            ecs.make_vec3(0.97 as f32, 0.99 as f32, 1.00 as f32),
+            0.06 as f32
+        )
+    )
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(2.9 as f32, 2.5 as f32, -1.9 as f32),
+            ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32),
+            0.08 as f32
+        )
+    )
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(-2.5 as f32, 1.8 as f32, -3.3 as f32),
+            ecs.make_vec3(0.97 as f32, 0.99 as f32, 1.00 as f32),
+            0.07 as f32
+        )
+    )
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(-1.7 as f32, 1.3 as f32, -0.9 as f32),
+            ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32),
+            0.06 as f32
+        )
+    )
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(-0.9 as f32, 1.9 as f32, -2.2 as f32),
+            ecs.make_vec3(0.98 as f32, 0.99 as f32, 1.00 as f32),
+            0.07 as f32
+        )
+    )
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(-0.1 as f32, 1.5 as f32, -3.4 as f32),
+            ecs.make_vec3(0.97 as f32, 1.00 as f32, 1.00 as f32),
+            0.06 as f32
+        )
+    )
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(0.6 as f32, 1.1 as f32, -1.2 as f32),
+            ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32),
+            0.07 as f32
+        )
+    )
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(1.4 as f32, 1.7 as f32, -2.4 as f32),
+            ecs.make_vec3(0.97 as f32, 0.99 as f32, 1.00 as f32),
+            0.06 as f32
+        )
+    )
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(2.1 as f32, 1.2 as f32, -3.1 as f32),
+            ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32),
+            0.08 as f32
+        )
+    )
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(2.7 as f32, 1.9 as f32, -1.5 as f32),
+            ecs.make_vec3(0.97 as f32, 0.99 as f32, 1.00 as f32),
+            0.06 as f32
+        )
+    )
 
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(-1.3 as f32, -0.6 as f32, -2.1 as f32), ecs.make_vec3(0.96 as f32, 0.97 as f32, 1.00 as f32), 0.48 as f32))
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(-1.3 as f32, 0.05 as f32, -2.1 as f32), ecs.make_vec3(0.98 as f32, 0.99 as f32, 1.00 as f32), 0.34 as f32))
-    @append(scene.spheres, ecs.make_sphere(ecs.make_vec3(-1.3 as f32, 0.55 as f32, -2.1 as f32), ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32), 0.22 as f32))
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(-1.3 as f32, -0.6 as f32, -2.1 as f32),
+            ecs.make_vec3(0.96 as f32, 0.97 as f32, 1.00 as f32),
+            0.48 as f32
+        )
+    )
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(-1.3 as f32, 0.05 as f32, -2.1 as f32),
+            ecs.make_vec3(0.98 as f32, 0.99 as f32, 1.00 as f32),
+            0.34 as f32
+        )
+    )
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(-1.3 as f32, 0.55 as f32, -2.1 as f32),
+            ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32),
+            0.22 as f32
+        )
+    )
 
     @append(scene.cubes, ecs.make_cube(
             ecs.make_vec3(1.9 as f32, -0.1 as f32, -1.0 as f32),
@@ -151,12 +329,12 @@ pub fn main() i32 = {
     val model = trust engine.load_embedded_fixture_model()
     if model.valid {
         ecs.add_model(scene, ecs.make_model(
-            model,
-            ecs.make_vec3(0.0 as f32, 0.0 as f32, 0.0 as f32),
-            0.0 as f32,
-            1.0 as f32,
-            ecs.make_vec3(1.0 as f32, 1.0 as f32, 1.0 as f32)
-        ))
+                model,
+                ecs.make_vec3(0.0 as f32, 0.0 as f32, 0.0 as f32),
+                0.0 as f32,
+                1.0 as f32,
+                ecs.make_vec3(1.0 as f32, 1.0 as f32, 1.0 as f32)
+            ))
     }
 
     val input_cfg: input.InputConfig = {
@@ -176,7 +354,12 @@ pub fn main() i32 = {
     config.height = 720 as i32
     config.quit_key = sdl.SDL_SCANCODE_ESCAPE
 
-    val app: engine.ExoApp = engine.create_basic_app(config, scene, rendering.default_camera(), input_cfg)
+    val app: engine.ExoApp = engine.create_basic_app(
+        config,
+        scene,
+        rendering.default_camera(),
+        input_cfg
+    )
     val events: SnowEvents = {}
     return trust engine.run_app_with_events[SnowEvents](app, events)
 }

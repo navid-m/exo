@@ -129,7 +129,10 @@ pub fn compute_glb_bounds(model: mut ref ecs.GlbModel) void = trust {
         val root: ref void = json.doc_root(doc)
         val vc: usize = model.vertex_count as usize
         val pos_offset: usize = glb_position_offset(root)
-        val bin_base: ref void = @ptradd(data, (json_offset + (json_len as usize) + (8 as usize)) as usize)
+        val bin_base: ref void = @ptradd(
+            data,
+            (json_offset + (json_len as usize) + (8 as usize)) as usize
+        )
         val vi: mut usize = 0 as usize
         val min_x: mut f32 = 1e30 as f32
         val max_x: mut f32 = -1e30 as f32
@@ -236,10 +239,16 @@ pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
                         if json.obj_get(primitive, "attributes") is some attributes {
                             if json.obj_get(root, "accessors") is some accessors {
                                 if json.obj_get_int(attributes, "POSITION") is some pos_accessor {
-                                    model.vertex_count = parse_accessor_count(accessors, pos_accessor)
+                                    model.vertex_count = parse_accessor_count(
+                                        accessors,
+                                        pos_accessor
+                                    )
                                 }
                                 if json.obj_get_int(primitive, "indices") is some idx_accessor {
-                                    model.index_count = parse_accessor_count(accessors, idx_accessor)
+                                    model.index_count = parse_accessor_count(
+                                        accessors,
+                                        idx_accessor
+                                    )
                                 }
                             }
                             if json.obj_get_int(attributes, "NORMAL") is some _ {
@@ -263,7 +272,11 @@ pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
         }
         val json_buf2: ref u8 = @alloc((json_len as usize) + (1 as usize)) as ref u8
         if json_buf2 != none {
-            @memcpy(json_buf2 as ref void, @ptradd(data, json_offset) as ref void, json_len as usize)
+            @memcpy(
+                json_buf2 as ref void,
+                @ptradd(data, json_offset) as ref void,
+                json_len as usize
+            )
             @store8(@ptradd(json_buf2, json_len as usize), 0)
             if json.parse(json_buf2) is some doc2 {
                 val root2: ref void = json.doc_root(doc2)

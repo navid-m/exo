@@ -28,9 +28,21 @@ pub fn point_in_cube(point: math.Vec3, cube: ecs.CubeEntity) bool = {
 
 pub fn sphere_cube_overlap(center: math.Vec3, radius: f32, cube: ecs.CubeEntity) bool = {
     val half: f32 = cube.size * (0.5 as f32)
-    val nearest_x: f32 = math.fclamp(center.x as f64, (cube.position.x - half) as f64, (cube.position.x + half) as f64) as f32
-    val nearest_y: f32 = math.fclamp(center.y as f64, (cube.position.y - half) as f64, (cube.position.y + half) as f64) as f32
-    val nearest_z: f32 = math.fclamp(center.z as f64, (cube.position.z - half) as f64, (cube.position.z + half) as f64) as f32
+    val nearest_x: f32 = math.fclamp(
+        center.x as f64,
+        (cube.position.x - half) as f64,
+        (cube.position.x + half) as f64
+    ) as f32
+    val nearest_y: f32 = math.fclamp(
+        center.y as f64,
+        (cube.position.y - half) as f64,
+        (cube.position.y + half) as f64
+    ) as f32
+    val nearest_z: f32 = math.fclamp(
+        center.z as f64,
+        (cube.position.z - half) as f64,
+        (cube.position.z + half) as f64
+    ) as f32
     val delta: math.Vec3 = math.vec3_sub(center, math.vec3(nearest_x, nearest_y, nearest_z))
     return math.vec3_dot(delta, delta) <= radius * radius
 }

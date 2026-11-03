@@ -171,7 +171,11 @@ fn update_player(game: mut PongGame, app: engine.ExoApp, dt: f32) void = {
     mz = mz + engine.gamepad_axis(app, sdl.SDL_GAMEPAD_AXIS_LEFTX)
     my = my - engine.gamepad_axis(app, sdl.SDL_GAMEPAD_AXIS_LEFTY)
     val half: f32 = PADDLE_SIZE * (0.5 as f32)
-    game.player_z = clampf(game.player_z + mz * PLAYER_SPEED * dt, (0.0 as f32) - COURT_HALF_Z + half, COURT_HALF_Z - half)
+    game.player_z = clampf(
+        game.player_z + mz * PLAYER_SPEED * dt,
+        (0.0 as f32) - COURT_HALF_Z + half,
+        COURT_HALF_Z - half
+    )
     game.player_y = clampf(game.player_y + my * PLAYER_SPEED * dt, half, COURT_HEIGHT - half)
 }
 
@@ -185,8 +189,16 @@ fn update_ai(game: mut PongGame, time: f32, dt: f32) void = {
     val half: f32 = PADDLE_SIZE * (0.5 as f32)
     val dy: f32 = target_y - game.ai_y
     val dz: f32 = target_z - game.ai_z
-    game.ai_y = clampf(game.ai_y + clampf(dy, (0.0 as f32) - AI_SPEED * dt, AI_SPEED * dt), half, COURT_HEIGHT - half)
-    game.ai_z = clampf(game.ai_z + clampf(dz, (0.0 as f32) - AI_SPEED * dt, AI_SPEED * dt), (0.0 as f32) - COURT_HALF_Z + half, COURT_HALF_Z - half)
+    game.ai_y = clampf(
+        game.ai_y + clampf(dy, (0.0 as f32) - AI_SPEED * dt, AI_SPEED * dt),
+        half,
+        COURT_HEIGHT - half
+    )
+    game.ai_z = clampf(
+        game.ai_z + clampf(dz, (0.0 as f32) - AI_SPEED * dt, AI_SPEED * dt),
+        (0.0 as f32) - COURT_HALF_Z + half,
+        COURT_HALF_Z - half
+    )
 }
 
 fn paddle_bounce(game: mut PongGame, app: engine.ExoApp, player_paddle: bool) void = {
@@ -285,88 +297,88 @@ fn sync_scene(game: PongGame, app: mut engine.ExoApp, time: f32) void = {
     val x: mut i32 = (0 as i32) - (12 as i32)
     for x <= (12 as i32) {
         @append(cubes, ecs.make_cube(
-            ecs.make_vec3(x as f32, 0.16 as f32, (0.0 as f32) - COURT_HALF_Z),
-            ecs.make_vec3(0.05 as f32, 0.22 as f32, 0.36 as f32),
-            0.42 as f32,
-            0.0 as f32
-        ))
+                ecs.make_vec3(x as f32, 0.16 as f32, (0.0 as f32) - COURT_HALF_Z),
+                ecs.make_vec3(0.05 as f32, 0.22 as f32, 0.36 as f32),
+                0.42 as f32,
+                0.0 as f32
+            ))
         @append(cubes, ecs.make_cube(
-            ecs.make_vec3(x as f32, 0.16 as f32, COURT_HALF_Z),
-            ecs.make_vec3(0.10 as f32, 0.34 as f32, 0.52 as f32),
-            0.42 as f32,
-            0.0 as f32
-        ))
+                ecs.make_vec3(x as f32, 0.16 as f32, COURT_HALF_Z),
+                ecs.make_vec3(0.10 as f32, 0.34 as f32, 0.52 as f32),
+                0.42 as f32,
+                0.0 as f32
+            ))
         x = x + (1 as i32)
     }
     val z: mut i32 = (0 as i32) - (6 as i32)
     for z <= (6 as i32) {
         @append(cubes, ecs.make_cube(
-            ecs.make_vec3((0.0 as f32) - COURT_HALF_X, 0.14 as f32, z as f32),
-            ecs.make_vec3(0.16 as f32, 0.58 as f32, 0.98 as f32),
-            0.34 as f32,
-            0.0 as f32
-        ))
+                ecs.make_vec3((0.0 as f32) - COURT_HALF_X, 0.14 as f32, z as f32),
+                ecs.make_vec3(0.16 as f32, 0.58 as f32, 0.98 as f32),
+                0.34 as f32,
+                0.0 as f32
+            ))
         @append(cubes, ecs.make_cube(
-            ecs.make_vec3(COURT_HALF_X, 0.14 as f32, z as f32),
-            ecs.make_vec3(0.98 as f32, 0.28 as f32, 0.52 as f32),
-            0.34 as f32,
-            0.0 as f32
-        ))
+                ecs.make_vec3(COURT_HALF_X, 0.14 as f32, z as f32),
+                ecs.make_vec3(0.98 as f32, 0.28 as f32, 0.52 as f32),
+                0.34 as f32,
+                0.0 as f32
+            ))
         z = z + (1 as i32)
     }
     val c: mut i32 = (0 as i32) - (6 as i32)
     for c <= (6 as i32) {
         @append(cubes, ecs.make_cube(
-            ecs.make_vec3(0.0 as f32, 0.06 as f32, c as f32),
-            ecs.make_vec3(0.20 as f32, 0.30 as f32, 0.42 as f32),
-            0.18 as f32,
-            0.0 as f32
-        ))
+                ecs.make_vec3(0.0 as f32, 0.06 as f32, c as f32),
+                ecs.make_vec3(0.20 as f32, 0.30 as f32, 0.42 as f32),
+                0.18 as f32,
+                0.0 as f32
+            ))
         c = c + (1 as i32)
     }
     @append(cubes, ecs.make_cube(
-        ecs.make_vec3((0.0 as f32) - COURT_HALF_X, 3.0 as f32, (0.0 as f32) - COURT_HALF_Z),
-        ecs.make_vec3(0.20 as f32, 0.70 as f32, 1.00 as f32),
-        0.55 as f32,
-        0.0 as f32
-    ))
+            ecs.make_vec3((0.0 as f32) - COURT_HALF_X, 3.0 as f32, (0.0 as f32) - COURT_HALF_Z),
+            ecs.make_vec3(0.20 as f32, 0.70 as f32, 1.00 as f32),
+            0.55 as f32,
+            0.0 as f32
+        ))
     @append(cubes, ecs.make_cube(
-        ecs.make_vec3((0.0 as f32) - COURT_HALF_X, 3.0 as f32, COURT_HALF_Z),
-        ecs.make_vec3(0.20 as f32, 0.70 as f32, 1.00 as f32),
-        0.55 as f32,
-        0.0 as f32
-    ))
+            ecs.make_vec3((0.0 as f32) - COURT_HALF_X, 3.0 as f32, COURT_HALF_Z),
+            ecs.make_vec3(0.20 as f32, 0.70 as f32, 1.00 as f32),
+            0.55 as f32,
+            0.0 as f32
+        ))
     @append(cubes, ecs.make_cube(
-        ecs.make_vec3(COURT_HALF_X, 3.0 as f32, (0.0 as f32) - COURT_HALF_Z),
-        ecs.make_vec3(1.00 as f32, 0.34 as f32, 0.62 as f32),
-        0.55 as f32,
-        0.0 as f32
-    ))
+            ecs.make_vec3(COURT_HALF_X, 3.0 as f32, (0.0 as f32) - COURT_HALF_Z),
+            ecs.make_vec3(1.00 as f32, 0.34 as f32, 0.62 as f32),
+            0.55 as f32,
+            0.0 as f32
+        ))
     @append(cubes, ecs.make_cube(
-        ecs.make_vec3(COURT_HALF_X, 3.0 as f32, COURT_HALF_Z),
-        ecs.make_vec3(1.00 as f32, 0.34 as f32, 0.62 as f32),
-        0.55 as f32,
-        0.0 as f32
-    ))
+            ecs.make_vec3(COURT_HALF_X, 3.0 as f32, COURT_HALF_Z),
+            ecs.make_vec3(1.00 as f32, 0.34 as f32, 0.62 as f32),
+            0.55 as f32,
+            0.0 as f32
+        ))
     @append(cubes, ecs.make_cube(
-        ecs.make_vec3((0.0 as f32) - PADDLE_X, game.player_y, game.player_z),
-        ecs.make_vec3(0.20 as f32, 0.92 as f32, 1.00 as f32),
-        PADDLE_SIZE,
-        0.0 as f32
-    ))
+            ecs.make_vec3((0.0 as f32) - PADDLE_X, game.player_y, game.player_z),
+            ecs.make_vec3(0.20 as f32, 0.92 as f32, 1.00 as f32),
+            PADDLE_SIZE,
+            0.0 as f32
+        ))
     @append(cubes, ecs.make_cube(
-        ecs.make_vec3(PADDLE_X, game.ai_y, game.ai_z),
-        ecs.make_vec3(1.00 as f32, 0.26 as f32, 0.58 as f32),
-        PADDLE_SIZE,
-        0.0 as f32
-    ))
+            ecs.make_vec3(PADDLE_X, game.ai_y, game.ai_z),
+            ecs.make_vec3(1.00 as f32, 0.26 as f32, 0.58 as f32),
+            PADDLE_SIZE,
+            0.0 as f32
+        ))
     val ball_pulse: f32 = (math.sin((time * (9.0 as f32)) as f64) as f32) * (0.025 as f32)
     val spheres: mut list[ecs.SphereEntity] = []
     @append(spheres, ecs.make_sphere(
-        ecs.make_vec3(game.ball_x, game.ball_y, game.ball_z),
-        ecs.make_vec3(1.00 as f32, 0.94 as f32, 0.52 as f32),
-        BALL_RADIUS + ball_pulse
-    ))
+            ecs.make_vec3(game.ball_x, game.ball_y, game.ball_z),
+            ecs.make_vec3(1.00 as f32, 0.94 as f32, 0.52 as f32),
+            BALL_RADIUS + ball_pulse
+        ))
     app.scene.cubes = cubes
     app.scene.spheres = spheres
 }
@@ -379,20 +391,73 @@ fn place_camera(game: PongGame, app: mut engine.ExoApp, time: f32) void = {
 }
 
 fn refresh_hud(game: PongGame, app: mut engine.ExoApp) void = {
-    @snprintf(game.hud, 128 as usize, "PLAYER {d}   AI {d}   FIRST TO {d}", { game.player_score, game.ai_score, WIN_SCORE })
+    @snprintf(
+        game.hud,
+        128 as usize,
+        "PLAYER {d}   AI {d}   FIRST TO {d}",
+        { game.player_score, game.ai_score, WIN_SCORE }
+    )
     ecs.ui_clear(app.scene.ui)
-    ecs.ui_rect(app.scene.ui, 16.0 as f32, 16.0 as f32, 560.0 as f32, 44.0 as f32, ecs.make_vec3(0.01 as f32, 0.02 as f32, 0.07 as f32), 0.70 as f32)
-    ecs.ui_text(app.scene.ui, game.hud, 26.0 as f32, 26.0 as f32, 3.0 as f32, ecs.make_vec3(0.76 as f32, 0.96 as f32, 1.00 as f32), 1.0 as f32)
+    ecs.ui_rect(
+        app.scene.ui,
+        16.0 as f32,
+        16.0 as f32,
+        560.0 as f32,
+        44.0 as f32,
+        ecs.make_vec3(0.01 as f32, 0.02 as f32, 0.07 as f32),
+        0.70 as f32
+    )
+    ecs.ui_text(
+        app.scene.ui,
+        game.hud,
+        26.0 as f32,
+        26.0 as f32,
+        3.0 as f32,
+        ecs.make_vec3(0.76 as f32, 0.96 as f32, 1.00 as f32),
+        1.0 as f32
+    )
     if game.state == (1 as i32) {
         if game.player_score >= WIN_SCORE {
-            ecs.ui_text(app.scene.ui, "PLAYER WINS!  PRESS R", 26.0 as f32, 82.0 as f32, 2.2 as f32, ecs.make_vec3(0.30 as f32, 1.00 as f32, 0.92 as f32), 1.0 as f32)
+            ecs.ui_text(
+                app.scene.ui,
+                "PLAYER WINS!  PRESS R",
+                26.0 as f32,
+                82.0 as f32,
+                2.2 as f32,
+                ecs.make_vec3(0.30 as f32, 1.00 as f32, 0.92 as f32),
+                1.0 as f32
+            )
         } else {
-            ecs.ui_text(app.scene.ui, "AI WINS!  PRESS R", 26.0 as f32, 82.0 as f32, 2.2 as f32, ecs.make_vec3(1.00 as f32, 0.38 as f32, 0.52 as f32), 1.0 as f32)
+            ecs.ui_text(
+                app.scene.ui,
+                "AI WINS!  PRESS R",
+                26.0 as f32,
+                82.0 as f32,
+                2.2 as f32,
+                ecs.make_vec3(1.00 as f32, 0.38 as f32, 0.52 as f32),
+                1.0 as f32
+            )
         }
     } elif game.serve_timer > (0.0 as f32) {
-        ecs.ui_text(app.scene.ui, "SERVE...", 26.0 as f32, 82.0 as f32, 2.0 as f32, ecs.make_vec3(1.00 as f32, 0.86 as f32, 0.30 as f32), 1.0 as f32)
+        ecs.ui_text(
+            app.scene.ui,
+            "SERVE...",
+            26.0 as f32,
+            82.0 as f32,
+            2.0 as f32,
+            ecs.make_vec3(1.00 as f32, 0.86 as f32, 0.30 as f32),
+            1.0 as f32
+        )
     } else {
-        ecs.ui_text(app.scene.ui, "W/S VERTICAL   A/D SIDE   R RESTART   0/F12 SHOT", 26.0 as f32, 82.0 as f32, 2.0 as f32, ecs.make_vec3(0.64 as f32, 0.76 as f32, 0.90 as f32), 1.0 as f32)
+        ecs.ui_text(
+            app.scene.ui,
+            "W/S VERTICAL   A/D SIDE   R RESTART   0/F12 SHOT",
+            26.0 as f32,
+            82.0 as f32,
+            2.0 as f32,
+            ecs.make_vec3(0.64 as f32, 0.76 as f32, 0.90 as f32),
+            1.0 as f32
+        )
     }
 }
 
@@ -408,32 +473,32 @@ fn build_scene() ecs.Scene3D = {
     scene.render.enable_light_glow = true
     scene.render.reflection_plane = 0.0 as f32
     ecs.add_light(scene, ecs.make_light(
-        ecs.make_vec3(0.0 as f32, 9.0 as f32, 0.0 as f32),
-        ecs.make_vec3(0.72 as f32, 0.86 as f32, 1.00 as f32),
-        2.4 as f32,
-        26.0 as f32
-    ))
+            ecs.make_vec3(0.0 as f32, 9.0 as f32, 0.0 as f32),
+            ecs.make_vec3(0.72 as f32, 0.86 as f32, 1.00 as f32),
+            2.4 as f32,
+            26.0 as f32
+        ))
     ecs.add_light(scene, ecs.make_light(
-        ecs.make_vec3((0.0 as f32) - (9.0 as f32), 3.2 as f32, 0.0 as f32),
-        ecs.make_vec3(0.20 as f32, 0.55 as f32, 1.00 as f32),
-        1.4 as f32,
-        12.0 as f32
-    ))
+            ecs.make_vec3((0.0 as f32) - (9.0 as f32), 3.2 as f32, 0.0 as f32),
+            ecs.make_vec3(0.20 as f32, 0.55 as f32, 1.00 as f32),
+            1.4 as f32,
+            12.0 as f32
+        ))
     ecs.add_light(scene, ecs.make_light(
-        ecs.make_vec3(9.0 as f32, 3.2 as f32, 0.0 as f32),
-        ecs.make_vec3(1.00 as f32, 0.22 as f32, 0.52 as f32),
-        1.4 as f32,
-        12.0 as f32
-    ))
+            ecs.make_vec3(9.0 as f32, 3.2 as f32, 0.0 as f32),
+            ecs.make_vec3(1.00 as f32, 0.22 as f32, 0.52 as f32),
+            1.4 as f32,
+            12.0 as f32
+        ))
     ecs.add_floor(scene, ecs.make_floor_sized(
-        0.0 as f32,
-        0.0 as f32,
-        0.0 as f32,
-        0.0 as f32,
-        (COURT_HALF_X * (2.0 as f32)) + (2.0 as f32),
-        (COURT_HALF_Z * (2.0 as f32)) + (2.0 as f32),
-        ecs.make_vec3(0.018 as f32, 0.035 as f32, 0.075 as f32)
-    ))
+            0.0 as f32,
+            0.0 as f32,
+            0.0 as f32,
+            0.0 as f32,
+            (COURT_HALF_X * (2.0 as f32)) + (2.0 as f32),
+            (COURT_HALF_Z * (2.0 as f32)) + (2.0 as f32),
+            ecs.make_vec3(0.018 as f32, 0.035 as f32, 0.075 as f32)
+        ))
     return scene
 }
 
@@ -456,7 +521,13 @@ pub fn (PongGame) on_update(game: mut self, app: mut engine.ExoApp, dt: f32, tim
 
 pub fn (PongGame) on_fixed_update(_: mut self, _: mut engine.ExoApp, _: f32) void = {}
 
-pub fn (PongGame) on_key_down(game: mut self, app: mut engine.ExoApp, key: i32, _: bool, _: u16) void = {
+pub fn (PongGame) on_key_down(
+    game: mut self,
+    app: mut engine.ExoApp,
+    key: i32,
+    _: bool,
+    _: u16
+) void = {
     if key == sdl.SDL_SCANCODE_R {
         reset_game(game)
     }
@@ -471,13 +542,40 @@ pub fn (PongGame) on_key_down(game: mut self, app: mut engine.ExoApp, key: i32, 
 }
 
 pub fn (PongGame) on_key_up(_: mut self, _: mut engine.ExoApp, _: i32, _: u16) void = {}
-pub fn (PongGame) on_mouse_move(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
-pub fn (PongGame) on_mouse_button(_: mut self, _: mut engine.ExoApp, _: u8, _: bool, _: u8, _: f32, _: f32) void = {}
-pub fn (PongGame) on_mouse_wheel(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+
+pub fn (PongGame) on_mouse_move(
+    _: mut self,
+    _: mut engine.ExoApp,
+    _: f32,
+    _: f32,
+    _: f32,
+    _: f32
+) void = {}
+pub fn (PongGame) on_mouse_button(
+    _: mut self,
+    _: mut engine.ExoApp,
+    _: u8,
+    _: bool,
+    _: u8,
+    _: f32,
+    _: f32
+) void = {}
+pub fn (PongGame) on_mouse_wheel(
+    _: mut self,
+    _: mut engine.ExoApp,
+    _: f32,
+    _: f32,
+    _: f32,
+    _: f32
+) void = {}
 pub fn (PongGame) on_text_input(_: mut self, _: mut engine.ExoApp, _: ref u8) void = {}
+
 pub fn (PongGame) on_window_resize(_: mut self, _: mut engine.ExoApp, _: i32, _: i32) void = {}
+
 pub fn (PongGame) on_focus_changed(_: mut self, _: mut engine.ExoApp, _: bool) void = {}
+
 pub fn (PongGame) on_gamepad_button(_: mut self, _: mut engine.ExoApp, _: i32, _: bool) void = {}
+
 pub fn (PongGame) on_gamepad_axis(_: mut self, _: mut engine.ExoApp, _: i32, _: f32) void = {}
 
 pub fn (PongGame) on_shutdown(game: mut self, _: mut engine.ExoApp) void = {
@@ -507,10 +605,10 @@ pub fn main() i32 = {
     val audio_cfg: audio.AudioBankConfig = {
         master_volume: 90 as i32,
         clips: [{
-            path: "./assets/example_sound.wav",
-            loops: 0 as i32,
-            volume: 90 as i32
-        }]
+                path: "./assets/example_sound.wav",
+                loops: 0 as i32,
+                volume: 90 as i32
+            }]
     }
 
     val builder: mut engine.ExoAppBuilder = engine.new_app()

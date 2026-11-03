@@ -132,7 +132,13 @@ fn set_light_uniform(fu: mut SceneFragmentUniforms, index: i32, light: ecs.Point
     }
 }
 
-pub fn configure_scene_style(runtime_raw: ref void, sky_top: math.Vec3, sky_horizon: math.Vec3, ambient: f32, lights: list[ecs.PointLight]) void = trust {
+pub fn configure_scene_style(
+    runtime_raw: ref void,
+    sky_top: math.Vec3,
+    sky_horizon: math.Vec3,
+    ambient: f32,
+    lights: list[ecs.PointLight]
+) void = trust {
     if runtime_raw == none {
         return
     }
@@ -253,7 +259,13 @@ pub type VertexAttributeTriple = {
 }
 
 
-pub fn load_shader(runtime: ref Renderer, path: ref u8, stage: i32, num_samplers: u32, num_uniform_buffers: u32) ref void = trust {
+pub fn load_shader(
+    runtime: ref Renderer,
+    path: ref u8,
+    stage: i32,
+    num_samplers: u32,
+    num_uniform_buffers: u32
+) ref void = trust {
     if io.load_binary_file(path) is some blob {
         val info: mut sdl.SDLGPUShaderCreateInfo = {
             code_size: 0 as usize,
@@ -281,7 +293,13 @@ pub fn load_shader(runtime: ref Renderer, path: ref u8, stage: i32, num_samplers
     return none as ref void
 }
 
-pub fn create_texture(runtime: ref Renderer, format: i32, usage: u32, width: u32, height: u32) ref void = {
+pub fn create_texture(
+    runtime: ref Renderer,
+    format: i32,
+    usage: u32,
+    width: u32,
+    height: u32
+) ref void = {
     val info: mut sdl.SDLGPUTextureCreateInfo = {
         typ: 0 as i32,
         format: 0 as i32,
@@ -418,11 +436,23 @@ pub fn create_pipeline(
     depth_write: bool,
     fragment_samplers: u32
 ) ref void = trust {
-    val vs: ref void = load_shader(runtime, vs_path, sdl.SDL_GPU_SHADERSTAGE_VERTEX, 0 as u32, 1 as u32)
+    val vs: ref void = load_shader(
+        runtime,
+        vs_path,
+        sdl.SDL_GPU_SHADERSTAGE_VERTEX,
+        0 as u32,
+        1 as u32
+    )
     if vs == none {
         return none as ref void
     }
-    val fs: ref void = load_shader(runtime, fs_path, sdl.SDL_GPU_SHADERSTAGE_FRAGMENT, fragment_samplers, 1 as u32)
+    val fs: ref void = load_shader(
+        runtime,
+        fs_path,
+        sdl.SDL_GPU_SHADERSTAGE_FRAGMENT,
+        fragment_samplers,
+        1 as u32
+    )
     if fs == none {
         sdl.SDL_ReleaseGPUShader(runtime.device, vs)
         return none as ref void
@@ -578,11 +608,23 @@ pub fn create_scene_pipeline(
     fs_path: ref u8,
     color_format: i32
 ) ref void = trust {
-    val vs: ref void = load_shader(runtime, vs_path, sdl.SDL_GPU_SHADERSTAGE_VERTEX, 0 as u32, 1 as u32)
+    val vs: ref void = load_shader(
+        runtime,
+        vs_path,
+        sdl.SDL_GPU_SHADERSTAGE_VERTEX,
+        0 as u32,
+        1 as u32
+    )
     if vs == none {
         return none as ref void
     }
-    val fs: ref void = load_shader(runtime, fs_path, sdl.SDL_GPU_SHADERSTAGE_FRAGMENT, 1 as u32, 1 as u32)
+    val fs: ref void = load_shader(
+        runtime,
+        fs_path,
+        sdl.SDL_GPU_SHADERSTAGE_FRAGMENT,
+        1 as u32,
+        1 as u32
+    )
     if fs == none {
         sdl.SDL_ReleaseGPUShader(runtime.device, vs)
         return none as ref void
@@ -660,11 +702,23 @@ pub fn create_ui_pipeline(
     fs_path: ref u8,
     color_format: i32
 ) ref void = trust {
-    val vs: ref void = load_shader(runtime, vs_path, sdl.SDL_GPU_SHADERSTAGE_VERTEX, 0 as u32, 1 as u32)
+    val vs: ref void = load_shader(
+        runtime,
+        vs_path,
+        sdl.SDL_GPU_SHADERSTAGE_VERTEX,
+        0 as u32,
+        1 as u32
+    )
     if vs == none {
         return none as ref void
     }
-    val fs: ref void = load_shader(runtime, fs_path, sdl.SDL_GPU_SHADERSTAGE_FRAGMENT, 1 as u32, 1 as u32)
+    val fs: ref void = load_shader(
+        runtime,
+        fs_path,
+        sdl.SDL_GPU_SHADERSTAGE_FRAGMENT,
+        1 as u32,
+        1 as u32
+    )
     if fs == none {
         sdl.SDL_ReleaseGPUShader(runtime.device, vs)
         return none as ref void
@@ -745,11 +799,23 @@ pub fn create_postprocess_pipeline(
     fragment_samplers: u32,
     fragment_uniforms: u32
 ) ref void = trust {
-    val vs: ref void = load_shader(runtime, vs_path, sdl.SDL_GPU_SHADERSTAGE_VERTEX, 0 as u32, 0 as u32)
+    val vs: ref void = load_shader(
+        runtime,
+        vs_path,
+        sdl.SDL_GPU_SHADERSTAGE_VERTEX,
+        0 as u32,
+        0 as u32
+    )
     if vs == none {
         return none as ref void
     }
-    val fs: ref void = load_shader(runtime, fs_path, sdl.SDL_GPU_SHADERSTAGE_FRAGMENT, fragment_samplers, fragment_uniforms)
+    val fs: ref void = load_shader(
+        runtime,
+        fs_path,
+        sdl.SDL_GPU_SHADERSTAGE_FRAGMENT,
+        fragment_samplers,
+        fragment_uniforms
+    )
     if fs == none {
         sdl.SDL_ReleaseGPUShader(runtime.device, vs)
         return none as ref void
@@ -856,7 +922,14 @@ pub fn load_png_texture(runtime: ref Renderer, path: ref u8) ref void = trust {
         val w: mut i32 = 0 as i32
         val h: mut i32 = 0 as i32
         val ch: mut i32 = 0 as i32
-        val pixels: ref u8 = sdl.stbi_load_from_memory(blob.data, blob.len as i32, @addr(w), @addr(h), @addr(ch), 4 as i32)
+        val pixels: ref u8 = sdl.stbi_load_from_memory(
+            blob.data,
+            blob.len as i32,
+            @addr(w),
+            @addr(h),
+            @addr(ch),
+            4 as i32
+        )
         @free(blob.data as ref void)
         if pixels == none {
             return none as ref void
@@ -926,7 +999,10 @@ pub fn load_png_texture(runtime: ref Renderer, path: ref u8) ref void = trust {
     return none as ref void
 }
 
-pub fn create_pipelines(runtime: mut ref Renderer, shader_cfg: shaders.ExoShaderConfig) bool = trust {
+pub fn create_pipelines(
+    runtime: mut ref Renderer,
+    shader_cfg: shaders.ExoShaderConfig
+) bool = trust {
     runtime.scene_pipeline = create_scene_pipeline(
         runtime,
         shader_cfg.scene.vertex_path,
@@ -1061,7 +1137,15 @@ pub fn destroy_pipelines(runtime: mut ref Renderer) void = trust {
     }
 }
 
-pub fn begin_pass(runtime: mut ref Renderer, color_target: ref void, depth_target: ref void, r: f32, g: f32, b: f32, a: f32) bool = trust {
+pub fn begin_pass(
+    runtime: mut ref Renderer,
+    color_target: ref void,
+    depth_target: ref void,
+    r: f32,
+    g: f32,
+    b: f32,
+    a: f32
+) bool = trust {
     exoerr.clear()
     if !runtime.frame_active || runtime.command_buffer == none {
         return exoerr.set("no active frame")
@@ -1110,7 +1194,12 @@ pub fn begin_pass(runtime: mut ref Renderer, color_target: ref void, depth_targe
     depth_info.store_op = sdl.SDL_GPU_STOREOP_DONT_CARE
     depth_info.stencil_load_op = sdl.SDL_GPU_LOADOP_DONT_CARE
     depth_info.stencil_store_op = sdl.SDL_GPU_STOREOP_DONT_CARE
-    runtime.current_pass = sdl.SDL_BeginGPURenderPass(runtime.command_buffer, @addr(color_info), 1 as u32, @addr(depth_info))
+    runtime.current_pass = sdl.SDL_BeginGPURenderPass(
+        runtime.command_buffer,
+        @addr(color_info),
+        1 as u32,
+        @addr(depth_info)
+    )
     if runtime.current_pass == none {
         return false
     }
@@ -1132,7 +1221,12 @@ pub fn begin_pass(runtime: mut ref Renderer, color_target: ref void, depth_targe
     return true
 }
 
-pub fn begin_pass_no_depth_sized(runtime: mut ref Renderer, color_target: ref void, width: u32, height: u32) bool = trust {
+pub fn begin_pass_no_depth_sized(
+    runtime: mut ref Renderer,
+    color_target: ref void,
+    width: u32,
+    height: u32
+) bool = trust {
     exoerr.clear()
     if !runtime.frame_active || runtime.command_buffer == none {
         return exoerr.set("no active frame")
@@ -1159,7 +1253,12 @@ pub fn begin_pass_no_depth_sized(runtime: mut ref Renderer, color_target: ref vo
     color_info.texture = color_target
     color_info.load_op = sdl.SDL_GPU_LOADOP_DONT_CARE
     color_info.store_op = sdl.SDL_GPU_STOREOP_STORE
-    runtime.current_pass = sdl.SDL_BeginGPURenderPass(runtime.command_buffer, @addr(color_info), 1 as u32, none as ref sdl.SDLGPUDepthStencilTargetInfo)
+    runtime.current_pass = sdl.SDL_BeginGPURenderPass(
+        runtime.command_buffer,
+        @addr(color_info),
+        1 as u32,
+        none as ref sdl.SDLGPUDepthStencilTargetInfo
+    )
     if runtime.current_pass == none {
         return false
     }
@@ -1182,7 +1281,12 @@ pub fn begin_pass_no_depth_sized(runtime: mut ref Renderer, color_target: ref vo
 }
 
 pub fn begin_pass_no_depth(runtime: mut ref Renderer, color_target: ref void) bool = trust {
-    return begin_pass_no_depth_sized(runtime, color_target, runtime.render_width, runtime.render_height)
+    return begin_pass_no_depth_sized(
+        runtime,
+        color_target,
+        runtime.render_width,
+        runtime.render_height
+    )
 }
 
 pub fn bind_mesh(runtime: ref Renderer, mesh: ref GpuMesh) void = trust {
@@ -1197,7 +1301,11 @@ pub fn bind_mesh(runtime: ref Renderer, mesh: ref GpuMesh) void = trust {
     vertex_binding.buffer = mesh.vertex_buffer
     index_binding.buffer = mesh.index_buffer
     sdl.SDL_BindGPUVertexBuffers(runtime.current_pass, 0 as u32, @addr(vertex_binding), 1 as u32)
-    sdl.SDL_BindGPUIndexBuffer(runtime.current_pass, @addr(index_binding), sdl.SDL_GPU_INDEXELEMENTSIZE_32BIT)
+    sdl.SDL_BindGPUIndexBuffer(
+        runtime.current_pass,
+        @addr(index_binding),
+        sdl.SDL_GPU_INDEXELEMENTSIZE_32BIT
+    )
 }
 
 
@@ -1234,14 +1342,25 @@ pub fn destroy_runtime_resources(runtime: mut ref Renderer) void = trust {
 }
 
 /// Upload an image blob (PNG/JPEG bytes) as a GPU texture.
-pub fn create_texture_from_memory(runtime: mut ref Renderer, img_ptr: ref u8, img_len: usize) ref void = trust {
+pub fn create_texture_from_memory(
+    runtime: mut ref Renderer,
+    img_ptr: ref u8,
+    img_len: usize
+) ref void = trust {
     if img_len == (0 as usize) || img_ptr == none {
         return none as ref void
     }
     val w: mut i32 = 0 as i32
     val h: mut i32 = 0 as i32
     val ch: mut i32 = 0 as i32
-    val pixels: ref u8 = sdl.stbi_load_from_memory(img_ptr, img_len as i32, @addr(w), @addr(h), @addr(ch), 4 as i32)
+    val pixels: ref u8 = sdl.stbi_load_from_memory(
+        img_ptr,
+        img_len as i32,
+        @addr(w),
+        @addr(h),
+        @addr(ch),
+        4 as i32
+    )
     if pixels == none {
         return none as ref void
     }
@@ -1311,7 +1430,11 @@ pub fn create_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) ref vo
     if model.texture_length == (0 as usize) || model.raw_bytes == none {
         return none as ref void
     }
-    return create_texture_from_memory(runtime, @ptradd(model.raw_bytes, model.texture_offset) as ref u8, model.texture_length)
+    return create_texture_from_memory(
+        runtime,
+        @ptradd(model.raw_bytes, model.texture_offset) as ref u8,
+        model.texture_length
+    )
 }
 
 pub fn upload_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) void = trust {
@@ -1322,7 +1445,13 @@ pub fn upload_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) void =
     runtime.glb_texture = create_glb_texture(runtime, model)
 }
 
-pub fn create(title: ref u8, width: i32, height: i32, shader_cfg: shaders.ExoShaderConfig, font_path: ref u8) ref void = trust {
+pub fn create(
+    title: ref u8,
+    width: i32,
+    height: i32,
+    shader_cfg: shaders.ExoShaderConfig,
+    font_path: ref u8
+) ref void = trust {
     exoerr.clear()
     if !sdl.SDL_Init(sdl.SDL_INIT_VIDEO | sdl.SDL_INIT_AUDIO | sdl.SDL_INIT_GAMEPAD | sdl.SDL_INIT_EVENTS) {
         return none as ref void
@@ -1482,7 +1611,14 @@ pub fn relative_mouse_state(x: ref f32, y: ref f32) void = {
 }
 
 
-pub fn create_mesh(runtime_raw: ref void, vertices: ref void, vertex_bytes: u32, indices: ref void, index_bytes: u32, index_count: u32) ref void = trust {
+pub fn create_mesh(
+    runtime_raw: ref void,
+    vertices: ref void,
+    vertex_bytes: u32,
+    indices: ref void,
+    index_bytes: u32,
+    index_count: u32
+) ref void = trust {
     exoerr.clear()
     if runtime_raw == none {
         return exoerr.set_ptr("runtime unavailable")
@@ -1625,7 +1761,13 @@ pub fn begin_frame(runtime_raw: ref void, width: mut ref u32, height: mut ref u3
     }
     val swap_width: mut u32 = 0 as u32
     val swap_height: mut u32 = 0 as u32
-    if !(sdl.SDL_WaitAndAcquireGPUSwapchainTexture(runtime.command_buffer, runtime.window, @addr(runtime.swapchain_texture), @addr(swap_width), @addr(swap_height))) {
+    if !(sdl.SDL_WaitAndAcquireGPUSwapchainTexture(
+            runtime.command_buffer,
+            runtime.window,
+            @addr(runtime.swapchain_texture),
+            @addr(swap_width),
+            @addr(swap_height)
+        )) {
         sdl.SDL_CancelGPUCommandBuffer(runtime.command_buffer)
         runtime.command_buffer = none
         return false
@@ -1670,7 +1812,13 @@ pub fn begin_scene_pass(runtime_raw: ref void, r: f32, g: f32, b: f32, a: f32) b
     return begin_pass(runtime, runtime.scene_color, runtime.scene_depth, r, g, b, a)
 }
 
-pub fn begin_swapchain_scene_pass(runtime_raw: ref void, r: f32, g: f32, b: f32, a: f32) bool = trust {
+pub fn begin_swapchain_scene_pass(
+    runtime_raw: ref void,
+    r: f32,
+    g: f32,
+    b: f32,
+    a: f32
+) bool = trust {
     if runtime_raw == none {
         exoerr.clear()
         return exoerr.set("runtime unavailable")
@@ -1717,7 +1865,12 @@ fn bloom_blur_pass(
             w: 0.0 as f32
         }
     }
-    sdl.SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(BloomBlurUniforms) as u32)
+    sdl.SDL_PushGPUFragmentUniformData(
+        runtime.command_buffer,
+        0 as u32,
+        @addr(fu) as ref void,
+        @sizeof(BloomBlurUniforms) as u32
+    )
     sdl.SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
     end_pass(runtime as ref void)
     return true
@@ -1726,7 +1879,12 @@ fn bloom_blur_pass(
 /// Run the engine post-process stack and leave the swapchain pass open so UI
 /// can be drawn on top. The engine owns the implementation; games only provide
 /// generic PostProcessSettings.
-pub fn apply_post_process(runtime_raw: ref void, settings: postprocess.PostProcessSettings, enabled: bool, time: f32) bool = trust {
+pub fn apply_post_process(
+    runtime_raw: ref void,
+    settings: postprocess.PostProcessSettings,
+    enabled: bool,
+    time: f32
+) bool = trust {
     if runtime_raw == none {
         exoerr.clear()
         return exoerr.set("runtime unavailable")
@@ -1751,7 +1909,12 @@ pub fn apply_post_process(runtime_raw: ref void, settings: postprocess.PostProce
             texture: runtime.scene_color,
             sampler: runtime.linear_sampler
         }
-        sdl.SDL_BindGPUFragmentSamplers(runtime.current_pass, 0 as u32, @addr(scene_binding), 1 as u32)
+        sdl.SDL_BindGPUFragmentSamplers(
+            runtime.current_pass,
+            0 as u32,
+            @addr(scene_binding),
+            1 as u32
+        )
         val threshold_uniforms: mut BloomThresholdUniforms = {
             params: {
                 x: settings.bloom.threshold,
@@ -1760,7 +1923,12 @@ pub fn apply_post_process(runtime_raw: ref void, settings: postprocess.PostProce
                 w: 0.0 as f32
             }
         }
-        sdl.SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(threshold_uniforms) as ref void, @sizeof(BloomThresholdUniforms) as u32)
+        sdl.SDL_PushGPUFragmentUniformData(
+            runtime.command_buffer,
+            0 as u32,
+            @addr(threshold_uniforms) as ref void,
+            @sizeof(BloomThresholdUniforms) as u32
+        )
         sdl.SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
         end_pass(runtime as ref void)
 
@@ -1774,17 +1942,40 @@ pub fn apply_post_process(runtime_raw: ref void, settings: postprocess.PostProce
         }
         val iteration_index: mut i32 = 0 as i32
         for iteration_index < iterations {
-            if !bloom_blur_pass(runtime, runtime.bloom_a, runtime.bloom_b, 1.0 as f32, 0.0 as f32, settings.bloom.radius, bloom_width, bloom_height) {
+            if !bloom_blur_pass(
+                runtime,
+                runtime.bloom_a,
+                runtime.bloom_b,
+                1.0 as f32,
+                0.0 as f32,
+                settings.bloom.radius,
+                bloom_width,
+                bloom_height
+            ) {
                 return false
             }
-            if !bloom_blur_pass(runtime, runtime.bloom_b, runtime.bloom_a, 0.0 as f32, 1.0 as f32, settings.bloom.radius, bloom_width, bloom_height) {
+            if !bloom_blur_pass(
+                runtime,
+                runtime.bloom_b,
+                runtime.bloom_a,
+                0.0 as f32,
+                1.0 as f32,
+                settings.bloom.radius,
+                bloom_width,
+                bloom_height
+            ) {
                 return false
             }
             iteration_index = iteration_index + (1 as i32)
         }
     }
 
-    if !begin_pass_no_depth_sized(runtime, runtime.swapchain_texture, runtime.render_width, runtime.render_height) {
+    if !begin_pass_no_depth_sized(
+        runtime,
+        runtime.swapchain_texture,
+        runtime.render_width,
+        runtime.render_height
+    ) {
         return false
     }
     sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.post_pipeline)
@@ -1795,12 +1986,20 @@ pub fn apply_post_process(runtime_raw: ref void, settings: postprocess.PostProce
     }
     val bindings_raw: ref void = @alloc(2 as usize * @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize)
     val b0: mut ref sdl.SDLGPUTextureSamplerBinding = bindings_raw as mut ref sdl.SDLGPUTextureSamplerBinding
-    val b1: mut ref sdl.SDLGPUTextureSamplerBinding = @ptradd(bindings_raw, @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize) as mut ref sdl.SDLGPUTextureSamplerBinding
+    val b1: mut ref sdl.SDLGPUTextureSamplerBinding = @ptradd(
+        bindings_raw,
+        @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize
+    ) as mut ref sdl.SDLGPUTextureSamplerBinding
     b0.texture = runtime.scene_color
     b0.sampler = runtime.linear_sampler
     b1.texture = bloom_texture
     b1.sampler = runtime.linear_sampler
-    sdl.SDL_BindGPUFragmentSamplers(runtime.current_pass, 0 as u32, bindings_raw as ref sdl.SDLGPUTextureSamplerBinding, 2 as u32)
+    sdl.SDL_BindGPUFragmentSamplers(
+        runtime.current_pass,
+        0 as u32,
+        bindings_raw as ref sdl.SDLGPUTextureSamplerBinding,
+        2 as u32
+    )
     @free(bindings_raw)
 
     val bloom_on: mut f32 = 0.0 as f32
@@ -1853,7 +2052,12 @@ pub fn apply_post_process(runtime_raw: ref void, settings: postprocess.PostProce
             w: 0.0 as f32
         }
     }
-    sdl.SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(CompositeUniforms) as u32)
+    sdl.SDL_PushGPUFragmentUniformData(
+        runtime.command_buffer,
+        0 as u32,
+        @addr(fu) as ref void,
+        @sizeof(CompositeUniforms) as u32
+    )
     sdl.SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
     return true
 }
@@ -2000,8 +2204,20 @@ pub fn draw_scene_mesh(
     }
     if light_count == (0 as i32) {
         val fallback_light: ecs.PointLight = {
-            position: { x: math.read_f32(light_pos, 0 as usize), y: math.read_f32(light_pos, 1 as usize), z: math.read_f32(light_pos, 2 as usize) },
-            color: { x: math.read_f32(light_color, 0 as usize), y: math.read_f32(light_color, 1 as usize), z: math.read_f32(light_color, 2 as usize) },
+            position: { x: math.read_f32(
+                    light_pos,
+                    0 as usize
+                ), y: math.read_f32(
+                    light_pos,
+                    1 as usize
+                ), z: math.read_f32(light_pos, 2 as usize) },
+            color: { x: math.read_f32(
+                    light_color,
+                    0 as usize
+                ), y: math.read_f32(
+                    light_color,
+                    1 as usize
+                ), z: math.read_f32(light_color, 2 as usize) },
             intensity: light_intensity,
             radius: light_radius
         }
@@ -2021,19 +2237,44 @@ pub fn draw_scene_mesh(
         sampler: runtime.linear_sampler
     }
     sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.scene_pipeline)
-    sdl.SDL_PushGPUVertexUniformData(runtime.command_buffer, 0 as u32, @addr(vu) as ref void, @sizeof(SceneVertexUniforms) as u32)
-    sdl.SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(SceneFragmentUniforms) as u32)
+    sdl.SDL_PushGPUVertexUniformData(
+        runtime.command_buffer,
+        0 as u32,
+        @addr(vu) as ref void,
+        @sizeof(SceneVertexUniforms) as u32
+    )
+    sdl.SDL_PushGPUFragmentUniformData(
+        runtime.command_buffer,
+        0 as u32,
+        @addr(fu) as ref void,
+        @sizeof(SceneFragmentUniforms) as u32
+    )
     sdl.SDL_BindGPUFragmentSamplers(runtime.current_pass, 0 as u32, @addr(tex_binding), 1 as u32)
     bind_mesh(runtime, mesh)
     val draw_count: mut u32 = draw_index_count
     if draw_count == (0 as u32) {
         draw_count = mesh.index_count
     }
-    sdl.SDL_DrawGPUIndexedPrimitives(runtime.current_pass, draw_count, 1 as u32, first_index, 0 as i32, 0 as u32)
+    sdl.SDL_DrawGPUIndexedPrimitives(
+        runtime.current_pass,
+        draw_count,
+        1 as u32,
+        first_index,
+        0 as i32,
+        0 as u32
+    )
 }
 
 
-pub fn draw_floor_raw(runtime_raw: ref void, mesh_raw: ref void, model: ref f32, view_proj: ref f32, reflect_view_proj: ref f32, camera_pos: ref f32, floor_color: ref f32) void = trust {
+pub fn draw_floor_raw(
+    runtime_raw: ref void,
+    mesh_raw: ref void,
+    model: ref f32,
+    view_proj: ref f32,
+    reflect_view_proj: ref f32,
+    camera_pos: ref f32,
+    floor_color: ref f32
+) void = trust {
     if runtime_raw == none || mesh_raw == none {
         return
     }
@@ -2055,11 +2296,28 @@ pub fn draw_floor_raw(runtime_raw: ref void, mesh_raw: ref void, model: ref f32,
     binding.texture = runtime.reflection_color
     binding.sampler = runtime.linear_sampler
     sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.floor_pipeline)
-    sdl.SDL_PushGPUVertexUniformData(runtime.command_buffer, 0 as u32, @addr(vu) as ref void, @sizeof(FloorVertexUniforms) as u32)
-    sdl.SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(FloorFragmentUniforms) as u32)
+    sdl.SDL_PushGPUVertexUniformData(
+        runtime.command_buffer,
+        0 as u32,
+        @addr(vu) as ref void,
+        @sizeof(FloorVertexUniforms) as u32
+    )
+    sdl.SDL_PushGPUFragmentUniformData(
+        runtime.command_buffer,
+        0 as u32,
+        @addr(fu) as ref void,
+        @sizeof(FloorFragmentUniforms) as u32
+    )
     sdl.SDL_BindGPUFragmentSamplers(runtime.current_pass, 0 as u32, @addr(binding), 1 as u32)
     bind_mesh(runtime, mesh)
-    sdl.SDL_DrawGPUIndexedPrimitives(runtime.current_pass, mesh.index_count, 1 as u32, 0 as u32, 0 as i32, 0 as u32)
+    sdl.SDL_DrawGPUIndexedPrimitives(
+        runtime.current_pass,
+        mesh.index_count,
+        1 as u32,
+        0 as u32,
+        0 as i32,
+        0 as u32
+    )
 }
 
 pub fn draw_glow(
@@ -2092,14 +2350,37 @@ pub fn draw_glow(
         alpha_pad: { x: alpha, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
     }
     sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.glow_pipeline)
-    sdl.SDL_PushGPUVertexUniformData(runtime.command_buffer, 0 as u32, @addr(vu) as ref void, @sizeof(GlowVertexUniforms) as u32)
-    sdl.SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(GlowFragmentUniforms) as u32)
+    sdl.SDL_PushGPUVertexUniformData(
+        runtime.command_buffer,
+        0 as u32,
+        @addr(vu) as ref void,
+        @sizeof(GlowVertexUniforms) as u32
+    )
+    sdl.SDL_PushGPUFragmentUniformData(
+        runtime.command_buffer,
+        0 as u32,
+        @addr(fu) as ref void,
+        @sizeof(GlowFragmentUniforms) as u32
+    )
     bind_mesh(runtime, mesh)
-    sdl.SDL_DrawGPUIndexedPrimitives(runtime.current_pass, mesh.index_count, 1 as u32, 0 as u32, 0 as i32, 0 as u32)
+    sdl.SDL_DrawGPUIndexedPrimitives(
+        runtime.current_pass,
+        mesh.index_count,
+        1 as u32,
+        0 as u32,
+        0 as i32,
+        0 as u32
+    )
 }
 
 
-pub fn upload_mesh(runtime: ref void, vertices: ref void, vertex_float_count: usize, indices: ref void, index_count: i32) MeshGPU = trust {
+pub fn upload_mesh(
+    runtime: ref void,
+    vertices: ref void,
+    vertex_float_count: usize,
+    indices: ref void,
+    index_count: i32
+) MeshGPU = trust {
     val raw: ref void = create_mesh(
         runtime,
         vertices,
@@ -2123,7 +2404,12 @@ pub fn mesh_valid(mesh: MeshGPU) bool = {
 
 /// Replace an existing mesh's vertex data in place. Used by CPU skinning and
 /// other per-frame deformations.
-pub fn update_mesh_vertices(runtime_raw: ref void, mesh: MeshGPU, vertices: ref void, vertex_float_count: usize) bool = trust {
+pub fn update_mesh_vertices(
+    runtime_raw: ref void,
+    mesh: MeshGPU,
+    vertices: ref void,
+    vertex_float_count: usize
+) bool = trust {
     if runtime_raw == none || mesh.raw == none || vertices == none {
         return false
     }
@@ -2185,7 +2471,19 @@ pub fn update_mesh_vertices(runtime_raw: ref void, mesh: MeshGPU, vertices: ref 
 }
 
 
-pub fn draw_mesh_textured(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj: math.Mat4, color: math.Vec3, camera_pos: math.Vec3, reflective: f32, glow: f32, alpha: f32, light: ecs.PointLight, texture: ref void) void = trust {
+pub fn draw_mesh_textured(
+    runtime: ref void,
+    mesh: MeshGPU,
+    model: math.Mat4,
+    view_proj: math.Mat4,
+    color: math.Vec3,
+    camera_pos: math.Vec3,
+    reflective: f32,
+    glow: f32,
+    alpha: f32,
+    light: ecs.PointLight,
+    texture: ref void
+) void = trust {
     draw_scene_mesh(
         runtime,
         mesh.raw,
@@ -2206,7 +2504,21 @@ pub fn draw_mesh_textured(runtime: ref void, mesh: MeshGPU, model: math.Mat4, vi
     )
 }
 
-pub fn draw_mesh_textured_range(runtime: ref void, mesh: MeshGPU, first_index: u32, draw_index_count: u32, model: math.Mat4, view_proj: math.Mat4, color: math.Vec3, camera_pos: math.Vec3, reflective: f32, glow: f32, alpha: f32, light: ecs.PointLight, texture: ref void) void = trust {
+pub fn draw_mesh_textured_range(
+    runtime: ref void,
+    mesh: MeshGPU,
+    first_index: u32,
+    draw_index_count: u32,
+    model: math.Mat4,
+    view_proj: math.Mat4,
+    color: math.Vec3,
+    camera_pos: math.Vec3,
+    reflective: f32,
+    glow: f32,
+    alpha: f32,
+    light: ecs.PointLight,
+    texture: ref void
+) void = trust {
     draw_scene_mesh(
         runtime,
         mesh.raw,
@@ -2235,16 +2547,51 @@ pub fn release_texture(runtime: ref void, texture: ref void) void = trust {
     sdl.SDL_ReleaseGPUTexture(rt.device, texture)
 }
 
-pub fn draw_mesh(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj: math.Mat4, color: math.Vec3, camera_pos: math.Vec3, reflective: f32, glow: f32, alpha: f32, light: ecs.PointLight) void = trust {
+pub fn draw_mesh(
+    runtime: ref void,
+    mesh: MeshGPU,
+    model: math.Mat4,
+    view_proj: math.Mat4,
+    color: math.Vec3,
+    camera_pos: math.Vec3,
+    reflective: f32,
+    glow: f32,
+    alpha: f32,
+    light: ecs.PointLight
+) void = trust {
     val tex: mut ref void = none as ref void
     if runtime != none {
         val rt: ref Renderer = runtime as ref Renderer
         tex = rt.glb_texture
     }
-    draw_mesh_textured(runtime, mesh, model, view_proj, color, camera_pos, reflective, glow, alpha, light, tex)
+    draw_mesh_textured(
+        runtime,
+        mesh,
+        model,
+        view_proj,
+        color,
+        camera_pos,
+        reflective,
+        glow,
+        alpha,
+        light,
+        tex
+    )
 }
 
-pub fn draw_billboard(runtime: ref void, mesh: MeshGPU, pos: math.Vec3, width: f32, height: f32, view_proj: math.Mat4, cam_right: math.Vec3, cam_up: math.Vec3, color: math.Vec3, intensity: f32, alpha: f32) void = trust {
+pub fn draw_billboard(
+    runtime: ref void,
+    mesh: MeshGPU,
+    pos: math.Vec3,
+    width: f32,
+    height: f32,
+    view_proj: math.Mat4,
+    cam_right: math.Vec3,
+    cam_up: math.Vec3,
+    color: math.Vec3,
+    intensity: f32,
+    alpha: f32
+) void = trust {
     draw_glow(
         runtime,
         mesh.raw,
@@ -2260,10 +2607,34 @@ pub fn draw_billboard(runtime: ref void, mesh: MeshGPU, pos: math.Vec3, width: f
     )
 }
 
-pub fn draw_typed_entities[E: ecs.SceneEntity](runtime: ref void, mesh: MeshGPU, entities: list[E], camera: cam.Camera, view_proj: math.Mat4, time: f32, glow_scale: f32, light: ecs.PointLight) void = trust {
+pub fn draw_typed_entities[E: ecs.SceneEntity](
+    runtime: ref void,
+    mesh: MeshGPU,
+    entities: list[E],
+    camera: cam.Camera,
+    view_proj: math.Mat4,
+    time: f32,
+    glow_scale: f32,
+    light: ecs.PointLight
+) void = trust {
     for entity in entities {
-        val mm: math.Mat4 = math.model_matrix(E.se_position(entity), E.se_scale(entity), E.se_rotation(entity, time))
-        draw_mesh(runtime, mesh, mm, view_proj, E.se_color(entity), camera.position, E.se_reflective(entity), glow_scale * (0.025 as f32), 1.0 as f32, light)
+        val mm: math.Mat4 = math.model_matrix(
+            E.se_position(entity),
+            E.se_scale(entity),
+            E.se_rotation(entity, time)
+        )
+        draw_mesh(
+            runtime,
+            mesh,
+            mm,
+            view_proj,
+            E.se_color(entity),
+            camera.position,
+            E.se_reflective(entity),
+            glow_scale * (0.025 as f32),
+            1.0 as f32,
+            light
+        )
     }
 }
 
@@ -2274,30 +2645,75 @@ pub fn primary_light(scene: ecs.Scene3D) ecs.PointLight = {
     return ecs.default_light()
 }
 
-pub fn draw_models(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, camera: cam.Camera, view_proj: math.Mat4, glow_scale: f32) void = trust {
+pub fn draw_models(
+    runtime: ref void,
+    resources: SceneMeshes,
+    scene: ecs.Scene3D,
+    camera: cam.Camera,
+    view_proj: math.Mat4,
+    glow_scale: f32
+) void = trust {
     val index: mut usize = 0 as usize
     for instance in scene.models {
         if @get(resources.models, index) is some mesh {
             if mesh_valid(mesh) {
-                val mm: math.Mat4 = math.model_matrix(instance.position, instance.scale, instance.rotation_y)
+                val mm: math.Mat4 = math.model_matrix(
+                    instance.position,
+                    instance.scale,
+                    instance.rotation_y
+                )
                 val tex: mut ref void = none as ref void
                 if @get(resources.model_textures, index) is some texture {
                     tex = texture
                 }
-                draw_mesh_textured(runtime, mesh, mm, view_proj, instance.color, camera.position, instance.reflective, glow_scale * instance.glow, instance.alpha, primary_light(scene), tex)
+                draw_mesh_textured(
+                    runtime,
+                    mesh,
+                    mm,
+                    view_proj,
+                    instance.color,
+                    camera.position,
+                    instance.reflective,
+                    glow_scale * instance.glow,
+                    instance.alpha,
+                    primary_light(scene),
+                    tex
+                )
             }
         }
         index = index + (1 as usize)
     }
 }
 
-pub fn draw_custom_meshes(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, camera: cam.Camera, view_proj: math.Mat4, glow_scale: f32) void = trust {
+pub fn draw_custom_meshes(
+    runtime: ref void,
+    resources: SceneMeshes,
+    scene: ecs.Scene3D,
+    camera: cam.Camera,
+    view_proj: math.Mat4,
+    glow_scale: f32
+) void = trust {
     val index: mut usize = 0 as usize
     for instance in scene.mesh_instances {
         if @get(resources.custom, index) is some mesh {
             if mesh_valid(mesh) {
-                val mm: math.Mat4 = math.model_matrix_scaled(instance.position, instance.scale, instance.rotation_y)
-                draw_mesh(runtime, mesh, mm, view_proj, instance.color, camera.position, instance.reflective, glow_scale * instance.glow, instance.alpha, primary_light(scene))
+                val mm: math.Mat4 = math.model_matrix_scaled(
+                    instance.position,
+                    instance.scale,
+                    instance.rotation_y
+                )
+                draw_mesh(
+                    runtime,
+                    mesh,
+                    mm,
+                    view_proj,
+                    instance.color,
+                    camera.position,
+                    instance.reflective,
+                    glow_scale * instance.glow,
+                    instance.alpha,
+                    primary_light(scene)
+                )
             }
         }
         index = index + (1 as usize)
@@ -2305,15 +2721,31 @@ pub fn draw_custom_meshes(runtime: ref void, resources: SceneMeshes, scene: ecs.
 }
 
 /// Update all CPU-skinned model instances once per frame.
-pub fn prepare_models(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, time: f32) void = trust {
+pub fn prepare_models(
+    runtime: ref void,
+    resources: SceneMeshes,
+    scene: ecs.Scene3D,
+    time: f32
+) void = trust {
     val index: mut usize = 0 as usize
     for draw in scene.model_draws {
         if draw.visible {
             if @get(resources.model_draws, index) is some gpu {
                 if gpu.skinned && gpu.base_vertices != none && gpu.draw_vertices != none {
                     val animation_time: f32 = time * draw.animation_speed + draw.animation_offset
-                    animation.skin_vertices(gpu.asset, draw.animation, animation_time, gpu.base_vertices, gpu.draw_vertices)
-                    update_mesh_vertices(runtime, gpu.mesh, gpu.draw_vertices as ref void, gpu.vertex_float_count)
+                    animation.skin_vertices(
+                        gpu.asset,
+                        draw.animation,
+                        animation_time,
+                        gpu.base_vertices,
+                        gpu.draw_vertices
+                    )
+                    update_mesh_vertices(
+                        runtime,
+                        gpu.mesh,
+                        gpu.draw_vertices as ref void,
+                        gpu.vertex_float_count
+                    )
                 }
             }
         }
@@ -2321,7 +2753,14 @@ pub fn prepare_models(runtime: ref void, resources: SceneMeshes, scene: ecs.Scen
     }
 }
 
-pub fn draw_model_instances(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, camera: cam.Camera, view_proj: math.Mat4, glow_scale: f32) void = trust {
+pub fn draw_model_instances(
+    runtime: ref void,
+    resources: SceneMeshes,
+    scene: ecs.Scene3D,
+    camera: cam.Camera,
+    view_proj: math.Mat4,
+    glow_scale: f32
+) void = trust {
     val light: ecs.PointLight = primary_light(scene)
     val index: mut usize = 0 as usize
     for draw in scene.model_draws {
@@ -2352,10 +2791,37 @@ pub fn draw_model_instances(runtime: ref void, resources: SceneMeshes, scene: ec
     }
 }
 
-pub fn draw_scene_entities(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, camera: cam.Camera, view_proj: math.Mat4, time: f32, glow_scale: f32, include_models: bool) void = trust {
+pub fn draw_scene_entities(
+    runtime: ref void,
+    resources: SceneMeshes,
+    scene: ecs.Scene3D,
+    camera: cam.Camera,
+    view_proj: math.Mat4,
+    time: f32,
+    glow_scale: f32,
+    include_models: bool
+) void = trust {
     val light: ecs.PointLight = primary_light(scene)
-    draw_typed_entities[ecs.SphereEntity](runtime, resources.sphere, scene.spheres, camera, view_proj, time, glow_scale, light)
-    draw_typed_entities[ecs.CubeEntity](runtime, resources.cube, scene.cubes, camera, view_proj, time, glow_scale, light)
+    draw_typed_entities[ecs.SphereEntity](
+        runtime,
+        resources.sphere,
+        scene.spheres,
+        camera,
+        view_proj,
+        time,
+        glow_scale,
+        light
+    )
+    draw_typed_entities[ecs.CubeEntity](
+        runtime,
+        resources.cube,
+        scene.cubes,
+        camera,
+        view_proj,
+        time,
+        glow_scale,
+        light
+    )
     if include_models {
         draw_models(runtime, resources, scene, camera, view_proj, glow_scale)
         draw_custom_meshes(runtime, resources, scene, camera, view_proj, glow_scale)
@@ -2363,11 +2829,44 @@ pub fn draw_scene_entities(runtime: ref void, resources: SceneMeshes, scene: ecs
     }
 }
 
-pub fn draw_floor(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj: math.Mat4, reflect_view_proj: math.Mat4, camera: cam.Camera, color: math.Vec3) void = trust {
-    draw_floor_raw(runtime, mesh.raw, @addr(model.m00), @addr(view_proj.m00), @addr(reflect_view_proj.m00), @addr(camera.position.x), @addr(color.x))
+pub fn draw_floor(
+    runtime: ref void,
+    mesh: MeshGPU,
+    model: math.Mat4,
+    view_proj: math.Mat4,
+    reflect_view_proj: math.Mat4,
+    camera: cam.Camera,
+    color: math.Vec3
+) void = trust {
+    draw_floor_raw(
+        runtime,
+        mesh.raw,
+        @addr(model.m00),
+        @addr(view_proj.m00),
+        @addr(reflect_view_proj.m00),
+        @addr(camera.position.x),
+        @addr(color.x)
+    )
 }
 
-pub fn draw_water(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj: math.Mat4, reflect_view_proj: math.Mat4, camera: cam.Camera, color: math.Vec3, wave_offset: f32, wave_amplitude: f32, wave_frequency: f32, light: ecs.PointLight, corner_radius: f32, size_x: f32, size_z: f32, center_x: f32, center_z: f32) void = trust {
+pub fn draw_water(
+    runtime: ref void,
+    mesh: MeshGPU,
+    model: math.Mat4,
+    view_proj: math.Mat4,
+    reflect_view_proj: math.Mat4,
+    camera: cam.Camera,
+    color: math.Vec3,
+    wave_offset: f32,
+    wave_amplitude: f32,
+    wave_frequency: f32,
+    light: ecs.PointLight,
+    corner_radius: f32,
+    size_x: f32,
+    size_z: f32,
+    center_x: f32,
+    center_z: f32
+) void = trust {
     if runtime == none || mesh.raw == none {
         return
     }
@@ -2381,7 +2880,10 @@ pub fn draw_water(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj:
         reflect_vp: math.transpose_mat4_ptr(@addr(reflect_view_proj.m00)),
         time_wave: { x: wave_offset, y: wave_amplitude, z: wave_frequency, w: 0.0 as f32 }
     }
-    val light_dir: math.Vec3 = math.vec3_normalize(math.vec3_sub(light.position, math.vec3(0.0 as f32, 0.0 as f32, 0.0 as f32)))
+    val light_dir: math.Vec3 = math.vec3_normalize(math.vec3_sub(
+            light.position,
+            math.vec3(0.0 as f32, 0.0 as f32, 0.0 as f32)
+        ))
     val fu: mut WaterFragmentUniforms = {
         camera_pos: { x: camera.position.x, y: camera.position.y, z: camera.position.z, w: wave_offset },
         water_color: { x: color.x, y: color.y, z: color.z, w: center_x },
@@ -2389,8 +2891,18 @@ pub fn draw_water(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj:
         water_params: { x: corner_radius, y: size_x, z: size_z, w: center_z }
     }
     sdl.SDL_BindGPUGraphicsPipeline(rt.current_pass, rt.water_pipeline)
-    sdl.SDL_PushGPUVertexUniformData(rt.command_buffer, 0 as u32, @addr(vu) as ref void, @sizeof(WaterVertexUniforms) as u32)
-    sdl.SDL_PushGPUFragmentUniformData(rt.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(WaterFragmentUniforms) as u32)
+    sdl.SDL_PushGPUVertexUniformData(
+        rt.command_buffer,
+        0 as u32,
+        @addr(vu) as ref void,
+        @sizeof(WaterVertexUniforms) as u32
+    )
+    sdl.SDL_PushGPUFragmentUniformData(
+        rt.command_buffer,
+        0 as u32,
+        @addr(fu) as ref void,
+        @sizeof(WaterFragmentUniforms) as u32
+    )
     val normal_tex: mut ref void = rt.reflection_color
 
     if rt.normal_map_texture != none {
@@ -2398,35 +2910,91 @@ pub fn draw_water(runtime: ref void, mesh: MeshGPU, model: math.Mat4, view_proj:
     }
     val bindings_raw: ref void = @alloc(2 as usize * @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize)
     val b0: mut ref sdl.SDLGPUTextureSamplerBinding = bindings_raw as mut ref sdl.SDLGPUTextureSamplerBinding
-    val b1: mut ref sdl.SDLGPUTextureSamplerBinding = @ptradd(bindings_raw, @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize) as mut ref sdl.SDLGPUTextureSamplerBinding
+    val b1: mut ref sdl.SDLGPUTextureSamplerBinding = @ptradd(
+        bindings_raw,
+        @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize
+    ) as mut ref sdl.SDLGPUTextureSamplerBinding
     b0.texture = rt.reflection_color
     b0.sampler = rt.linear_sampler
     b1.texture = normal_tex
     b1.sampler = rt.repeat_sampler
-    sdl.SDL_BindGPUFragmentSamplers(rt.current_pass, 0 as u32, bindings_raw as ref sdl.SDLGPUTextureSamplerBinding, 2 as u32)
+    sdl.SDL_BindGPUFragmentSamplers(
+        rt.current_pass,
+        0 as u32,
+        bindings_raw as ref sdl.SDLGPUTextureSamplerBinding,
+        2 as u32
+    )
     @free(bindings_raw)
     bind_mesh(rt, mesh.raw as ref GpuMesh)
-    sdl.SDL_DrawGPUIndexedPrimitives(rt.current_pass, mesh.index_count as u32, 1 as u32, 0 as u32, 0 as i32, 0 as u32)
+    sdl.SDL_DrawGPUIndexedPrimitives(
+        rt.current_pass,
+        mesh.index_count as u32,
+        1 as u32,
+        0 as u32,
+        0 as i32,
+        0 as u32
+    )
 }
 
-pub fn render_reflection_scene(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, camera: cam.Camera, width: i32, height: i32, time: f32) void = trust {
+pub fn render_reflection_scene(
+    runtime: ref void,
+    resources: SceneMeshes,
+    scene: ecs.Scene3D,
+    camera: cam.Camera,
+    width: i32,
+    height: i32,
+    time: f32
+) void = trust {
     val mirror_y: mut f32 = scene.render.reflection_plane
     if @get(scene.waters, 0 as usize) is some water {
         mirror_y = water.y
     }
     val mirrored: cam.Camera = cam.mirrored_camera(camera, mirror_y)
     val reflect_vp: math.Mat4 = cam.view_projection(mirrored, width, height)
-    draw_scene_entities(runtime, resources, scene, mirrored, reflect_vp, time, 0.60 as f32, scene.render.reflect_models)
+    draw_scene_entities(
+        runtime,
+        resources,
+        scene,
+        mirrored,
+        reflect_vp,
+        time,
+        0.60 as f32,
+        scene.render.reflect_models
+    )
 }
 
-pub fn render_scene(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, camera: cam.Camera, width: i32, height: i32, time: f32) void = trust {
+pub fn render_scene(
+    runtime: ref void,
+    resources: SceneMeshes,
+    scene: ecs.Scene3D,
+    camera: cam.Camera,
+    width: i32,
+    height: i32,
+    time: f32
+) void = trust {
     val vp: math.Mat4 = cam.view_projection(camera, width, height)
     draw_scene_entities(runtime, resources, scene, camera, vp, time, 1.00 as f32, true)
     for floor in scene.floors {
-        val floor_position: math.Vec3 = math.vec3(floor.center_x, floor.y - (0.08 as f32), floor.center_z)
+        val floor_position: math.Vec3 = math.vec3(
+            floor.center_x,
+            floor.y - (0.08 as f32),
+            floor.center_z
+        )
         val floor_scale: math.Vec3 = math.vec3(floor.size_x, 0.16 as f32, floor.size_z)
-        val reflect_vp: math.Mat4 = cam.view_projection(cam.mirrored_camera(camera, floor.y), width, height)
-        draw_floor(runtime, resources.cube, math.model_matrix_scaled(floor_position, floor_scale, 0.0 as f32), vp, reflect_vp, camera, floor.color)
+        val reflect_vp: math.Mat4 = cam.view_projection(
+            cam.mirrored_camera(camera, floor.y),
+            width,
+            height
+        )
+        draw_floor(
+            runtime,
+            resources.cube,
+            math.model_matrix_scaled(floor_position, floor_scale, 0.0 as f32),
+            vp,
+            reflect_vp,
+            camera,
+            floor.color
+        )
     }
     val light: ecs.PointLight = primary_light(scene)
     for water in scene.waters {
@@ -2448,9 +3016,34 @@ pub fn render_scene(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3
         }
         val water_position: math.Vec3 = math.vec3(fit_ox, fit_y, fit_oz)
         val water_scale: math.Vec3 = math.vec3(fit_x, 0.04 as f32, fit_z)
-        val water_model: math.Mat4 = math.model_matrix_scaled(water_position, water_scale, 0.0 as f32)
-        val reflect_water_vp: math.Mat4 = cam.view_projection(cam.mirrored_camera(camera, fit_y), width, height)
-        draw_water(runtime, resources.cube, water_model, vp, reflect_water_vp, camera, water.color, wave_offset, water.wave_amplitude, water.wave_frequency, light, water.corner_radius, fit_x, fit_z, fit_ox, fit_oz)
+        val water_model: math.Mat4 = math.model_matrix_scaled(
+            water_position,
+            water_scale,
+            0.0 as f32
+        )
+        val reflect_water_vp: math.Mat4 = cam.view_projection(
+            cam.mirrored_camera(camera, fit_y),
+            width,
+            height
+        )
+        draw_water(
+            runtime,
+            resources.cube,
+            water_model,
+            vp,
+            reflect_water_vp,
+            camera,
+            water.color,
+            wave_offset,
+            water.wave_amplitude,
+            water.wave_frequency,
+            light,
+            water.corner_radius,
+            fit_x,
+            fit_z,
+            fit_ox,
+            fit_oz
+        )
     }
     if scene.render.enable_light_glow {
         val cam_fwd: math.Vec3 = cam.camera_forward(camera)
@@ -2458,7 +3051,19 @@ pub fn render_scene(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3
         val cam_right: math.Vec3 = math.vec3_normalize(math.vec3_cross(cam_fwd, world_up_v))
         val cam_up: math.Vec3 = math.vec3_normalize(math.vec3_cross(cam_right, cam_fwd))
         for point_light in scene.lights {
-            draw_billboard(runtime, resources.quad, point_light.position, 1.05 as f32, 1.05 as f32, vp, cam_right, cam_up, point_light.color, 1.4 as f32, 0.62 as f32)
+            draw_billboard(
+                runtime,
+                resources.quad,
+                point_light.position,
+                1.05 as f32,
+                1.05 as f32,
+                vp,
+                cam_right,
+                cam_up,
+                point_light.color,
+                1.4 as f32,
+                0.62 as f32
+            )
         }
     }
 }
@@ -2468,7 +3073,11 @@ fn ui_model(x: f32, y: f32, width: f32, height: f32, screen_w: f32, screen_h: f3
     val ndc_y: f32 = (1.0 as f32) - ((y + height * (0.5 as f32)) / screen_h) * (2.0 as f32)
     val sx: f32 = (width / screen_w) * (2.0 as f32)
     val sy: f32 = (height / screen_h) * (2.0 as f32)
-    return math.model_matrix_scaled(math.vec3(ndc_x, ndc_y, 0.0 as f32), math.vec3(sx, sy, 1.0 as f32), 0.0 as f32)
+    return math.model_matrix_scaled(
+        math.vec3(ndc_x, ndc_y, 0.0 as f32),
+        math.vec3(sx, sy, 1.0 as f32),
+        0.0 as f32
+    )
 }
 
 fn identity_matrix() math.Mat4 = {
@@ -2519,21 +3128,60 @@ pub fn draw_ui_quad(
         sampler: runtime.linear_sampler
     }
     sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.ui_pipeline)
-    sdl.SDL_PushGPUVertexUniformData(runtime.command_buffer, 0 as u32, @addr(vu) as ref void, @sizeof(SceneVertexUniforms) as u32)
-    sdl.SDL_PushGPUFragmentUniformData(runtime.command_buffer, 0 as u32, @addr(fu) as ref void, @sizeof(SceneFragmentUniforms) as u32)
+    sdl.SDL_PushGPUVertexUniformData(
+        runtime.command_buffer,
+        0 as u32,
+        @addr(vu) as ref void,
+        @sizeof(SceneVertexUniforms) as u32
+    )
+    sdl.SDL_PushGPUFragmentUniformData(
+        runtime.command_buffer,
+        0 as u32,
+        @addr(fu) as ref void,
+        @sizeof(SceneFragmentUniforms) as u32
+    )
     sdl.SDL_BindGPUFragmentSamplers(runtime.current_pass, 0 as u32, @addr(binding), 1 as u32)
     bind_mesh(runtime, quad_mesh.raw as ref GpuMesh)
-    sdl.SDL_DrawGPUIndexedPrimitives(runtime.current_pass, quad_mesh.index_count as u32, 1 as u32, 0 as u32, 0 as i32, 0 as u32)
+    sdl.SDL_DrawGPUIndexedPrimitives(
+        runtime.current_pass,
+        quad_mesh.index_count as u32,
+        1 as u32,
+        0 as u32,
+        0 as i32,
+        0 as u32
+    )
 }
 
-pub fn render_ui(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, screen_w: i32, screen_h: i32) void = trust {
+pub fn render_ui(
+    runtime: ref void,
+    resources: SceneMeshes,
+    scene: ecs.Scene3D,
+    screen_w: i32,
+    screen_h: i32
+) void = trust {
     if runtime == none {
         return
     }
     val sw: f32 = screen_w as f32
     val sh: f32 = screen_h as f32
     for rect in scene.ui.rects {
-        draw_ui_quad(runtime, resources.quad, rect.x, rect.y, rect.width, rect.height, 0.0 as f32, 0.0 as f32, 1.0 as f32, 1.0 as f32, rect.color, rect.alpha, sw, sh, false)
+        draw_ui_quad(
+            runtime,
+            resources.quad,
+            rect.x,
+            rect.y,
+            rect.width,
+            rect.height,
+            0.0 as f32,
+            0.0 as f32,
+            1.0 as f32,
+            1.0 as f32,
+            rect.color,
+            rect.alpha,
+            sw,
+            sh,
+            false
+        )
     }
     for text in scene.ui.texts {
         val line_height: f32 = 8.0 as f32 * text.scale
@@ -2558,7 +3206,23 @@ pub fn render_ui(runtime: ref void, resources: SceneMeshes, scene: ecs.Scene3D, 
                     val v0: f32 = cell_y / (48.0 as f32)
                     val u1: f32 = (cell_x + (8.0 as f32)) / (128.0 as f32)
                     val v1: f32 = (cell_y + (8.0 as f32)) / (48.0 as f32)
-                    draw_ui_quad(runtime, resources.quad, pen_x, pen_y, line_height, line_height, u0, v0, u1, v1, text.color, text.alpha, sw, sh, true)
+                    draw_ui_quad(
+                        runtime,
+                        resources.quad,
+                        pen_x,
+                        pen_y,
+                        line_height,
+                        line_height,
+                        u0,
+                        v0,
+                        u1,
+                        v1,
+                        text.color,
+                        text.alpha,
+                        sw,
+                        sh,
+                        true
+                    )
                 }
                 pen_x = pen_x + advance
             } else {

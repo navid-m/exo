@@ -48,17 +48,33 @@ pub fn create_audio(wav_path: ref u8, volume: i32) ref void = trust {
     if embedded.find(wav_path) is some asset {
         val stream: ref void = sdl.SDL_IOFromMem(asset.data as ref void, asset.len)
         if stream != none {
-            loaded = sdl.SDL_LoadWAV_IO(stream, true, @addr(audio.speci), @addr(audio.buffer), @addr(audio.length))
+            loaded = sdl.SDL_LoadWAV_IO(
+                stream,
+                true,
+                @addr(audio.speci),
+                @addr(audio.buffer),
+                @addr(audio.length)
+            )
         }
     } else {
         val resolved_path: ref u8 = io.resolve_path(wav_path)
-        loaded = sdl.SDL_LoadWAV(resolved_path, @addr(audio.speci), @addr(audio.buffer), @addr(audio.length))
+        loaded = sdl.SDL_LoadWAV(
+            resolved_path,
+            @addr(audio.speci),
+            @addr(audio.buffer),
+            @addr(audio.length)
+        )
     }
     if !loaded {
         destroy_audio(audio as ref void)
         return none as ref void
     }
-    audio.stream = sdl.SDL_OpenAudioDeviceStream(sdl.SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, @addr(audio.speci), none as ref void, none as ref void)
+    audio.stream = sdl.SDL_OpenAudioDeviceStream(
+        sdl.SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK,
+        @addr(audio.speci),
+        none as ref void,
+        none as ref void
+    )
     if audio.stream == none {
         destroy_audio(audio as ref void)
         return none as ref void
@@ -107,7 +123,11 @@ pub fn play_audio(audio_raw: ref void, loops: i32, volume: i32) bool = trust {
         if repeats > play_loops {
             break
         }
-        if !sdl.SDL_PutAudioStreamData(audio.stream, audio.buffer as ref void, audio.length as i32) {
+        if !sdl.SDL_PutAudioStreamData(
+            audio.stream,
+            audio.buffer as ref void,
+            audio.length as i32
+        ) {
             return false
         }
         repeats = repeats + (1 as i32)
@@ -177,7 +197,11 @@ pub fn shutdown_runtime_audio(runtime: RuntimeAudioBank) void = trust {
     }
 }
 
-pub fn play_runtime_clip(config: AudioBankConfig, runtime: RuntimeAudioBank, index: usize) bool = trust {
+pub fn play_runtime_clip(
+    config: AudioBankConfig,
+    runtime: RuntimeAudioBank,
+    index: usize
+) bool = trust {
     if @get(runtime.clips, index) is some clip {
         if clip.loaded && clip.audio != none {
             val volume: mut i32 = clip.volume

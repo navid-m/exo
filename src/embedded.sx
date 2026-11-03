@@ -63,35 +63,212 @@ fn key_matches(a: ref u8, b: ref u8) bool = trust {
 /// Look up an embedded asset by the path that would normally be used on disk.
 pub fn find(key: ref u8) option[EmbeddedAsset] = trust {
     val assets: mut list[EmbeddedAsset] = []
-    @append(assets, asset("./assets/shaders/scene.vert.spv", scene_vert_spv, @embedlen("../assets/shaders/scene.vert.spv")))
-    @append(assets, asset("./assets/shaders/scene.frag.spv", scene_frag_spv, @embedlen("../assets/shaders/scene.frag.spv")))
-    @append(assets, asset("./assets/shaders/floor.vert.spv", floor_vert_spv, @embedlen("../assets/shaders/floor.vert.spv")))
-    @append(assets, asset("./assets/shaders/floor.frag.spv", floor_frag_spv, @embedlen("../assets/shaders/floor.frag.spv")))
-    @append(assets, asset("./assets/shaders/glow.vert.spv", glow_vert_spv, @embedlen("../assets/shaders/glow.vert.spv")))
-    @append(assets, asset("./assets/shaders/glow.frag.spv", glow_frag_spv, @embedlen("../assets/shaders/glow.frag.spv")))
-    @append(assets, asset("./assets/shaders/water.vert.spv", water_vert_spv, @embedlen("../assets/shaders/water.vert.spv")))
-    @append(assets, asset("./assets/shaders/water.frag.spv", water_frag_spv, @embedlen("../assets/shaders/water.frag.spv")))
-    @append(assets, asset("./assets/shaders/fullscreen.vert.spv", fullscreen_vert_spv, @embedlen("../assets/shaders/fullscreen.vert.spv")))
-    @append(assets, asset("./assets/shaders/bloom_threshold.frag.spv", bloom_threshold_frag_spv, @embedlen("../assets/shaders/bloom_threshold.frag.spv")))
-    @append(assets, asset("./assets/shaders/bloom_blur.frag.spv", bloom_blur_frag_spv, @embedlen("../assets/shaders/bloom_blur.frag.spv")))
-    @append(assets, asset("./assets/shaders/composite.frag.spv", composite_frag_spv, @embedlen("../assets/shaders/composite.frag.spv")))
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/scene.vert.spv",
+            scene_vert_spv,
+            @embedlen("../assets/shaders/scene.vert.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/scene.frag.spv",
+            scene_frag_spv,
+            @embedlen("../assets/shaders/scene.frag.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/floor.vert.spv",
+            floor_vert_spv,
+            @embedlen("../assets/shaders/floor.vert.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/floor.frag.spv",
+            floor_frag_spv,
+            @embedlen("../assets/shaders/floor.frag.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/glow.vert.spv",
+            glow_vert_spv,
+            @embedlen("../assets/shaders/glow.vert.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/glow.frag.spv",
+            glow_frag_spv,
+            @embedlen("../assets/shaders/glow.frag.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/water.vert.spv",
+            water_vert_spv,
+            @embedlen("../assets/shaders/water.vert.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/water.frag.spv",
+            water_frag_spv,
+            @embedlen("../assets/shaders/water.frag.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/fullscreen.vert.spv",
+            fullscreen_vert_spv,
+            @embedlen("../assets/shaders/fullscreen.vert.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/bloom_threshold.frag.spv",
+            bloom_threshold_frag_spv,
+            @embedlen("../assets/shaders/bloom_threshold.frag.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/bloom_blur.frag.spv",
+            bloom_blur_frag_spv,
+            @embedlen("../assets/shaders/bloom_blur.frag.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/composite.frag.spv",
+            composite_frag_spv,
+            @embedlen("../assets/shaders/composite.frag.spv")
+        )
+    )
 
-    @append(assets, asset("./assets/shaders/scene.vert.msl", scene_vert_msl, @embedlen("../assets/shaders/scene.vert.msl")))
-    @append(assets, asset("./assets/shaders/scene.frag.msl", scene_frag_msl, @embedlen("../assets/shaders/scene.frag.msl")))
-    @append(assets, asset("./assets/shaders/floor.vert.msl", floor_vert_msl, @embedlen("../assets/shaders/floor.vert.msl")))
-    @append(assets, asset("./assets/shaders/floor.frag.msl", floor_frag_msl, @embedlen("../assets/shaders/floor.frag.msl")))
-    @append(assets, asset("./assets/shaders/glow.vert.msl", glow_vert_msl, @embedlen("../assets/shaders/glow.vert.msl")))
-    @append(assets, asset("./assets/shaders/glow.frag.msl", glow_frag_msl, @embedlen("../assets/shaders/glow.frag.msl")))
-    @append(assets, asset("./assets/shaders/water.vert.msl", water_vert_msl, @embedlen("../assets/shaders/water.vert.msl")))
-    @append(assets, asset("./assets/shaders/water.frag.msl", water_frag_msl, @embedlen("../assets/shaders/water.frag.msl")))
-    @append(assets, asset("./assets/shaders/fullscreen.vert.msl", fullscreen_vert_msl, @embedlen("../assets/shaders/fullscreen.vert.msl")))
-    @append(assets, asset("./assets/shaders/bloom_threshold.frag.msl", bloom_threshold_frag_msl, @embedlen("../assets/shaders/bloom_threshold.frag.msl")))
-    @append(assets, asset("./assets/shaders/bloom_blur.frag.msl", bloom_blur_frag_msl, @embedlen("../assets/shaders/bloom_blur.frag.msl")))
-    @append(assets, asset("./assets/shaders/composite.frag.msl", composite_frag_msl, @embedlen("../assets/shaders/composite.frag.msl")))
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/scene.vert.msl",
+            scene_vert_msl,
+            @embedlen("../assets/shaders/scene.vert.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/scene.frag.msl",
+            scene_frag_msl,
+            @embedlen("../assets/shaders/scene.frag.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/floor.vert.msl",
+            floor_vert_msl,
+            @embedlen("../assets/shaders/floor.vert.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/floor.frag.msl",
+            floor_frag_msl,
+            @embedlen("../assets/shaders/floor.frag.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/glow.vert.msl",
+            glow_vert_msl,
+            @embedlen("../assets/shaders/glow.vert.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/glow.frag.msl",
+            glow_frag_msl,
+            @embedlen("../assets/shaders/glow.frag.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/water.vert.msl",
+            water_vert_msl,
+            @embedlen("../assets/shaders/water.vert.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/water.frag.msl",
+            water_frag_msl,
+            @embedlen("../assets/shaders/water.frag.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/fullscreen.vert.msl",
+            fullscreen_vert_msl,
+            @embedlen("../assets/shaders/fullscreen.vert.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/bloom_threshold.frag.msl",
+            bloom_threshold_frag_msl,
+            @embedlen("../assets/shaders/bloom_threshold.frag.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/bloom_blur.frag.msl",
+            bloom_blur_frag_msl,
+            @embedlen("../assets/shaders/bloom_blur.frag.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/composite.frag.msl",
+            composite_frag_msl,
+            @embedlen("../assets/shaders/composite.frag.msl")
+        )
+    )
 
-    @append(assets, asset("./assets/fonts/default.png", default_font, @embedlen("../assets/fonts/default.png")))
-    @append(assets, asset("./assets/normal_map.png", normal_map, @embedlen("../assets/normal_map.jpg")))
-    @append(assets, asset("./assets/example_sound.wav", example_sound, @embedlen("../assets/example_sound.wav")))
+    @append(
+        assets,
+        asset("./assets/fonts/default.png", default_font, @embedlen("../assets/fonts/default.png"))
+    )
+    @append(
+        assets,
+        asset("./assets/normal_map.png", normal_map, @embedlen("../assets/normal_map.jpg"))
+    )
+    @append(
+        assets,
+        asset("./assets/example_sound.wav", example_sound, @embedlen("../assets/example_sound.wav"))
+    )
 
     for entry in assets {
         if key_matches(entry.key, key) {

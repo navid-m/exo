@@ -198,18 +198,39 @@ pub fn update_gamepad(gamepad: GamepadState, state: mut InputState) void = trust
     val buttons: mut u64 = 0 as u64
     val button: mut i32 = 0 as i32
     for button < (64 as i32) {
-        if sdl.SDL_GamepadHasButton(gamepad.handle, button) && sdl.SDL_GetGamepadButton(gamepad.handle, button) {
+        if sdl.SDL_GamepadHasButton(
+            gamepad.handle,
+            button
+        ) && sdl.SDL_GetGamepadButton(gamepad.handle, button) {
             buttons = buttons | ((1 as u64) << (button as u64))
         }
         button = button + (1 as i32)
     }
     state.gamepad_buttons = buttons
-    state.gamepad_left_x = (sdl.SDL_GetGamepadAxis(gamepad.handle, sdl.SDL_GAMEPAD_AXIS_LEFTX) as f32) / (32767.0 as f32)
-    state.gamepad_left_y = (sdl.SDL_GetGamepadAxis(gamepad.handle, sdl.SDL_GAMEPAD_AXIS_LEFTY) as f32) / (32767.0 as f32)
-    state.gamepad_right_x = (sdl.SDL_GetGamepadAxis(gamepad.handle, sdl.SDL_GAMEPAD_AXIS_RIGHTX) as f32) / (32767.0 as f32)
-    state.gamepad_right_y = (sdl.SDL_GetGamepadAxis(gamepad.handle, sdl.SDL_GAMEPAD_AXIS_RIGHTY) as f32) / (32767.0 as f32)
-    state.gamepad_left_trigger = (sdl.SDL_GetGamepadAxis(gamepad.handle, sdl.SDL_GAMEPAD_AXIS_LEFT_TRIGGER) as f32) / (32767.0 as f32)
-    state.gamepad_right_trigger = (sdl.SDL_GetGamepadAxis(gamepad.handle, sdl.SDL_GAMEPAD_AXIS_RIGHT_TRIGGER) as f32) / (32767.0 as f32)
+    state.gamepad_left_x = (sdl.SDL_GetGamepadAxis(
+            gamepad.handle,
+            sdl.SDL_GAMEPAD_AXIS_LEFTX
+        ) as f32) / (32767.0 as f32)
+    state.gamepad_left_y = (sdl.SDL_GetGamepadAxis(
+            gamepad.handle,
+            sdl.SDL_GAMEPAD_AXIS_LEFTY
+        ) as f32) / (32767.0 as f32)
+    state.gamepad_right_x = (sdl.SDL_GetGamepadAxis(
+            gamepad.handle,
+            sdl.SDL_GAMEPAD_AXIS_RIGHTX
+        ) as f32) / (32767.0 as f32)
+    state.gamepad_right_y = (sdl.SDL_GetGamepadAxis(
+            gamepad.handle,
+            sdl.SDL_GAMEPAD_AXIS_RIGHTY
+        ) as f32) / (32767.0 as f32)
+    state.gamepad_left_trigger = (sdl.SDL_GetGamepadAxis(
+            gamepad.handle,
+            sdl.SDL_GAMEPAD_AXIS_LEFT_TRIGGER
+        ) as f32) / (32767.0 as f32)
+    state.gamepad_right_trigger = (sdl.SDL_GetGamepadAxis(
+            gamepad.handle,
+            sdl.SDL_GAMEPAD_AXIS_RIGHT_TRIGGER
+        ) as f32) / (32767.0 as f32)
 }
 
 pub fn start_text_input() bool = trust {

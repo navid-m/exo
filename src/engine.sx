@@ -56,7 +56,15 @@ pub spec AppEvents = {
     pub fn on_key_down(e: mut self, app: mut ExoApp, key: i32, repeat: bool, mods: u16) void
     pub fn on_key_up(e: mut self, app: mut ExoApp, key: i32, mods: u16) void
     pub fn on_mouse_move(e: mut self, app: mut ExoApp, dx: f32, dy: f32, x: f32, y: f32) void
-    pub fn on_mouse_button(e: mut self, app: mut ExoApp, button: u8, down: bool, clicks: u8, x: f32, y: f32) void
+    pub fn on_mouse_button(
+        e: mut self,
+        app: mut ExoApp,
+        button: u8,
+        down: bool,
+        clicks: u8,
+        x: f32,
+        y: f32
+    ) void
     pub fn on_mouse_wheel(e: mut self, app: mut ExoApp, dx: f32, dy: f32, x: f32, y: f32) void
     pub fn on_text_input(e: mut self, app: mut ExoApp, text: ref u8) void
     pub fn on_window_resize(e: mut self, app: mut ExoApp, width: i32, height: i32) void
@@ -80,11 +88,33 @@ pub fn (NoAppEvents) on_key_down(_: mut self, _: mut ExoApp, _: i32, _: bool, _:
 
 pub fn (NoAppEvents) on_key_up(_: mut self, _: mut ExoApp, _: i32, _: u16) void = {}
 
-pub fn (NoAppEvents) on_mouse_move(_: mut self, _: mut ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+pub fn (NoAppEvents) on_mouse_move(
+    _: mut self,
+    _: mut ExoApp,
+    _: f32,
+    _: f32,
+    _: f32,
+    _: f32
+) void = {}
 
-pub fn (NoAppEvents) on_mouse_button(_: mut self, _: mut ExoApp, _: u8, _: bool, _: u8, _: f32, _: f32) void = {}
+pub fn (NoAppEvents) on_mouse_button(
+    _: mut self,
+    _: mut ExoApp,
+    _: u8,
+    _: bool,
+    _: u8,
+    _: f32,
+    _: f32
+) void = {}
 
-pub fn (NoAppEvents) on_mouse_wheel(_: mut self, _: mut ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+pub fn (NoAppEvents) on_mouse_wheel(
+    _: mut self,
+    _: mut ExoApp,
+    _: f32,
+    _: f32,
+    _: f32,
+    _: f32
+) void = {}
 
 pub fn (NoAppEvents) on_text_input(_: mut self, _: mut ExoApp, _: ref u8) void = {}
 
@@ -208,7 +238,12 @@ pub fn create_app(
     }
 }
 
-pub fn create_basic_app(config: ExoConfig, scene: ecs.Scene3D, camera: cam.Camera, input_cfg: input.InputConfig) ExoApp = {
+pub fn create_basic_app(
+    config: ExoConfig,
+    scene: ecs.Scene3D,
+    camera: cam.Camera,
+    input_cfg: input.InputConfig
+) ExoApp = {
     return create_app(config, scene, camera, input_cfg, default_audio_mixer())
 }
 
@@ -474,7 +509,17 @@ fn scene_meshes(
     }
 }
 
-fn dispatch_gamepad[E: AppEvents](events: mut E, app: mut ExoApp, before_buttons: u64, before_lx: f32, before_ly: f32, before_rx: f32, before_ry: f32, before_lt: f32, before_rt: f32) void = {
+fn dispatch_gamepad[E: AppEvents](
+    events: mut E,
+    app: mut ExoApp,
+    before_buttons: u64,
+    before_lx: f32,
+    before_ly: f32,
+    before_rx: f32,
+    before_ry: f32,
+    before_lt: f32,
+    before_rt: f32
+) void = {
     events = events
     app.input_state.key_mods = app.input_state.key_mods
     val after_buttons: u64 = app.input_state.gamepad_buttons
@@ -504,17 +549,33 @@ fn dispatch_gamepad[E: AppEvents](events: mut E, app: mut ExoApp, before_buttons
         E.on_gamepad_axis(events, app, sdl.SDL_GAMEPAD_AXIS_RIGHTY, app.input_state.gamepad_right_y)
     }
     if before_lt != app.input_state.gamepad_left_trigger {
-        E.on_gamepad_axis(events, app, sdl.SDL_GAMEPAD_AXIS_LEFT_TRIGGER, app.input_state.gamepad_left_trigger)
+        E.on_gamepad_axis(
+            events,
+            app,
+            sdl.SDL_GAMEPAD_AXIS_LEFT_TRIGGER,
+            app.input_state.gamepad_left_trigger
+        )
     }
     if before_rt != app.input_state.gamepad_right_trigger {
-        E.on_gamepad_axis(events, app, sdl.SDL_GAMEPAD_AXIS_RIGHT_TRIGGER, app.input_state.gamepad_right_trigger)
+        E.on_gamepad_axis(
+            events,
+            app,
+            sdl.SDL_GAMEPAD_AXIS_RIGHT_TRIGGER,
+            app.input_state.gamepad_right_trigger
+        )
     }
 }
 
 fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
     val app: mut ExoApp = app0
     val events: mut E = events0
-    val runtime: ref void = renderer.create(app.config.title, app.config.width, app.config.height, app.config.shaders, app.config.font_path)
+    val runtime: ref void = renderer.create(
+        app.config.title,
+        app.config.width,
+        app.config.height,
+        app.config.shaders,
+        app.config.font_path
+    )
     if runtime == none {
         exoerr.print("SDL3 runtime init failed")
         return 1 as i32
@@ -584,7 +645,13 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
                     app.should_quit = true
                 }
                 if is_down {
-                    E.on_key_down(events, app, key_event.scancode, key_event.repeat != (0 as u8), key_event.mod)
+                    E.on_key_down(
+                        events,
+                        app,
+                        key_event.scancode,
+                        key_event.repeat != (0 as u8),
+                        key_event.mod
+                    )
                 } else {
                     E.on_key_up(events, app, key_event.scancode, key_event.mod)
                 }
@@ -605,7 +672,15 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
                 } else {
                     app.input_state.mouse_buttons = app.input_state.mouse_buttons & (mask ^ (0xFFFFFFFF as u32))
                 }
-                E.on_mouse_button(events, app, button_event.button, is_down, button_event.clicks, button_event.x, button_event.y)
+                E.on_mouse_button(
+                    events,
+                    app,
+                    button_event.button,
+                    is_down,
+                    button_event.clicks,
+                    button_event.x,
+                    button_event.y
+                )
             } elif event.typ == sdl.SDL_EVENT_MOUSE_WHEEL {
                 val wheel: ref sdl.SDLMouseWheelEvent = @addr(event) as ref sdl.SDLMouseWheelEvent
                 app.input_state.wheel_x = wheel.x
@@ -643,7 +718,17 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
         val before_rt: f32 = app.input_state.gamepad_right_trigger
         if app.input.gamepad {
             input.update_gamepad(gamepad, app.input_state)
-            dispatch_gamepad[E](events, app, before_buttons, before_lx, before_ly, before_rx, before_ry, before_lt, before_rt)
+            dispatch_gamepad[E](
+                events,
+                app,
+                before_buttons,
+                before_lx,
+                before_ly,
+                before_rx,
+                before_ry,
+                before_lt,
+                before_rt
+            )
         }
 
         val now_ticks: u64 = renderer.get_ticks()
@@ -688,9 +773,20 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             resources = load_scene_resources(runtime, app.scene)
             resources.revision = app.scene_revision
         }
-        val meshes: renderer.SceneMeshes = scene_meshes(base_cube, base_sphere, base_quad, resources)
+        val meshes: renderer.SceneMeshes = scene_meshes(
+            base_cube,
+            base_sphere,
+            base_quad,
+            resources
+        )
         renderer.prepare_models(runtime, meshes, app.scene, app.time)
-        renderer.configure_scene_style(runtime, app.scene.render.clear_top, app.scene.render.clear_bottom, app.scene.render.ambient, app.scene.lights)
+        renderer.configure_scene_style(
+            runtime,
+            app.scene.render.clear_top,
+            app.scene.render.clear_bottom,
+            app.scene.render.ambient,
+            app.scene.lights
+        )
 
         val frame_w: mut u32 = app.config.width as u32
         val frame_h: mut u32 = app.config.height as u32
@@ -699,23 +795,56 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             exit_code = 1 as i32
             break
         }
-        if !renderer.begin_reflection_pass(runtime, app.scene.render.clear_bottom.x, app.scene.render.clear_bottom.y, app.scene.render.clear_bottom.z, 1.0 as f32) {
+        if !renderer.begin_reflection_pass(
+            runtime,
+            app.scene.render.clear_bottom.x,
+            app.scene.render.clear_bottom.y,
+            app.scene.render.clear_bottom.z,
+            1.0 as f32
+        ) {
             exoerr.print("SDL3 reflection pass failed")
             exit_code = 1 as i32
             break
         }
         if app.scene.render.enable_reflections {
-            renderer.render_reflection_scene(runtime, meshes, app.scene, app.camera, frame_w as i32, frame_h as i32, app.time)
+            renderer.render_reflection_scene(
+                runtime,
+                meshes,
+                app.scene,
+                app.camera,
+                frame_w as i32,
+                frame_h as i32,
+                app.time
+            )
         }
         renderer.end_pass(runtime)
-        if !renderer.begin_scene_pass(runtime, app.scene.render.clear_top.x, app.scene.render.clear_top.y, app.scene.render.clear_top.z, 1.0 as f32) {
+        if !renderer.begin_scene_pass(
+            runtime,
+            app.scene.render.clear_top.x,
+            app.scene.render.clear_top.y,
+            app.scene.render.clear_top.z,
+            1.0 as f32
+        ) {
             exoerr.print("SDL3 scene pass failed")
             exit_code = 1 as i32
             break
         }
-        renderer.render_scene(runtime, meshes, app.scene, app.camera, frame_w as i32, frame_h as i32, app.time)
+        renderer.render_scene(
+            runtime,
+            meshes,
+            app.scene,
+            app.camera,
+            frame_w as i32,
+            frame_h as i32,
+            app.time
+        )
         renderer.end_pass(runtime)
-        if !renderer.apply_post_process(runtime, app.scene.render.post_process, app.scene.render.enable_fxaa, app.time) {
+        if !renderer.apply_post_process(
+            runtime,
+            app.scene.render.post_process,
+            app.scene.render.enable_fxaa,
+            app.time
+        ) {
             exoerr.print("SDL3 postprocess pass failed")
             exit_code = 1 as i32
             break

@@ -34,7 +34,14 @@ pub fn camera_forward(camera: Camera) math.Vec3 = {
 }
 
 
-pub fn update_camera(camera: mut Camera, cfg: input.InputConfig, dt: f32, keys: ref u8, mouse_dx: f32, mouse_dy: f32) void = trust {
+pub fn update_camera(
+    camera: mut Camera,
+    cfg: input.InputConfig,
+    dt: f32,
+    keys: ref u8,
+    mouse_dx: f32,
+    mouse_dy: f32
+) void = trust {
     val yaw_step: f32 = camera.turn_speed * dt
     val move_step: f32 = camera.move_speed * dt
     val key_fwd: u8 = input.safe_key(keys, cfg.keys.move_forward)
@@ -89,10 +96,16 @@ pub fn update_camera(camera: mut Camera, cfg: input.InputConfig, dt: f32, keys: 
         camera.position = math.vec3_add(camera.position, math.vec3_scale(right_v, move_step))
     }
     if key_move_up != 0 {
-        camera.position = math.vec3_add(camera.position, math.vec3(0.0 as f32, move_step, 0.0 as f32))
+        camera.position = math.vec3_add(
+            camera.position,
+            math.vec3(0.0 as f32, move_step, 0.0 as f32)
+        )
     }
     if key_move_down != 0 {
-        camera.position = math.vec3_sub(camera.position, math.vec3(0.0 as f32, move_step, 0.0 as f32))
+        camera.position = math.vec3_sub(
+            camera.position,
+            math.vec3(0.0 as f32, move_step, 0.0 as f32)
+        )
     }
 }
 
@@ -109,8 +122,17 @@ pub fn mirrored_camera(camera: Camera, plane_y: f32) Camera = {
 
 pub fn view_projection(camera: Camera, width: i32, height: i32) math.Mat4 = {
     val aspect: f32 = (width as f32) / (height as f32)
-    val projection: math.Mat4 = math.mat_perspective((60.0 as f32) * ((PI as f32) / (180.0 as f32)), aspect, 0.1 as f32, 100.0 as f32)
+    val projection: math.Mat4 = math.mat_perspective(
+        (60.0 as f32) * ((PI as f32) / (180.0 as f32)),
+        aspect,
+        0.1 as f32,
+        100.0 as f32
+    )
     val center: math.Vec3 = math.vec3_add(camera.position, camera_forward(camera))
-    val view: math.Mat4 = math.mat_look_at(camera.position, center, math.vec3(0.0 as f32, 1.0 as f32, 0.0 as f32))
+    val view: math.Mat4 = math.mat_look_at(
+        camera.position,
+        center,
+        math.vec3(0.0 as f32, 1.0 as f32, 0.0 as f32)
+    )
     return math.mat_mul(projection, view)
 }

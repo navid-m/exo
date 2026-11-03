@@ -317,7 +317,11 @@ fn update_pacman(game: mut PacmanGame, dt: f32) void = {
     }
     if !game.pac_moving && game.state == (0 as i32) {
         if game.pac_want_x != (0 as i32) || game.pac_want_z != (0 as i32) {
-            if is_open_cell(game, game.pac_cell_x + game.pac_want_x, game.pac_cell_z + game.pac_want_z) {
+            if is_open_cell(
+                game,
+                game.pac_cell_x + game.pac_want_x,
+                game.pac_cell_z + game.pac_want_z
+            ) {
                 game.pac_dir_x = game.pac_want_x
                 game.pac_dir_z = game.pac_want_z
             }
@@ -333,7 +337,15 @@ fn update_pacman(game: mut PacmanGame, dt: f32) void = {
     }
 }
 
-fn ghost_dir_score(game: PacmanGame, g: Ghost, dx: i32, dz: i32, tx: i32, tz: i32, allow_reverse: bool) f32 = {
+fn ghost_dir_score(
+    game: PacmanGame,
+    g: Ghost,
+    dx: i32,
+    dz: i32,
+    tx: i32,
+    tz: i32,
+    allow_reverse: bool
+) f32 = {
     if !allow_reverse && (g.dir_x != (0 as i32) || g.dir_z != (0 as i32)) {
         if dx == ((0 as i32) - g.dir_x) && dz == ((0 as i32) - g.dir_z) {
             return -1.0 as f32
@@ -405,7 +417,15 @@ fn ghost_choose(game: PacmanGame, g: mut Ghost, tx: i32, tz: i32, flee: bool) vo
     }
 }
 
-fn advance_ghost(game: PacmanGame, g: mut Ghost, dt: f32, speed: f32, tx: i32, tz: i32, flee: bool) void = {
+fn advance_ghost(
+    game: PacmanGame,
+    g: mut Ghost,
+    dt: f32,
+    speed: f32,
+    tx: i32,
+    tz: i32,
+    flee: bool
+) void = {
     if g.moving {
         g.progress = g.progress + speed * dt
         if g.progress >= (1.0 as f32) {
@@ -518,16 +538,16 @@ fn sync_scene(game: PacmanGame, app: mut engine.ExoApp, time: f32) void = {
             if pellet.power {
                 val pulse: f32 = (math.sin((time * (5.0 as f32)) as f64) as f32) * (0.03 as f32)
                 @append(spheres, ecs.make_sphere(
-                    ecs.make_vec3(wx, 0.28 as f32, wz),
-                    ecs.make_vec3(0.98 as f32, 0.96 as f32, 0.72 as f32),
-                    (0.17 as f32) + pulse
-                ))
+                        ecs.make_vec3(wx, 0.28 as f32, wz),
+                        ecs.make_vec3(0.98 as f32, 0.96 as f32, 0.72 as f32),
+                        (0.17 as f32) + pulse
+                    ))
             } else {
                 @append(spheres, ecs.make_sphere(
-                    ecs.make_vec3(wx, 0.20 as f32, wz),
-                    ecs.make_vec3(0.95 as f32, 0.82 as f32, 0.42 as f32),
-                    0.07 as f32
-                ))
+                        ecs.make_vec3(wx, 0.20 as f32, wz),
+                        ecs.make_vec3(0.95 as f32, 0.82 as f32, 0.42 as f32),
+                        0.07 as f32
+                    ))
             }
         }
     }
@@ -535,10 +555,10 @@ fn sync_scene(game: PacmanGame, app: mut engine.ExoApp, time: f32) void = {
     val pz: f32 = world_z(pac_render_z(game))
     val chomp: f32 = (math.sin((time * (13.0 as f32)) as f64) as f32) * (0.03 as f32)
     @append(spheres, ecs.make_sphere(
-        ecs.make_vec3(px, 0.52 as f32, pz),
-        ecs.make_vec3(1.00 as f32, 0.86 as f32, 0.12 as f32),
-        (0.38 as f32) + chomp
-    ))
+            ecs.make_vec3(px, 0.52 as f32, pz),
+            ecs.make_vec3(1.00 as f32, 0.86 as f32, 0.12 as f32),
+            (0.38 as f32) + chomp
+        ))
     for ghost in game.ghosts {
         val gx: f32 = world_x(ghost_render_x(ghost))
         val gz: f32 = world_z(ghost_render_z(ghost))
@@ -558,24 +578,32 @@ fn sync_scene(game: PacmanGame, app: mut engine.ExoApp, time: f32) void = {
             final_b = 0.98 as f32
         }
         @append(spheres, ecs.make_sphere(
-            ecs.make_vec3(gx, 0.56 as f32, gz),
-            ecs.make_vec3(final_r, final_g, final_b),
-            0.37 as f32
-        ))
+                ecs.make_vec3(gx, 0.56 as f32, gz),
+                ecs.make_vec3(final_r, final_g, final_b),
+                0.37 as f32
+            ))
         val dir_x: f32 = ghost.dir_x as f32
         val dir_z: f32 = ghost.dir_z as f32
         val side_x: f32 = (0.0 as f32) - dir_z
         val side_z: f32 = dir_x
         @append(spheres, ecs.make_sphere(
-            ecs.make_vec3(gx + side_x * (0.13 as f32) + dir_x * (0.10 as f32), 0.68 as f32, gz + side_z * (0.13 as f32) + dir_z * (0.10 as f32)),
-            ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32),
-            0.075 as f32
-        ))
+                ecs.make_vec3(
+                    gx + side_x * (0.13 as f32) + dir_x * (0.10 as f32),
+                    0.68 as f32,
+                    gz + side_z * (0.13 as f32) + dir_z * (0.10 as f32)
+                ),
+                ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32),
+                0.075 as f32
+            ))
         @append(spheres, ecs.make_sphere(
-            ecs.make_vec3(gx - side_x * (0.13 as f32) + dir_x * (0.10 as f32), 0.68 as f32, gz - side_z * (0.13 as f32) + dir_z * (0.10 as f32)),
-            ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32),
-            0.075 as f32
-        ))
+                ecs.make_vec3(
+                    gx - side_x * (0.13 as f32) + dir_x * (0.10 as f32),
+                    0.68 as f32,
+                    gz - side_z * (0.13 as f32) + dir_z * (0.10 as f32)
+                ),
+                ecs.make_vec3(1.00 as f32, 1.00 as f32, 1.00 as f32),
+                0.075 as f32
+            ))
     }
     app.scene.spheres = spheres
 }
@@ -589,18 +617,71 @@ fn follow_camera(game: PacmanGame, app: mut engine.ExoApp) void = {
 }
 
 fn refresh_hud(game: PacmanGame, app: mut engine.ExoApp) void = {
-    @snprintf(game.hud, 128 as usize, "SCORE {d}   LIVES {d}   DOTS {d}", { game.score, game.lives, game.pellets_left })
+    @snprintf(
+        game.hud,
+        128 as usize,
+        "SCORE {d}   LIVES {d}   DOTS {d}",
+        { game.score, game.lives, game.pellets_left }
+    )
     ecs.ui_clear(app.scene.ui)
-    ecs.ui_rect(app.scene.ui, 16.0 as f32, 16.0 as f32, 580.0 as f32, 44.0 as f32, ecs.make_vec3(0.01 as f32, 0.02 as f32, 0.08 as f32), 0.72 as f32)
-    ecs.ui_text(app.scene.ui, game.hud, 26.0 as f32, 26.0 as f32, 3.0 as f32, ecs.make_vec3(1.00 as f32, 0.86 as f32, 0.18 as f32), 1.0 as f32)
+    ecs.ui_rect(
+        app.scene.ui,
+        16.0 as f32,
+        16.0 as f32,
+        580.0 as f32,
+        44.0 as f32,
+        ecs.make_vec3(0.01 as f32, 0.02 as f32, 0.08 as f32),
+        0.72 as f32
+    )
+    ecs.ui_text(
+        app.scene.ui,
+        game.hud,
+        26.0 as f32,
+        26.0 as f32,
+        3.0 as f32,
+        ecs.make_vec3(1.00 as f32, 0.86 as f32, 0.18 as f32),
+        1.0 as f32
+    )
     if game.state == (1 as i32) {
-        ecs.ui_text(app.scene.ui, "YOU WIN!  PRESS R TO PLAY AGAIN", 26.0 as f32, 82.0 as f32, 2.2 as f32, ecs.make_vec3(0.40 as f32, 1.00 as f32, 0.55 as f32), 1.0 as f32)
+        ecs.ui_text(
+            app.scene.ui,
+            "YOU WIN!  PRESS R TO PLAY AGAIN",
+            26.0 as f32,
+            82.0 as f32,
+            2.2 as f32,
+            ecs.make_vec3(0.40 as f32, 1.00 as f32, 0.55 as f32),
+            1.0 as f32
+        )
     } elif game.state == (2 as i32) {
-        ecs.ui_text(app.scene.ui, "GAME OVER  -  PRESS R TO RETRY", 26.0 as f32, 82.0 as f32, 2.2 as f32, ecs.make_vec3(1.00 as f32, 0.38 as f32, 0.32 as f32), 1.0 as f32)
+        ecs.ui_text(
+            app.scene.ui,
+            "GAME OVER  -  PRESS R TO RETRY",
+            26.0 as f32,
+            82.0 as f32,
+            2.2 as f32,
+            ecs.make_vec3(1.00 as f32, 0.38 as f32, 0.32 as f32),
+            1.0 as f32
+        )
     } elif game.power_timer > (0.0 as f32) {
-        ecs.ui_text(app.scene.ui, "POWER MODE", 26.0 as f32, 82.0 as f32, 2.0 as f32, ecs.make_vec3(0.45 as f32, 0.72 as f32, 1.00 as f32), 1.0 as f32)
+        ecs.ui_text(
+            app.scene.ui,
+            "POWER MODE",
+            26.0 as f32,
+            82.0 as f32,
+            2.0 as f32,
+            ecs.make_vec3(0.45 as f32, 0.72 as f32, 1.00 as f32),
+            1.0 as f32
+        )
     } else {
-        ecs.ui_text(app.scene.ui, "ARROWS/WASD MOVE   R RESTART   0/F12 SCREENSHOT", 26.0 as f32, 82.0 as f32, 2.0 as f32, ecs.make_vec3(0.62 as f32, 0.72 as f32, 0.88 as f32), 1.0 as f32)
+        ecs.ui_text(
+            app.scene.ui,
+            "ARROWS/WASD MOVE   R RESTART   0/F12 SCREENSHOT",
+            26.0 as f32,
+            82.0 as f32,
+            2.0 as f32,
+            ecs.make_vec3(0.62 as f32, 0.72 as f32, 0.88 as f32),
+            1.0 as f32
+        )
     }
 }
 
@@ -634,26 +715,26 @@ fn build_scene(rows: list[ref u8]) ecs.Scene3D = {
     scene.render.post_process.fxaa = true
 
     ecs.add_light(scene, ecs.make_light(
-        ecs.make_vec3(0.0 as f32, 11.0 as f32, 0.0 as f32),
-        ecs.make_vec3(0.82 as f32, 0.88 as f32, 1.00 as f32),
-        2.1 as f32,
-        26.0 as f32
-    ))
+            ecs.make_vec3(0.0 as f32, 11.0 as f32, 0.0 as f32),
+            ecs.make_vec3(0.82 as f32, 0.88 as f32, 1.00 as f32),
+            2.1 as f32,
+            26.0 as f32
+        ))
     ecs.add_light(scene, ecs.make_light(
-        ecs.make_vec3(-7.0 as f32, 5.0 as f32, 6.0 as f32),
-        ecs.make_vec3(0.25 as f32, 0.42 as f32, 1.00 as f32),
-        1.2 as f32,
-        16.0 as f32
-    ))
+            ecs.make_vec3(-7.0 as f32, 5.0 as f32, 6.0 as f32),
+            ecs.make_vec3(0.25 as f32, 0.42 as f32, 1.00 as f32),
+            1.2 as f32,
+            16.0 as f32
+        ))
     ecs.add_floor(scene, ecs.make_floor_sized(
-        0.0 as f32,
-        0.0 as f32,
-        0.0 as f32,
-        0.0 as f32,
-        ((MAZE_COLS as f32) * CELL_SIZE) + (2.0 as f32),
-        ((MAZE_ROWS as f32) * CELL_SIZE) + (2.0 as f32),
-        ecs.make_vec3(0.025 as f32, 0.040 as f32, 0.095 as f32)
-    ))
+            0.0 as f32,
+            0.0 as f32,
+            0.0 as f32,
+            0.0 as f32,
+            ((MAZE_COLS as f32) * CELL_SIZE) + (2.0 as f32),
+            ((MAZE_ROWS as f32) * CELL_SIZE) + (2.0 as f32),
+            ecs.make_vec3(0.025 as f32, 0.040 as f32, 0.095 as f32)
+        ))
     val r: mut i32 = 0 as i32
     for r < MAZE_ROWS {
         val c: mut i32 = 0 as i32
@@ -662,18 +743,18 @@ fn build_scene(rows: list[ref u8]) ecs.Scene3D = {
                 val border: bool = r == (0 as i32) || r == (MAZE_ROWS - (1 as i32)) || c == (0 as i32) || c == (MAZE_COLS - (1 as i32))
                 if border {
                     @append(scene.cubes, ecs.make_cube(
-                        ecs.make_vec3(world_x(c as f32), 0.50 as f32, world_z(r as f32)),
-                        ecs.make_vec3(0.12 as f32, 0.24 as f32, 0.62 as f32),
-                        CELL_SIZE * (0.98 as f32),
-                        0.0 as f32
-                    ))
+                            ecs.make_vec3(world_x(c as f32), 0.50 as f32, world_z(r as f32)),
+                            ecs.make_vec3(0.12 as f32, 0.24 as f32, 0.62 as f32),
+                            CELL_SIZE * (0.98 as f32),
+                            0.0 as f32
+                        ))
                 } else {
                     @append(scene.cubes, ecs.make_cube(
-                        ecs.make_vec3(world_x(c as f32), 0.50 as f32, world_z(r as f32)),
-                        ecs.make_vec3(0.055 as f32, 0.11 as f32, 0.31 as f32),
-                        CELL_SIZE * (0.98 as f32),
-                        0.0 as f32
-                    ))
+                            ecs.make_vec3(world_x(c as f32), 0.50 as f32, world_z(r as f32)),
+                            ecs.make_vec3(0.055 as f32, 0.11 as f32, 0.31 as f32),
+                            CELL_SIZE * (0.98 as f32),
+                            0.0 as f32
+                        ))
                 }
             }
             c = c + (1 as i32)
@@ -697,16 +778,28 @@ pub fn (PacmanGame) on_update(game: mut self, app: mut engine.ExoApp, dt: f32, t
     if game.state == (0 as i32) {
         val wx: mut i32 = 0 as i32
         val wz: mut i32 = 0 as i32
-        if trust engine.key_held(app, sdl.SDL_SCANCODE_LEFT) || trust engine.key_held(app, sdl.SDL_SCANCODE_A) {
+        if trust engine.key_held(
+            app,
+            sdl.SDL_SCANCODE_LEFT
+        ) || trust engine.key_held(app, sdl.SDL_SCANCODE_A) {
             wx = (0 as i32) - (1 as i32)
             wz = 0 as i32
-        } elif trust engine.key_held(app, sdl.SDL_SCANCODE_RIGHT) || trust engine.key_held(app, sdl.SDL_SCANCODE_D) {
+        } elif trust engine.key_held(
+            app,
+            sdl.SDL_SCANCODE_RIGHT
+        ) || trust engine.key_held(app, sdl.SDL_SCANCODE_D) {
             wx = 1 as i32
             wz = 0 as i32
-        } elif trust engine.key_held(app, sdl.SDL_SCANCODE_UP) || trust engine.key_held(app, sdl.SDL_SCANCODE_W) {
+        } elif trust engine.key_held(
+            app,
+            sdl.SDL_SCANCODE_UP
+        ) || trust engine.key_held(app, sdl.SDL_SCANCODE_W) {
             wx = 0 as i32
             wz = (0 as i32) - (1 as i32)
-        } elif trust engine.key_held(app, sdl.SDL_SCANCODE_DOWN) || trust engine.key_held(app, sdl.SDL_SCANCODE_S) {
+        } elif trust engine.key_held(
+            app,
+            sdl.SDL_SCANCODE_DOWN
+        ) || trust engine.key_held(app, sdl.SDL_SCANCODE_S) {
             wx = 0 as i32
             wz = 1 as i32
         }
@@ -737,7 +830,13 @@ pub fn (PacmanGame) on_update(game: mut self, app: mut engine.ExoApp, dt: f32, t
 
 pub fn (PacmanGame) on_fixed_update(_: mut self, _: mut engine.ExoApp, _: f32) void = {}
 
-pub fn (PacmanGame) on_key_down(game: mut self, app: mut engine.ExoApp, key: i32, _: bool, _: u16) void = {
+pub fn (PacmanGame) on_key_down(
+    game: mut self,
+    app: mut engine.ExoApp,
+    key: i32,
+    _: bool,
+    _: u16
+) void = {
     if key == sdl.SDL_SCANCODE_R {
         reset_game(game)
     }
@@ -749,13 +848,40 @@ pub fn (PacmanGame) on_key_down(game: mut self, app: mut engine.ExoApp, key: i32
 }
 
 pub fn (PacmanGame) on_key_up(_: mut self, _: mut engine.ExoApp, _: i32, _: u16) void = {}
-pub fn (PacmanGame) on_mouse_move(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
-pub fn (PacmanGame) on_mouse_button(_: mut self, _: mut engine.ExoApp, _: u8, _: bool, _: u8, _: f32, _: f32) void = {}
-pub fn (PacmanGame) on_mouse_wheel(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+
+pub fn (PacmanGame) on_mouse_move(
+    _: mut self,
+    _: mut engine.ExoApp,
+    _: f32,
+    _: f32,
+    _: f32,
+    _: f32
+) void = {}
+pub fn (PacmanGame) on_mouse_button(
+    _: mut self,
+    _: mut engine.ExoApp,
+    _: u8,
+    _: bool,
+    _: u8,
+    _: f32,
+    _: f32
+) void = {}
+pub fn (PacmanGame) on_mouse_wheel(
+    _: mut self,
+    _: mut engine.ExoApp,
+    _: f32,
+    _: f32,
+    _: f32,
+    _: f32
+) void = {}
 pub fn (PacmanGame) on_text_input(_: mut self, _: mut engine.ExoApp, _: ref u8) void = {}
+
 pub fn (PacmanGame) on_window_resize(_: mut self, _: mut engine.ExoApp, _: i32, _: i32) void = {}
+
 pub fn (PacmanGame) on_focus_changed(_: mut self, _: mut engine.ExoApp, _: bool) void = {}
+
 pub fn (PacmanGame) on_gamepad_button(_: mut self, _: mut engine.ExoApp, _: i32, _: bool) void = {}
+
 pub fn (PacmanGame) on_gamepad_axis(_: mut self, _: mut engine.ExoApp, _: i32, _: f32) void = {}
 
 pub fn (PacmanGame) on_shutdown(game: mut self, _: mut engine.ExoApp) void = {

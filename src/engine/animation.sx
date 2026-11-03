@@ -48,7 +48,12 @@ fn component_size(component_type: i32) usize = {
 }
 
 /// Read one component of an accessor as a float.
-pub fn accessor_f32(asset: ecs.ModelAsset, accessor_index: i32, element: usize, component: usize) f32 = trust {
+pub fn accessor_f32(
+    asset: ecs.ModelAsset,
+    accessor_index: i32,
+    element: usize,
+    component: usize
+) f32 = trust {
     if accessor_index < (0 as i32) || asset.raw_bytes == none {
         return 0.0 as f32
     }
@@ -104,7 +109,11 @@ fn channel_time(asset: ecs.ModelAsset, channel: ecs.ModelAnimChannel, index: usi
     return accessor_f32(asset, channel.input, index, 0 as usize)
 }
 
-fn sample_index(asset: ecs.ModelAsset, channel: ecs.ModelAnimChannel, time: f32) AnimSample = trust {
+fn sample_index(
+    asset: ecs.ModelAsset,
+    channel: ecs.ModelAnimChannel,
+    time: f32
+) AnimSample = trust {
     val count: usize = accessor_count(asset, channel.input)
     if count == (0 as usize) {
         return { a: 0 as usize, b: 0 as usize, t: 0.0 as f32 }
@@ -209,7 +218,11 @@ fn local_matrix(node: ecs.ModelNode) math.Mat4 = {
 
 /// Compute every node's global transform, applying an animation clip when one
 /// is supplied. The returned list is indexed by node index.
-pub fn compute_globals(asset: ecs.ModelAsset, animation_index: i32, time: f32) list[math.Mat4] = trust {
+pub fn compute_globals(
+    asset: ecs.ModelAsset,
+    animation_index: i32,
+    time: f32
+) list[math.Mat4] = trust {
     val count: usize = @len(asset.nodes)
     val local: mut list[math.Mat4] = []
     val translations: mut list[math.Vec3] = []
@@ -251,7 +264,15 @@ pub fn compute_globals(asset: ecs.ModelAsset, animation_index: i32, time: f32) l
             index = 0 as usize
             for index < count {
                 if bool_at(overridden, index) {
-                    @set(local, index, math.mat_from_trs(vec3_at(translations, index), quat_at(rotations, index), vec3_at(scales, index)))
+                    @set(
+                        local,
+                        index,
+                        math.mat_from_trs(
+                            vec3_at(translations, index),
+                            quat_at(rotations, index),
+                            vec3_at(scales, index)
+                        )
+                    )
                 }
                 index = index + (1 as usize)
             }
@@ -278,7 +299,11 @@ pub fn compute_globals(asset: ecs.ModelAsset, animation_index: i32, time: f32) l
                     @set(resolved, index, true)
                     remaining = remaining - (1 as i32)
                 } elif bool_at(resolved, node.parent as usize) {
-                    @set(globals, index, math.mat_mul(mat_at(globals, node.parent as usize), mat_at(local, index)))
+                    @set(
+                        globals,
+                        index,
+                        math.mat_mul(mat_at(globals, node.parent as usize), mat_at(local, index))
+                    )
                     @set(resolved, index, true)
                     remaining = remaining - (1 as i32)
                 }
@@ -324,7 +349,10 @@ fn joint_at(items: list[i32], index: usize) i32 = trust {
 
 /// Flatten all skins into one list of joint matrices. A skin's `joint_offset`
 /// is the base index into this list.
-pub fn compute_joint_matrices(asset: ecs.ModelAsset, globals: list[math.Mat4]) list[math.Mat4] = trust {
+pub fn compute_joint_matrices(
+    asset: ecs.ModelAsset,
+    globals: list[math.Mat4]
+) list[math.Mat4] = trust {
     val result: mut list[math.Mat4] = []
     for skin in asset.skins {
         val joint: mut usize = 0 as usize
@@ -395,8 +423,14 @@ pub fn skin_vertices(
                     val weight: f32 = math.read_f32(mesh.weights, vertex * (4 as usize) + influence)
                     if weight > (0.0 as f32) {
                         val joint_slot: usize = (vertex * (4 as usize) + influence)
-                        val joint: u16 = @load16(@ptradd(mesh.joints as ref void, joint_slot * (2 as usize)) as ref u8) as u16
-                        val matrix: math.Mat4 = matrix_at(joint_matrices, skin_offset + (joint as usize))
+                        val joint: u16 = @load16(@ptradd(
+                                mesh.joints as ref void,
+                                joint_slot * (2 as usize)
+                            ) as ref u8) as u16
+                        val matrix: math.Mat4 = matrix_at(
+                            joint_matrices,
+                            skin_offset + (joint as usize)
+                        )
                         m00 = m00 + matrix.m00 * weight
                         m01 = m01 + matrix.m01 * weight
                         m02 = m02 + matrix.m02 * weight
@@ -429,17 +463,57 @@ pub fn skin_vertices(
                 math.store_f32(out, target + (3 as usize), onx * inv_len)
                 math.store_f32(out, target + (4 as usize), ony * inv_len)
                 math.store_f32(out, target + (5 as usize), onz * inv_len)
-                math.store_f32(out, target + (6 as usize), math.read_f32(base, source + (6 as usize)))
-                math.store_f32(out, target + (7 as usize), math.read_f32(base, source + (7 as usize)))
+                math.store_f32(
+                    out,
+                    target + (6 as usize),
+                    math.read_f32(base, source + (6 as usize))
+                )
+                math.store_f32(
+                    out,
+                    target + (7 as usize),
+                    math.read_f32(base, source + (7 as usize))
+                )
             } else {
-                math.store_f32(out, target + (0 as usize), math.read_f32(base, source + (0 as usize)))
-                math.store_f32(out, target + (1 as usize), math.read_f32(base, source + (1 as usize)))
-                math.store_f32(out, target + (2 as usize), math.read_f32(base, source + (2 as usize)))
-                math.store_f32(out, target + (3 as usize), math.read_f32(base, source + (3 as usize)))
-                math.store_f32(out, target + (4 as usize), math.read_f32(base, source + (4 as usize)))
-                math.store_f32(out, target + (5 as usize), math.read_f32(base, source + (5 as usize)))
-                math.store_f32(out, target + (6 as usize), math.read_f32(base, source + (6 as usize)))
-                math.store_f32(out, target + (7 as usize), math.read_f32(base, source + (7 as usize)))
+                math.store_f32(
+                    out,
+                    target + (0 as usize),
+                    math.read_f32(base, source + (0 as usize))
+                )
+                math.store_f32(
+                    out,
+                    target + (1 as usize),
+                    math.read_f32(base, source + (1 as usize))
+                )
+                math.store_f32(
+                    out,
+                    target + (2 as usize),
+                    math.read_f32(base, source + (2 as usize))
+                )
+                math.store_f32(
+                    out,
+                    target + (3 as usize),
+                    math.read_f32(base, source + (3 as usize))
+                )
+                math.store_f32(
+                    out,
+                    target + (4 as usize),
+                    math.read_f32(base, source + (4 as usize))
+                )
+                math.store_f32(
+                    out,
+                    target + (5 as usize),
+                    math.read_f32(base, source + (5 as usize))
+                )
+                math.store_f32(
+                    out,
+                    target + (6 as usize),
+                    math.read_f32(base, source + (6 as usize))
+                )
+                math.store_f32(
+                    out,
+                    target + (7 as usize),
+                    math.read_f32(base, source + (7 as usize))
+                )
             }
             vertex = vertex + (1 as usize)
         }

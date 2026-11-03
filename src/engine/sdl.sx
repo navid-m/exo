@@ -125,58 +125,207 @@ pub val SDL_GPU_TEXTUREFORMAT_D32_FLOAT: i32 = 60
 pub extern (C) fn SDL_Init(flags: u32) bool = "SDL_Init"
 pub extern (C) fn SDL_Quit() void = "SDL_Quit"
 pub extern (C) fn SDL_GetError() ref u8 = "SDL_GetError"
-pub extern (C) fn SDL_CreateWindow(title: ref u8, w: i32, h: i32, flags: u64) ref void = "SDL_CreateWindow"
+pub extern (C) fn SDL_CreateWindow(
+    title: ref u8,
+    w: i32,
+    h: i32,
+    flags: u64
+) ref void = "SDL_CreateWindow"
 pub extern (C) fn SDL_DestroyWindow(window: ref void) void = "SDL_DestroyWindow"
 pub extern (C) fn SDL_PollEvent(event: ref SDLEvent) bool = "SDL_PollEvent"
 pub extern (C) fn SDL_GetTicks() u64 = "SDL_GetTicks"
 pub extern (C) fn SDL_GetKeyboardState(numkeys: ref i32) ref bool = "SDL_GetKeyboardState"
-pub extern (C) fn SDL_SetWindowRelativeMouseMode(window: ref void, enabled: bool) bool = "SDL_SetWindowRelativeMouseMode"
-pub extern (C) fn SDL_GetRelativeMouseState(x: ref f32, y: ref f32) u32 = "SDL_GetRelativeMouseState"
-pub extern (C) fn SDL_CreateGPUDevice(format_flags: u32, debug_mode: bool, name: ref u8) ref void = "SDL_CreateGPUDevice"
+pub extern (C) fn SDL_SetWindowRelativeMouseMode(
+    window: ref void,
+    enabled: bool
+) bool = "SDL_SetWindowRelativeMouseMode"
+pub extern (C) fn SDL_GetRelativeMouseState(
+    x: ref f32,
+    y: ref f32
+) u32 = "SDL_GetRelativeMouseState"
+pub extern (C) fn SDL_CreateGPUDevice(
+    format_flags: u32,
+    debug_mode: bool,
+    name: ref u8
+) ref void = "SDL_CreateGPUDevice"
 pub extern (C) fn SDL_DestroyGPUDevice(device: ref void) void = "SDL_DestroyGPUDevice"
-pub extern (C) fn SDL_ClaimWindowForGPUDevice(device: ref void, window: ref void) bool = "SDL_ClaimWindowForGPUDevice"
-pub extern (C) fn SDL_ReleaseWindowFromGPUDevice(device: ref void, window: ref void) void = "SDL_ReleaseWindowFromGPUDevice"
-pub extern (C) fn SDL_GetGPUSwapchainTextureFormat(device: ref void, window: ref void) i32 = "SDL_GetGPUSwapchainTextureFormat"
-pub extern (C) fn SDL_CreateGPUSampler(device: ref void, createinfo: ref SDLGPUSamplerCreateInfo) ref void = "SDL_CreateGPUSampler"
-pub extern (C) fn SDL_CreateGPUShader(device: ref void, createinfo: ref SDLGPUShaderCreateInfo) ref void = "SDL_CreateGPUShader"
-pub extern (C) fn SDL_CreateGPUGraphicsPipeline(device: ref void, createinfo: ref SDLGPUGraphicsPipelineCreateInfo) ref void = "SDL_CreateGPUGraphicsPipeline"
-pub extern (C) fn SDL_CreateGPUTexture(device: ref void, createinfo: ref SDLGPUTextureCreateInfo) ref void = "SDL_CreateGPUTexture"
-pub extern (C) fn SDL_CreateGPUBuffer(device: ref void, createinfo: ref SDLGPUBufferCreateInfo) ref void = "SDL_CreateGPUBuffer"
-pub extern (C) fn SDL_CreateGPUTransferBuffer(device: ref void, createinfo: ref SDLGPUTransferBufferCreateInfo) ref void = "SDL_CreateGPUTransferBuffer"
-pub extern (C) fn SDL_ReleaseGPUTexture(device: ref void, texture: ref void) void = "SDL_ReleaseGPUTexture"
-pub extern (C) fn SDL_ReleaseGPUSampler(device: ref void, sampler: ref void) void = "SDL_ReleaseGPUSampler"
-pub extern (C) fn SDL_ReleaseGPUBuffer(device: ref void, buffer: ref void) void = "SDL_ReleaseGPUBuffer"
-pub extern (C) fn SDL_ReleaseGPUTransferBuffer(device: ref void, transfer_buffer: ref void) void = "SDL_ReleaseGPUTransferBuffer"
-pub extern (C) fn SDL_ReleaseGPUShader(device: ref void, shader: ref void) void = "SDL_ReleaseGPUShader"
-pub extern (C) fn SDL_ReleaseGPUGraphicsPipeline(device: ref void, graphics_pipeline: ref void) void = "SDL_ReleaseGPUGraphicsPipeline"
+pub extern (C) fn SDL_ClaimWindowForGPUDevice(
+    device: ref void,
+    window: ref void
+) bool = "SDL_ClaimWindowForGPUDevice"
+pub extern (C) fn SDL_ReleaseWindowFromGPUDevice(
+    device: ref void,
+    window: ref void
+) void = "SDL_ReleaseWindowFromGPUDevice"
+pub extern (C) fn SDL_GetGPUSwapchainTextureFormat(
+    device: ref void,
+    window: ref void
+) i32 = "SDL_GetGPUSwapchainTextureFormat"
+pub extern (C) fn SDL_CreateGPUSampler(
+    device: ref void,
+    createinfo: ref SDLGPUSamplerCreateInfo
+) ref void = "SDL_CreateGPUSampler"
+pub extern (C) fn SDL_CreateGPUShader(
+    device: ref void,
+    createinfo: ref SDLGPUShaderCreateInfo
+) ref void = "SDL_CreateGPUShader"
+pub extern (C) fn SDL_CreateGPUGraphicsPipeline(
+    device: ref void,
+    createinfo: ref SDLGPUGraphicsPipelineCreateInfo
+) ref void = "SDL_CreateGPUGraphicsPipeline"
+pub extern (C) fn SDL_CreateGPUTexture(
+    device: ref void,
+    createinfo: ref SDLGPUTextureCreateInfo
+) ref void = "SDL_CreateGPUTexture"
+pub extern (C) fn SDL_CreateGPUBuffer(
+    device: ref void,
+    createinfo: ref SDLGPUBufferCreateInfo
+) ref void = "SDL_CreateGPUBuffer"
+pub extern (C) fn SDL_CreateGPUTransferBuffer(
+    device: ref void,
+    createinfo: ref SDLGPUTransferBufferCreateInfo
+) ref void = "SDL_CreateGPUTransferBuffer"
+pub extern (C) fn SDL_ReleaseGPUTexture(
+    device: ref void,
+    texture: ref void
+) void = "SDL_ReleaseGPUTexture"
+pub extern (C) fn SDL_ReleaseGPUSampler(
+    device: ref void,
+    sampler: ref void
+) void = "SDL_ReleaseGPUSampler"
+pub extern (C) fn SDL_ReleaseGPUBuffer(
+    device: ref void,
+    buffer: ref void
+) void = "SDL_ReleaseGPUBuffer"
+pub extern (C) fn SDL_ReleaseGPUTransferBuffer(
+    device: ref void,
+    transfer_buffer: ref void
+) void = "SDL_ReleaseGPUTransferBuffer"
+pub extern (C) fn SDL_ReleaseGPUShader(
+    device: ref void,
+    shader: ref void
+) void = "SDL_ReleaseGPUShader"
+pub extern (C) fn SDL_ReleaseGPUGraphicsPipeline(
+    device: ref void,
+    graphics_pipeline: ref void
+) void = "SDL_ReleaseGPUGraphicsPipeline"
 pub extern (C) fn SDL_AcquireGPUCommandBuffer(device: ref void) ref void = "SDL_AcquireGPUCommandBuffer"
-pub extern (C) fn SDL_PushGPUVertexUniformData(command_buffer: ref void, slot_index: u32, data: ref void, length: u32) void = "SDL_PushGPUVertexUniformData"
-pub extern (C) fn SDL_PushGPUFragmentUniformData(command_buffer: ref void, slot_index: u32, data: ref void, length: u32) void = "SDL_PushGPUFragmentUniformData"
-pub extern (C) fn SDL_BeginGPURenderPass(command_buffer: ref void, color_target_infos: ref SDLGPUColorTargetInfo, num_color_targets: u32, depth_stencil_target_info: ref SDLGPUDepthStencilTargetInfo) ref void = "SDL_BeginGPURenderPass"
-pub extern (C) fn SDL_BindGPUGraphicsPipeline(render_pass: ref void, graphics_pipeline: ref void) void = "SDL_BindGPUGraphicsPipeline"
-pub extern (C) fn SDL_SetGPUViewport(render_pass: ref void, viewport: ref SDLGPUViewport) void = "SDL_SetGPUViewport"
-pub extern (C) fn SDL_BindGPUVertexBuffers(render_pass: ref void, first_slot: u32, bindings: ref SDLGPUBufferBinding, num_bindings: u32) void = "SDL_BindGPUVertexBuffers"
-pub extern (C) fn SDL_BindGPUIndexBuffer(render_pass: ref void, binding: ref SDLGPUBufferBinding, index_element_size: i32) void = "SDL_BindGPUIndexBuffer"
-pub extern (C) fn SDL_BindGPUFragmentSamplers(render_pass: ref void, first_slot: u32, texture_sampler_bindings: ref SDLGPUTextureSamplerBinding, num_bindings: u32) void = "SDL_BindGPUFragmentSamplers"
-pub extern (C) fn SDL_DrawGPUIndexedPrimitives(render_pass: ref void, num_indices: u32, num_instances: u32, first_index: u32, vertex_offset: i32, first_instance: u32) void = "SDL_DrawGPUIndexedPrimitives"
-pub extern (C) fn SDL_DrawGPUPrimitives(render_pass: ref void, num_vertices: u32, num_instances: u32, first_vertex: u32, first_instance: u32) void = "SDL_DrawGPUPrimitives"
+pub extern (C) fn SDL_PushGPUVertexUniformData(
+    command_buffer: ref void,
+    slot_index: u32,
+    data: ref void,
+    length: u32
+) void = "SDL_PushGPUVertexUniformData"
+pub extern (C) fn SDL_PushGPUFragmentUniformData(
+    command_buffer: ref void,
+    slot_index: u32,
+    data: ref void,
+    length: u32
+) void = "SDL_PushGPUFragmentUniformData"
+pub extern (C) fn SDL_BeginGPURenderPass(
+    command_buffer: ref void,
+    color_target_infos: ref SDLGPUColorTargetInfo,
+    num_color_targets: u32,
+    depth_stencil_target_info: ref SDLGPUDepthStencilTargetInfo
+) ref void = "SDL_BeginGPURenderPass"
+pub extern (C) fn SDL_BindGPUGraphicsPipeline(
+    render_pass: ref void,
+    graphics_pipeline: ref void
+) void = "SDL_BindGPUGraphicsPipeline"
+pub extern (C) fn SDL_SetGPUViewport(
+    render_pass: ref void,
+    viewport: ref SDLGPUViewport
+) void = "SDL_SetGPUViewport"
+pub extern (C) fn SDL_BindGPUVertexBuffers(
+    render_pass: ref void,
+    first_slot: u32,
+    bindings: ref SDLGPUBufferBinding,
+    num_bindings: u32
+) void = "SDL_BindGPUVertexBuffers"
+pub extern (C) fn SDL_BindGPUIndexBuffer(
+    render_pass: ref void,
+    binding: ref SDLGPUBufferBinding,
+    index_element_size: i32
+) void = "SDL_BindGPUIndexBuffer"
+pub extern (C) fn SDL_BindGPUFragmentSamplers(
+    render_pass: ref void,
+    first_slot: u32,
+    texture_sampler_bindings: ref SDLGPUTextureSamplerBinding,
+    num_bindings: u32
+) void = "SDL_BindGPUFragmentSamplers"
+pub extern (C) fn SDL_DrawGPUIndexedPrimitives(
+    render_pass: ref void,
+    num_indices: u32,
+    num_instances: u32,
+    first_index: u32,
+    vertex_offset: i32,
+    first_instance: u32
+) void = "SDL_DrawGPUIndexedPrimitives"
+pub extern (C) fn SDL_DrawGPUPrimitives(
+    render_pass: ref void,
+    num_vertices: u32,
+    num_instances: u32,
+    first_vertex: u32,
+    first_instance: u32
+) void = "SDL_DrawGPUPrimitives"
 pub extern (C) fn SDL_EndGPURenderPass(render_pass: ref void) void = "SDL_EndGPURenderPass"
-pub extern (C) fn SDL_MapGPUTransferBuffer(device: ref void, transfer_buffer: ref void, cycle: bool) ref void = "SDL_MapGPUTransferBuffer"
-pub extern (C) fn SDL_UnmapGPUTransferBuffer(device: ref void, transfer_buffer: ref void) void = "SDL_UnmapGPUTransferBuffer"
+pub extern (C) fn SDL_MapGPUTransferBuffer(
+    device: ref void,
+    transfer_buffer: ref void,
+    cycle: bool
+) ref void = "SDL_MapGPUTransferBuffer"
+pub extern (C) fn SDL_UnmapGPUTransferBuffer(
+    device: ref void,
+    transfer_buffer: ref void
+) void = "SDL_UnmapGPUTransferBuffer"
 pub extern (C) fn SDL_BeginGPUCopyPass(command_buffer: ref void) ref void = "SDL_BeginGPUCopyPass"
-pub extern (C) fn SDL_UploadToGPUBuffer(copy_pass: ref void, source: ref SDLGPUTransferBufferLocation, destination: ref SDLGPUBufferRegion, cycle: bool) void = "SDL_UploadToGPUBuffer"
+pub extern (C) fn SDL_UploadToGPUBuffer(
+    copy_pass: ref void,
+    source: ref SDLGPUTransferBufferLocation,
+    destination: ref SDLGPUBufferRegion,
+    cycle: bool
+) void = "SDL_UploadToGPUBuffer"
 pub extern (C) fn SDL_EndGPUCopyPass(copy_pass: ref void) void = "SDL_EndGPUCopyPass"
-pub extern (C) fn SDL_WaitAndAcquireGPUSwapchainTexture(command_buffer: ref void, window: ref void, swapchain_texture: ref ref void, swapchain_texture_width: ref u32, swapchain_texture_height: ref u32) bool = "SDL_WaitAndAcquireGPUSwapchainTexture"
+pub extern (C) fn SDL_WaitAndAcquireGPUSwapchainTexture(
+    command_buffer: ref void,
+    window: ref void,
+    swapchain_texture: ref ref void,
+    swapchain_texture_width: ref u32,
+    swapchain_texture_height: ref u32
+) bool = "SDL_WaitAndAcquireGPUSwapchainTexture"
 pub extern (C) fn SDL_SubmitGPUCommandBuffer(command_buffer: ref void) bool = "SDL_SubmitGPUCommandBuffer"
 pub extern (C) fn SDL_CancelGPUCommandBuffer(command_buffer: ref void) bool = "SDL_CancelGPUCommandBuffer"
-pub extern (C) fn SDL_LoadWAV(path: ref u8, speci: ref SDLAudioSpec, audio_buf: ref ref u8, audio_len: ref u32) bool = "SDL_LoadWAV"
+pub extern (C) fn SDL_LoadWAV(
+    path: ref u8,
+    speci: ref SDLAudioSpec,
+    audio_buf: ref ref u8,
+    audio_len: ref u32
+) bool = "SDL_LoadWAV"
 pub extern (C) fn SDL_IOFromMem(mem: ref void, size: usize) ref void = "SDL_IOFromMem"
-pub extern (C) fn SDL_LoadWAV_IO(src: ref void, closeio: bool, speci: ref SDLAudioSpec, audio_buf: ref ref u8, audio_len: ref u32) bool = "SDL_LoadWAV_IO"
-pub extern (C) fn SDL_OpenAudioDeviceStream(devid: u32, speci: ref SDLAudioSpec, callback: ref void, userdata: ref void) ref void = "SDL_OpenAudioDeviceStream"
-pub extern (C) fn SDL_SetAudioStreamGain(stream: ref void, gain: f32) bool = "SDL_SetAudioStreamGain"
+pub extern (C) fn SDL_LoadWAV_IO(
+    src: ref void,
+    closeio: bool,
+    speci: ref SDLAudioSpec,
+    audio_buf: ref ref u8,
+    audio_len: ref u32
+) bool = "SDL_LoadWAV_IO"
+pub extern (C) fn SDL_OpenAudioDeviceStream(
+    devid: u32,
+    speci: ref SDLAudioSpec,
+    callback: ref void,
+    userdata: ref void
+) ref void = "SDL_OpenAudioDeviceStream"
+pub extern (C) fn SDL_SetAudioStreamGain(
+    stream: ref void,
+    gain: f32
+) bool = "SDL_SetAudioStreamGain"
 pub extern (C) fn SDL_ResumeAudioStreamDevice(stream: ref void) bool = "SDL_ResumeAudioStreamDevice"
 pub extern (C) fn SDL_ClearAudioStream(stream: ref void) bool = "SDL_ClearAudioStream"
-pub extern (C) fn SDL_PutAudioStreamData(stream: ref void, buf: ref void, len: i32) bool = "SDL_PutAudioStreamData"
+pub extern (C) fn SDL_PutAudioStreamData(
+    stream: ref void,
+    buf: ref void,
+    len: i32
+) bool = "SDL_PutAudioStreamData"
 pub extern (C) fn SDL_FlushAudioStream(stream: ref void) bool = "SDL_FlushAudioStream"
 pub extern (C) fn SDL_DestroyAudioStream(stream: ref void) void = "SDL_DestroyAudioStream"
 pub extern (C) fn SDL_free(ptr: ref void) void = "SDL_free"
@@ -199,13 +348,34 @@ pub extern (C) fn fseek(stream: ref void, offset: i64, whence: i32) i32 = "fseek
 pub extern (C) fn ftell(stream: ref void) i64 = "ftell"
 pub extern (C) fn rewind(stream: ref void) void = "rewind"
 
-pub extern (C) fn stbi_load_from_memory(buf: ref u8, len: i32, x: ref i32, y: ref i32, channels: ref i32, desired: i32) ref u8 = "stbi_load_from_memory"
+pub extern (C) fn stbi_load_from_memory(
+    buf: ref u8,
+    len: i32,
+    x: ref i32,
+    y: ref i32,
+    channels: ref i32,
+    desired: i32
+) ref u8 = "stbi_load_from_memory"
 pub extern (C) fn stbi_image_free(ptr: ref void) void = "stbi_image_free"
 
-pub extern (C) fn SDL_UploadToGPUTexture(copy_pass: ref void, source: ref SDLGPUTextureTransferInfo, destination: ref SDLGPUTextureRegion, cycle: bool) void = "SDL_UploadToGPUTexture"
-pub extern (C) fn SDL_DownloadFromGPUTexture(copy_pass: ref void, source: ref SDLGPUTextureRegion, destination: ref SDLGPUTextureTransferInfo) void = "SDL_DownloadFromGPUTexture"
+pub extern (C) fn SDL_UploadToGPUTexture(
+    copy_pass: ref void,
+    source: ref SDLGPUTextureTransferInfo,
+    destination: ref SDLGPUTextureRegion,
+    cycle: bool
+) void = "SDL_UploadToGPUTexture"
+pub extern (C) fn SDL_DownloadFromGPUTexture(
+    copy_pass: ref void,
+    source: ref SDLGPUTextureRegion,
+    destination: ref SDLGPUTextureTransferInfo
+) void = "SDL_DownloadFromGPUTexture"
 pub extern (C) fn SDL_WaitForGPUIdle(device: ref void) bool = "SDL_WaitForGPUIdle"
-pub extern (C) fn fwrite(ptr: ref void, size: usize, count: usize, stream: ref void) usize = "fwrite"
+pub extern (C) fn fwrite(
+    ptr: ref void,
+    size: usize,
+    count: usize,
+    stream: ref void
+) usize = "fwrite"
 
 
 pub val SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM: i32 = 4

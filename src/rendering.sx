@@ -34,10 +34,20 @@ pub fn default_audio_bank() audio.AudioBankConfig = {
 }
 
 pub fn create_app(scene: ecs.Scene3D) engine.ExoApp = {
-    return engine.create_basic_app(default_config(), scene, default_camera(), default_input_config())
+    return engine.create_basic_app(
+        default_config(),
+        scene,
+        default_camera(),
+        default_input_config()
+    )
 }
 
-pub fn create_configured_app(config: engine.ExoConfig, scene: ecs.Scene3D, camera: cam.Camera, input_cfg: input.InputConfig) engine.ExoApp = {
+pub fn create_configured_app(
+    config: engine.ExoConfig,
+    scene: ecs.Scene3D,
+    camera: cam.Camera,
+    input_cfg: input.InputConfig
+) engine.ExoApp = {
     return engine.create_basic_app(config, scene, camera, input_cfg)
 }
 
