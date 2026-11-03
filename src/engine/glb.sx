@@ -6,16 +6,17 @@ val json   = use("std/json")
 val string = use("std/string")
 val bin    = use("std/encoding/binary")
 
-val GLB_MAGIC: u32 = 0x46546C67
-val GLB_VERSION: u32 = 2
-val GLB_JSON_CHUNK: u32 = 0x4E4F534A
-val GLB_BIN_CHUNK: u32 = 0x004E4942
+val (
+    GLB_MAGIC: u32      = 0x46546C67
+    GLB_VERSION: u32    = 2
+    GLB_JSON_CHUNK: u32 = 0x4E4F534A
+    GLB_BIN_CHUNK: u32  = 0x004E4942
+)
 
 pub type GlbFixture = {
     ptr: ref u8
     len: usize
 }
-
 
 pub fn dup_cstr(src: ref u8) ref u8 = trust {
     if src == none {
