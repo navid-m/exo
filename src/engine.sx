@@ -11,6 +11,7 @@ val model    = use("engine/model.sx")
 val renderer = use("engine/renderer.sx")
 val mesh     = use("engine/mesh.sx")
 val exoerr   = use("engine/error.sx")
+val mem      = use("mem.sx")
 
 val (
     DEFAULT_SCREEN_WIDTH: i32  = 1440
@@ -227,7 +228,7 @@ pub fn create_app(
         audio: audio_cfg,
         audio_runtime: {
             initialized: false,
-            clips: []
+            clips: mem.persistent[audio.RuntimeAudioClip]()
         },
         should_quit: false,
         paused: false,
@@ -432,10 +433,10 @@ pub fn stop_all_sounds(app: ExoApp) void = trust {
 
 fn empty_scene_resources() SceneResources = {
     return {
-        models: [],
-        model_textures: [],
-        model_draws: [],
-        custom: [],
+        models: mem.persistent[renderer.MeshGPU](),
+        model_textures: mem.persistent[ref void](),
+        model_draws: mem.persistent[renderer.ModelGPU](),
+        custom: mem.persistent[renderer.MeshGPU](),
         revision: 0 as u64,
         loaded: false
     }
@@ -465,10 +466,10 @@ fn release_scene_resources(runtime: ref void, resources: mut SceneResources) voi
     for custom_mesh in resources.custom {
         renderer.destroy_mesh(runtime, custom_mesh)
     }
-    resources.models = []
-    resources.model_textures = []
-    resources.model_draws = []
-    resources.custom = []
+    resources.models = mem.persistent[renderer.MeshGPU]()
+    resources.model_textures = mem.persistent[ref void]()
+    resources.model_draws = mem.persistent[renderer.ModelGPU]()
+    resources.custom = mem.persistent[renderer.MeshGPU]()
 }
 
 fn load_scene_resources(runtime: ref void, scene: ecs.Scene3D) SceneResources = trust {
@@ -571,6 +572,9 @@ fn dispatch_gamepad[E: AppEvents](
 fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
     val app: mut ExoApp = app0
     val events: mut E = events0
+    defer {
+        mem.close()
+    }
     val runtime: ref void = renderer.create(
         app.config.title,
         app.config.width,
@@ -752,6 +756,7 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             apply_default_camera(app, app.dt, mx, my)
         }
         if !app.paused {
+            mem.begin_update()
             if app.config.fixed_dt > (0.0 as f32) {
                 fixed_accumulator = fixed_accumulator + app.dt
                 val steps: mut i32 = 0 as i32
@@ -781,6 +786,7 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             base_quad,
             resources
         )
+        mem.begin_render()
         renderer.prepare_models(runtime, meshes, app.scene, app.time)
         renderer.configure_scene_style(
             runtime,

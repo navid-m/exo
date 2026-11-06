@@ -4,6 +4,7 @@ val engine    = use("../src/engine.sx")
 val rendering = use("../src/rendering.sx")
 val sdl       = use("../src/engine/sdl.sx")
 val input     = use("../src/engine/input.sx")
+val mem       = use("../src/mem.sx")
 
 val SNOW_FLAKE_COUNT: i32 = 17
 val SNOW_MIN_X: f32 = -3.2
@@ -47,7 +48,7 @@ pub fn (SnowEvents) on_start(_: mut self, _: mut engine.ExoApp) void = {}
 pub fn (SnowEvents) on_fixed_update(_: mut self, _: mut engine.ExoApp, _: f32) void = {}
 
 pub fn (SnowEvents) on_update(_: mut self, app: mut engine.ExoApp, dt: f32, time: f32) void = {
-    val next_spheres: mut list[ecs.SphereEntity] = []
+    val next_spheres: mut list[ecs.SphereEntity] = mem.scoped[ecs.SphereEntity]()
     val index: mut i32 = 0 as i32
     for sphere in app.scene.spheres {
         if index < SNOW_FLAKE_COUNT {

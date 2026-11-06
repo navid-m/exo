@@ -7,6 +7,7 @@ val glb       = use("../src/engine/glb.sx")
 val sdl       = use("../src/engine/sdl.sx")
 val input     = use("../src/engine/input.sx")
 val audio     = use("../src/engine/audio.sx")
+val mem       = use("../src/mem.sx")
 
 type (engine.AppEvents) ShowcaseEvents = {
     scenes: mut list[ecs.Scene3D]
@@ -255,7 +256,7 @@ fn build_game_scene() ecs.Scene3D = {
 }
 
 fn build_scenes() list[ecs.Scene3D] = {
-    val scenes: mut list[ecs.Scene3D] = []
+    val scenes: mut list[ecs.Scene3D] = mem.persistent[ecs.Scene3D]()
     @append(scenes, build_showcase_scene())
     @append(scenes, build_feature_scene())
     @append(scenes, build_game_scene())
@@ -277,11 +278,11 @@ pub fn main() i32 = {
     }
     val audio_cfg: audio.AudioBankConfig = {
         master_volume: 96 as i32,
-        clips: [{
+        clips: mem.persistent1[audio.AudioClip]({
                 path: "./assets/example_sound.wav",
                 loops: 0 as i32,
                 volume: 96 as i32
-            }]
+            })
     }
 
     val app_builder: mut engine.ExoAppBuilder = engine.new_app()
@@ -312,7 +313,7 @@ test {
     val showcase = build_showcase_scene()
     val feature = build_feature_scene()
     val game = build_game_scene()
-    val scenes: mut list[ecs.Scene3D] = []
+    val scenes: mut list[ecs.Scene3D] = mem.persistent[ecs.Scene3D]()
     @append(scenes, showcase)
     @append(scenes, feature)
     @append(scenes, game)
@@ -325,11 +326,11 @@ test {
     engine.with_input(app_builder, rendering.default_input_config())
     val test_audio: audio.AudioBankConfig = {
         master_volume: 96 as i32,
-        clips: [{
+        clips: mem.persistent1[audio.AudioClip]({
                 path: "./example_sound.mp3",
                 loops: 0 as i32,
                 volume: 96 as i32
-            }]
+            })
     }
     engine.with_audio(app_builder, test_audio)
     val app: engine.ExoApp = engine.build_app(app_builder)

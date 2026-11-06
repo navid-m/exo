@@ -1,4 +1,5 @@
 val string = use("std/string")
+val mem    = use("mem.sx")
 
 /// A compile-time embedded engine asset.
 pub type EmbeddedAsset = {
@@ -64,7 +65,7 @@ fn key_matches(a: ref u8, b: ref u8) bool = trust {
 
 /// Look up an embedded asset by the path that would normally be used on disk.
 pub fn find(key: ref u8) option[EmbeddedAsset] = trust {
-    val assets: mut list[EmbeddedAsset] = []
+    val assets: mut list[EmbeddedAsset] = mem.scoped[EmbeddedAsset]()
     @append(
         assets,
         asset(

@@ -3,6 +3,7 @@ val io       = use("io.sx")
 val string   = use("std/string")
 val exoerr   = use("error.sx")
 val embedded = use("../embedded.sx")
+val mem      = use("../mem.sx")
 
 pub type AudioClip = {
     path: ref u8
@@ -138,7 +139,7 @@ pub fn play_audio(audio_raw: ref void, loops: i32, volume: i32) bool = trust {
 pub fn default_audio_mixer() AudioBankConfig = {
     return {
         master_volume: 96 as i32,
-        clips: []
+        clips: mem.persistent[AudioClip]()
     }
 }
 
@@ -166,7 +167,7 @@ pub fn audio_enabled(config: AudioBankConfig) bool = {
 pub fn init_runtime_audio(config: AudioBankConfig) RuntimeAudioBank = trust {
     val runtime: mut RuntimeAudioBank = {
         initialized: false,
-        clips: []
+        clips: mem.persistent[RuntimeAudioClip]()
     }
     val loaded_count: mut i32 = 0 as i32
     for clip in config.clips {

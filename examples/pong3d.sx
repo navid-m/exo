@@ -5,6 +5,7 @@ val rendering = use("../src/rendering.sx")
 val sdl       = use("../src/engine/sdl.sx")
 val input     = use("../src/engine/input.sx")
 val audio     = use("../src/engine/audio.sx")
+val mem       = use("../src/mem.sx")
 
 val COURT_HALF_X: f32 = 12.0 as f32
 val COURT_HALF_Z: f32 = 6.0 as f32
@@ -293,7 +294,7 @@ fn update_game(game: mut PongGame, app: engine.ExoApp, dt: f32, time: f32) void 
 }
 
 fn sync_scene(game: PongGame, app: mut engine.ExoApp, time: f32) void = {
-    val cubes: mut list[ecs.CubeEntity] = []
+    val cubes: mut list[ecs.CubeEntity] = mem.scoped[ecs.CubeEntity]()
     val x: mut i32 = (0 as i32) - (12 as i32)
     for x <= (12 as i32) {
         @append(cubes, ecs.make_cube(
@@ -373,7 +374,7 @@ fn sync_scene(game: PongGame, app: mut engine.ExoApp, time: f32) void = {
             0.0 as f32
         ))
     val ball_pulse: f32 = (math.sin((time * (9.0 as f32)) as f64) as f32) * (0.025 as f32)
-    val spheres: mut list[ecs.SphereEntity] = []
+    val spheres: mut list[ecs.SphereEntity] = mem.scoped[ecs.SphereEntity]()
     @append(spheres, ecs.make_sphere(
             ecs.make_vec3(game.ball_x, game.ball_y, game.ball_z),
             ecs.make_vec3(1.00 as f32, 0.94 as f32, 0.52 as f32),
@@ -604,11 +605,11 @@ pub fn main() i32 = {
     }
     val audio_cfg: audio.AudioBankConfig = {
         master_volume: 90 as i32,
-        clips: [{
+        clips: mem.persistent1[audio.AudioClip]({
                 path: "./assets/example_sound.wav",
                 loops: 0 as i32,
                 volume: 90 as i32
-            }]
+            })
     }
 
     val builder: mut engine.ExoAppBuilder = engine.new_app()

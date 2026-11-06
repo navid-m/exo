@@ -6,6 +6,7 @@ val glb       = use("glb.sx")
 val json      = use("std/json")
 val string    = use("std/string")
 val bin       = use("std/encoding/binary")
+val mem       = use("../mem.sx")
 
 val GLB_MAGIC: u32 = 0x46546C67
 val GLB_VERSION: u32 = 2
@@ -190,7 +191,7 @@ type ImageTable = {
 }
 
 fn parse_nodes(root: ref void) list[ecs.ModelNode] = trust {
-    val result: mut list[ecs.ModelNode] = []
+    val result: mut list[ecs.ModelNode] = mem.persistent[ecs.ModelNode]()
     if json.obj_get(root, "nodes") is some nodes {
         val node_count: usize = json.arr_len(nodes)
         val index: mut usize = 0 as usize
@@ -257,14 +258,14 @@ fn read_u32_value(asset: ecs.ModelAsset, accessor_index: i32, element: usize) u3
 }
 
 fn parse_skins(asset: ecs.ModelAsset, root: ref void) list[ecs.ModelSkin] = trust {
-    val result: mut list[ecs.ModelSkin] = []
+    val result: mut list[ecs.ModelSkin] = mem.persistent[ecs.ModelSkin]()
     if json.obj_get(root, "skins") is some skins {
         val total: mut usize = 0 as usize
         val index: mut usize = 0 as usize
         for index < json.arr_len(skins) {
             if json.arr_get(skins, index) is some skin_obj {
                 val skin: mut ecs.ModelSkin = {
-                    joints: [],
+                    joints: mem.persistent[i32](),
                     inverse_bind: none as ref f32,
                     inverse_bind_count: 0 as usize,
                     joint_offset: total
@@ -317,8 +318,8 @@ fn parse_skins(asset: ecs.ModelAsset, root: ref void) list[ecs.ModelSkin] = trus
 }
 
 fn parse_images(root: ref void, bin_offset: usize) ImageTable = trust {
-    val offsets: mut list[usize] = []
-    val lengths: mut list[usize] = []
+    val offsets: mut list[usize] = mem.persistent[usize]()
+    val lengths: mut list[usize] = mem.persistent[usize]()
     if json.obj_get(root, "images") is some images {
         val index: mut usize = 0 as usize
         for index < json.arr_len(images) {
@@ -343,7 +344,7 @@ fn parse_images(root: ref void, bin_offset: usize) ImageTable = trust {
 }
 
 fn parse_materials(root: ref void) list[i32] = trust {
-    val result: mut list[i32] = []
+    val result: mut list[i32] = mem.persistent[i32]()
     if json.obj_get(root, "materials") is some materials {
         val index: mut usize = 0 as usize
         for index < json.arr_len(materials) {
@@ -387,7 +388,7 @@ fn read_vec2(asset: ecs.ModelAsset, accessor_index: i32, element: usize) math.Ve
 }
 
 fn parse_meshes(asset: ecs.ModelAsset, root: ref void) list[ecs.ModelMesh] = trust {
-    val result: mut list[ecs.ModelMesh] = []
+    val result: mut list[ecs.ModelMesh] = mem.persistent[ecs.ModelMesh]()
     val meshes_value: mut ref void = none
     if json.obj_get(root, "meshes") is some value {
         meshes_value = value
@@ -395,8 +396,8 @@ fn parse_meshes(asset: ecs.ModelAsset, root: ref void) list[ecs.ModelMesh] = tru
         return result
     }
     val mesh_count: usize = json.arr_len(meshes_value)
-    val mesh_node: mut list[i32] = []
-    val mesh_skin: mut list[i32] = []
+    val mesh_node: mut list[i32] = mem.persistent[i32]()
+    val mesh_skin: mut list[i32] = mem.persistent[i32]()
     val mesh_index: mut usize = 0 as usize
     for mesh_index < mesh_count {
         @append(mesh_node, -1 as i32)
@@ -603,7 +604,7 @@ fn parse_meshes(asset: ecs.ModelAsset, root: ref void) list[ecs.ModelMesh] = tru
 }
 
 fn parse_animations(asset: ecs.ModelAsset, root: ref void) list[ecs.ModelAnimation] = trust {
-    val result: mut list[ecs.ModelAnimation] = []
+    val result: mut list[ecs.ModelAnimation] = mem.persistent[ecs.ModelAnimation]()
     val animations_value: mut ref void = none
     if json.obj_get(root, "animations") is some value {
         animations_value = value
@@ -615,7 +616,7 @@ fn parse_animations(asset: ecs.ModelAsset, root: ref void) list[ecs.ModelAnimati
         if json.arr_get(animations_value, animation_index) is some animation_obj {
             val animation: mut ecs.ModelAnimation = {
                 name: glb.dup_cstr("clip"),
-                channels: [],
+                channels: mem.persistent[ecs.ModelAnimChannel](),
                 duration: 0.0 as f32
             }
             if json.obj_get_str(animation_obj, "name") is some name {

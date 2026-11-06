@@ -5,6 +5,7 @@ val rendering = use("../src/rendering.sx")
 val sdl       = use("../src/engine/sdl.sx")
 val input     = use("../src/engine/input.sx")
 val audio     = use("../src/engine/audio.sx")
+val mem       = use("../src/mem.sx")
 
 val PLAY_HALF_WIDTH: f32 = 7.5 as f32
 val START_SPEED: f32 = 12.0 as f32
@@ -141,7 +142,7 @@ fn spawn_row(game: mut SkiFree, z_base: f32) void = {
 }
 
 fn reset_game(game: mut SkiFree) void = {
-    game.obstacles = []
+    game.obstacles = mem.persistent[Obstacle]()
     game.player_x = 0.0 as f32
     game.jump_y = 0.0 as f32
     game.jump_vel = 0.0 as f32
@@ -163,7 +164,7 @@ fn reset_game(game: mut SkiFree) void = {
 
 fn make_game() SkiFree = {
     return {
-        obstacles: [],
+        obstacles: mem.persistent[Obstacle](),
         player_x: 0.0 as f32,
         jump_y: 0.0 as f32,
         jump_vel: 0.0 as f32,
@@ -260,7 +261,7 @@ fn update_game(game: mut SkiFree, app: engine.ExoApp, dt: f32) void = {
         game.spawn_accum = game.spawn_accum - SPAWN_SPACING
         spawn_row(game, SPAWN_Z)
     }
-    val next: mut list[Obstacle] = []
+    val next: mut list[Obstacle] = mem.scoped[Obstacle]()
     for obstacle in game.obstacles {
         val o: mut Obstacle = obstacle
         val move_speed: mut f32 = game.speed
@@ -288,8 +289,8 @@ fn update_game(game: mut SkiFree, app: engine.ExoApp, dt: f32) void = {
 }
 
 fn sync_scene(game: SkiFree, app: mut engine.ExoApp) void = {
-    val cubes: mut list[ecs.CubeEntity] = []
-    val spheres: mut list[ecs.SphereEntity] = []
+    val cubes: mut list[ecs.CubeEntity] = mem.scoped[ecs.CubeEntity]()
+    val spheres: mut list[ecs.SphereEntity] = mem.scoped[ecs.SphereEntity]()
     @append(cubes, ecs.make_cube(
             ecs.make_vec3((0.0 as f32) - (26.0 as f32), 5.0 as f32, (0.0 as f32) - (74.0 as f32)),
             ecs.make_vec3(0.46 as f32, 0.58 as f32, 0.72 as f32),
@@ -575,11 +576,11 @@ pub fn main() i32 = {
     }
     val audio_cfg: audio.AudioBankConfig = {
         master_volume: 90 as i32,
-        clips: [{
+        clips: mem.persistent1[audio.AudioClip]({
                 path: "./assets/example_sound.wav",
                 loops: 0 as i32,
                 volume: 90 as i32
-            }]
+            })
     }
 
     val builder: mut engine.ExoAppBuilder = engine.new_app()

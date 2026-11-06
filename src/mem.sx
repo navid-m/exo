@@ -1,0 +1,155 @@
+/// Arena-backed allocation lifetimes for Exo.
+///
+/// Persistent allocations live for the app lifetime. Frame allocations are
+/// double-buffered so paused frames keep the previous frame's lists alive.
+/// Render allocations are reset once per rendered frame and are intended for
+/// transient CPU work such as animation matrices.
+///
+/// SPDX-License-Identifier: GPL-3.0-only
+/// (C) Navid Momtahen - 2026
+
+val allocators = use("std/allocators")
+val stdio      = use("std/stdio")
+val os         = use("std/os")
+
+type MemState = {
+    persistent_arena: mut allocators.ScopedArenaAllocator
+    persistent_lists: mut ref allocators.ListArena
+    frame_a_arena: mut allocators.ScopedArenaAllocator
+    frame_a_lists: mut ref allocators.ListArena
+    frame_b_arena: mut allocators.ScopedArenaAllocator
+    frame_b_lists: mut ref allocators.ListArena
+    render_arena: mut allocators.ScopedArenaAllocator
+    render_lists: mut ref allocators.ListArena
+    active: mut i32
+}
+
+val mem_state: mut ref MemState = none
+
+fn new_arena(size: usize) allocators.ScopedArenaAllocator = trust {
+    match allocators.ScopedArena.new(size) {
+        ok arena => {
+            return arena
+        }
+        err _ => {
+            stdio.puts("error: could not allocate memory arena")
+            os.exit(1)
+            return none as allocators.ScopedArenaAllocator
+        }
+    }
+}
+
+fn new_list_arena(arena: allocators.ScopedArenaAllocator) ref allocators.ListArena = trust {
+    val lists: mut ref allocators.ListArena = @alloc(
+        @sizeof(allocators.ListArena)
+    ) as ref allocators.ListArena
+    if lists == none {
+        stdio.puts("error: could not allocate list arena")
+        os.exit(1)
+        return none
+    }
+    lists.arena = arena
+    return lists
+}
+
+pub fn init() void = trust {
+    if mem_state != none {
+        return
+    }
+
+    val s: mut ref MemState = @alloc(@sizeof(MemState)) as ref MemState
+    if s == none {
+        stdio.puts("error: could not allocate memory state")
+        os.exit(1)
+        return
+    }
+    @memset(s, 0, @sizeof(MemState))
+
+    s.persistent_arena = new_arena(1048576 as usize)
+    s.persistent_lists = new_list_arena(s.persistent_arena)
+
+    s.frame_a_arena = new_arena(1048576 as usize)
+    s.frame_a_lists = new_list_arena(s.frame_a_arena)
+
+    s.frame_b_arena = new_arena(1048576 as usize)
+    s.frame_b_lists = new_list_arena(s.frame_b_arena)
+
+    s.render_arena = new_arena(1048576 as usize)
+    s.render_lists = new_list_arena(s.render_arena)
+
+    s.active = 0
+    mem_state = s
+}
+
+fn ensure() void = {
+    if mem_state == none {
+        trust init()
+    }
+}
+
+/// Allocate a list that lives until the app shuts down.
+pub fn persistent[T]() list[T] = {
+    ensure()
+    return @listalloc[allocators.ListArena, T](mem_state.persistent_lists)?
+}
+
+/// Allocate a single-element persistent list.
+pub fn persistent1[T](a: T) list[T] = {
+    val xs: mut list[T] = persistent[T]()
+    @append(xs, a)
+    return xs
+}
+
+/// Allocate a list that lives for the current update frame.
+pub fn scoped[T]() list[T] = {
+    ensure()
+    if mem_state.active == 0 {
+        return @listalloc[allocators.ListArena, T](mem_state.frame_a_lists)?
+    }
+    return @listalloc[allocators.ListArena, T](mem_state.frame_b_lists)?
+}
+
+/// Allocate a list that lives for the current render pass.
+pub fn render[T]() list[T] = {
+    ensure()
+    return @listalloc[allocators.ListArena, T](mem_state.render_lists)?
+}
+
+/// Start a new update frame. The inactive frame arena is reset, then becomes
+/// active. This keeps the previous frame's lists valid for paused rendering.
+pub fn begin_update() void = {
+    ensure()
+    if mem_state.active == 0 {
+        trust allocators.ScopedArena.reset(mem_state.frame_b_arena)
+        mem_state.active = 1
+    } else {
+        trust allocators.ScopedArena.reset(mem_state.frame_a_arena)
+        mem_state.active = 0
+    }
+}
+
+/// Start a new render pass, reclaiming all render-scratch allocations.
+pub fn begin_render() void = {
+    ensure()
+    trust allocators.ScopedArena.reset(mem_state.render_arena)
+}
+
+/// Release every arena and the bookkeeping state.
+pub fn close() void = {
+    if mem_state == none {
+        return
+    }
+
+    trust allocators.ScopedArena.free(mem_state.persistent_arena)
+    trust allocators.ScopedArena.free(mem_state.frame_a_arena)
+    trust allocators.ScopedArena.free(mem_state.frame_b_arena)
+    trust allocators.ScopedArena.free(mem_state.render_arena)
+
+    trust @free(mem_state.persistent_lists as ref void)
+    trust @free(mem_state.frame_a_lists as ref void)
+    trust @free(mem_state.frame_b_lists as ref void)
+    trust @free(mem_state.render_lists as ref void)
+    trust @free(mem_state as ref void)
+
+    mem_state = none
+}

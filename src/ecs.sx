@@ -1,5 +1,6 @@
 val math        = use("engine/math.sx")
 val postprocess = use("engine/postprocess.sx")
+val mem         = use("mem.sx")
 
 pub spec SceneEntity = {
     pub fn se_position(e: self) math.Vec3
@@ -455,14 +456,14 @@ pub fn default_render_settings() RenderSettings = {
 
 pub fn default_ui() Ui = {
     return {
-        texts: [],
-        rects: []
+        texts: mem.persistent[UiText](),
+        rects: mem.persistent[UiRect]()
     }
 }
 
 pub fn ui_clear(ui: mut Ui) void = {
-    ui.texts = []
-    ui.rects = []
+    ui.texts = mem.scoped[UiText]()
+    ui.rects = mem.scoped[UiRect]()
 }
 
 pub fn ui_text(
@@ -543,14 +544,14 @@ pub fn empty_model() GlbModel = {
 
 pub fn empty_model_asset() ModelAsset = {
     return {
-        meshes: [],
-        nodes: [],
-        skins: [],
-        animations: [],
-        accessors: [],
-        material_images: [],
-        image_offsets: [],
-        image_lengths: [],
+        meshes: mem.persistent[ModelMesh](),
+        nodes: mem.persistent[ModelNode](),
+        skins: mem.persistent[ModelSkin](),
+        animations: mem.persistent[ModelAnimation](),
+        accessors: mem.persistent[ModelAccessor](),
+        material_images: mem.persistent[i32](),
+        image_offsets: mem.persistent[usize](),
+        image_lengths: mem.persistent[usize](),
         raw_bytes: none as ref u8,
         raw_len: 0 as usize,
         has_skinning: false,
@@ -576,15 +577,15 @@ pub fn make_model_draw(asset: ModelAsset, transform: math.Mat4) ModelDraw = {
 
 pub fn new_scene() Scene3D = {
     return {
-        spheres: [],
-        cubes: [],
-        models: [],
-        model_draws: [],
-        mesh_instances: [],
-        lights: [],
+        spheres: mem.persistent[SphereEntity](),
+        cubes: mem.persistent[CubeEntity](),
+        models: mem.persistent[ModelInstance](),
+        model_draws: mem.persistent[ModelDraw](),
+        mesh_instances: mem.persistent[MeshInstance](),
+        lights: mem.persistent[PointLight](),
         gravity: 9.8 as f32,
-        floors: [],
-        waters: [],
+        floors: mem.persistent[FloorCollider](),
+        waters: mem.persistent[WaterSurface](),
         render: default_render_settings(),
         ui: default_ui(),
         next_entity_id: 1 as u64

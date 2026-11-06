@@ -2,6 +2,7 @@ val math    = use("math.sx")
 val ecs     = use("../ecs.sx")
 val stdmath = use("std/math")
 val string  = use("std/string")
+val mem     = use("../mem.sx")
 
 fn mat_at(items: list[math.Mat4], index: usize) math.Mat4 = trust {
     if @get(items, index) is some value {
@@ -224,11 +225,11 @@ pub fn compute_globals(
     time: f32
 ) list[math.Mat4] = trust {
     val count: usize = @len(asset.nodes)
-    val local: mut list[math.Mat4] = []
-    val translations: mut list[math.Vec3] = []
-    val rotations: mut list[math.Vec4f] = []
-    val scales: mut list[math.Vec3] = []
-    val overridden: mut list[bool] = []
+    val local: mut list[math.Mat4] = mem.render[math.Mat4]()
+    val translations: mut list[math.Vec3] = mem.render[math.Vec3]()
+    val rotations: mut list[math.Vec4f] = mem.render[math.Vec4f]()
+    val scales: mut list[math.Vec3] = mem.render[math.Vec3]()
+    val overridden: mut list[bool] = mem.render[bool]()
     val index: mut usize = 0 as usize
     for node in asset.nodes {
         @append(local, local_matrix(node))
@@ -279,8 +280,8 @@ pub fn compute_globals(
         }
     }
 
-    val globals: mut list[math.Mat4] = []
-    val resolved: mut list[bool] = []
+    val globals: mut list[math.Mat4] = mem.render[math.Mat4]()
+    val resolved: mut list[bool] = mem.render[bool]()
     index = 0 as usize
     for index < count {
         @append(globals, math.mat4_identity())
@@ -353,7 +354,7 @@ pub fn compute_joint_matrices(
     asset: ecs.ModelAsset,
     globals: list[math.Mat4]
 ) list[math.Mat4] = trust {
-    val result: mut list[math.Mat4] = []
+    val result: mut list[math.Mat4] = mem.render[math.Mat4]()
     for skin in asset.skins {
         val joint: mut usize = 0 as usize
         for joint < @len(skin.joints) {

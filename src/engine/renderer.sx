@@ -8,6 +8,7 @@ val io          = use("io.sx")
 val exoerr      = use("error.sx")
 val animation   = use("animation.sx")
 val string      = use("std/string")
+val mem         = use("../mem.sx")
 
 pub type MeshGPU = {
     raw: ref void
@@ -40,7 +41,6 @@ pub type SceneMeshes = {
     model_draws: list[ModelGPU]
     custom: list[MeshGPU]
 }
-
 
 pub type SceneVertexUniforms = {
     model: mut math.Mat4
@@ -103,8 +103,18 @@ fn default_scene_fragment_uniforms() SceneFragmentUniforms = {
 }
 
 fn set_light_uniform(fu: mut SceneFragmentUniforms, index: i32, light: ecs.PointLight) void = {
-    val pos_intensity: math.Vec4f = { x: light.position.x, y: light.position.y, z: light.position.z, w: light.intensity }
-    val color_radius: math.Vec4f = { x: light.color.x, y: light.color.y, z: light.color.z, w: light.radius }
+    val pos_intensity: math.Vec4f = {
+        x: light.position.x,
+        y: light.position.y,
+        z: light.position.z,
+        w: light.intensity
+    }
+    val color_radius: math.Vec4f = {
+        x: light.color.x,
+        y: light.color.y,
+        z: light.color.z,
+        w: light.radius
+    }
     if index == (0 as i32) {
         fu.light_pos_0 = pos_intensity
         fu.light_color_0 = color_radius
@@ -235,7 +245,6 @@ pub type WaterFragmentUniforms = {
     water_params: mut math.Vec4f
 }
 
-
 pub type GpuMesh = {
     vertex_buffer: mut ref void
     index_buffer: mut ref void
@@ -280,7 +289,6 @@ pub type Renderer = {
     lights: mut list[ecs.PointLight]
 }
 
-
 pub type VertexAttributePair = {
     first: mut sdl.SDLGPUVertexAttribute
     second: mut sdl.SDLGPUVertexAttribute
@@ -291,7 +299,6 @@ pub type VertexAttributeTriple = {
     second: mut sdl.SDLGPUVertexAttribute
     third: mut sdl.SDLGPUVertexAttribute
 }
-
 
 pub fn load_shader(
     runtime: ref Renderer,
@@ -682,9 +689,24 @@ pub fn create_scene_pipeline(
         input_rate: sdl.SDL_GPU_VERTEXINPUTRATE_VERTEX, instance_step_rate: 0 as u32
     }
     val attrs: mut VertexAttributeTriple = {
-        first: { location: 0 as u32, buffer_slot: 0 as u32, format: sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, offset: 0 as u32 },
-        second: { location: 1 as u32, buffer_slot: 0 as u32, format: sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, offset: 12 as u32 },
-        third: { location: 2 as u32, buffer_slot: 0 as u32, format: sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, offset: 24 as u32 }
+        first: {
+            location: 0 as u32,
+            buffer_slot: 0 as u32,
+            format: sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+            offset: 0 as u32
+        },
+        second: {
+            location: 1 as u32,
+            buffer_slot: 0 as u32,
+            format: sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+            offset: 12 as u32
+        },
+        third: {
+            location: 2 as u32,
+            buffer_slot: 0 as u32,
+            format: sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
+            offset: 24 as u32
+        }
     }
     val color_target: mut sdl.SDLGPUColorTargetDescription = {
         format: color_format,
@@ -720,8 +742,18 @@ pub fn create_scene_pipeline(
         },
         depth_stencil_state: {
             compare_op: sdl.SDL_GPU_COMPAREOP_LESS_OR_EQUAL,
-            back_stencil_state: { fail_op: 0 as i32, pass_op: 0 as i32, depth_fail_op: 0 as i32, compare_op: 0 as i32 },
-            front_stencil_state: { fail_op: 0 as i32, pass_op: 0 as i32, depth_fail_op: 0 as i32, compare_op: 0 as i32 },
+            back_stencil_state: {
+                fail_op: 0 as i32,
+                pass_op: 0 as i32,
+                depth_fail_op: 0 as i32,
+                compare_op: 0 as i32
+            },
+            front_stencil_state: {
+                fail_op: 0 as i32,
+                pass_op: 0 as i32,
+                depth_fail_op: 0 as i32,
+                compare_op: 0 as i32
+            },
             compare_mask: 0 as u8, write_mask: 0 as u8,
             enable_depth_test: true, enable_depth_write: true,
             enable_stencil_test: false,
@@ -776,9 +808,24 @@ pub fn create_ui_pipeline(
         input_rate: sdl.SDL_GPU_VERTEXINPUTRATE_VERTEX, instance_step_rate: 0 as u32
     }
     val attrs: mut VertexAttributeTriple = {
-        first: { location: 0 as u32, buffer_slot: 0 as u32, format: sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, offset: 0 as u32 },
-        second: { location: 1 as u32, buffer_slot: 0 as u32, format: sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, offset: 12 as u32 },
-        third: { location: 2 as u32, buffer_slot: 0 as u32, format: sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, offset: 24 as u32 }
+        first: {
+            location: 0 as u32,
+            buffer_slot: 0 as u32,
+            format: sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+            offset: 0 as u32
+        },
+        second: {
+            location: 1 as u32,
+            buffer_slot: 0 as u32,
+            format: sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+            offset: 12 as u32
+        },
+        third: {
+            location: 2 as u32,
+            buffer_slot: 0 as u32,
+            format: sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
+            offset: 24 as u32
+        }
     }
     val color_target: mut sdl.SDLGPUColorTargetDescription = {
         format: color_format,
@@ -817,8 +864,18 @@ pub fn create_ui_pipeline(
         },
         depth_stencil_state: {
             compare_op: sdl.SDL_GPU_COMPAREOP_LESS_OR_EQUAL,
-            back_stencil_state: { fail_op: 0 as i32, pass_op: 0 as i32, depth_fail_op: 0 as i32, compare_op: 0 as i32 },
-            front_stencil_state: { fail_op: 0 as i32, pass_op: 0 as i32, depth_fail_op: 0 as i32, compare_op: 0 as i32 },
+            back_stencil_state: {
+                fail_op: 0 as i32,
+                pass_op: 0 as i32,
+                depth_fail_op: 0 as i32,
+                compare_op: 0 as i32
+            },
+            front_stencil_state: {
+                fail_op: 0 as i32,
+                pass_op: 0 as i32,
+                depth_fail_op: 0 as i32,
+                compare_op: 0 as i32
+            },
             compare_mask: 0 as u8, write_mask: 0 as u8,
             enable_depth_test: false, enable_depth_write: false,
             enable_stencil_test: false,
@@ -1371,7 +1428,6 @@ pub fn bind_mesh(runtime: ref Renderer, mesh: ref GpuMesh) void = trust {
     )
 }
 
-
 pub fn clear_glb_texture(runtime: mut ref Renderer) void = trust {
     if runtime.glb_texture != none {
         sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.glb_texture)
@@ -1446,7 +1502,11 @@ pub fn create_texture_from_memory(
         return none as ref void
     }
     val byte_size: u32 = (w as u32) * (h as u32) * (4 as u32)
-    val tbuf_info: mut sdl.SDLGPUTransferBufferCreateInfo = { usage: 0 as i32, size: 0 as u32, props: 0 as u32 }
+    val tbuf_info: mut sdl.SDLGPUTransferBufferCreateInfo = {
+        usage: 0 as i32,
+        size: 0 as u32,
+        props: 0 as u32
+    }
     tbuf_info.usage = sdl.SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
     tbuf_info.size = byte_size
     val tbuf: ref void = sdl.SDL_CreateGPUTransferBuffer(runtime.device, @addr(tbuf_info))
@@ -1556,7 +1616,7 @@ pub fn create(
     runtime.sky_top = math.vec3(0.26 as f32, 0.48 as f32, 0.84 as f32)
     runtime.sky_horizon = math.vec3(0.05 as f32, 0.08 as f32, 0.14 as f32)
     runtime.ambient = 0.30 as f32
-    runtime.lights = []
+    runtime.lights = mem.persistent[ecs.PointLight]()
     runtime.window = sdl.SDL_CreateWindow(title, width, height, 0 as u64)
     if runtime.window == none {
         destroy(runtime as ref void)
@@ -1657,7 +1717,6 @@ pub fn destroy(runtime_raw: ref void) void = trust {
     sdl.SDL_Quit()
 }
 
-
 pub fn poll_quit() bool = {
     val evt: mut sdl.SDLEvent = {
         typ: 0 as u32, p01: 0 as u32, p02: 0 as u32, p03: 0 as u32, p04: 0 as u32, p05: 0 as u32, p06: 0 as u32, p07: 0 as u32,
@@ -1700,7 +1759,6 @@ pub fn set_relative_mouse_mode(runtime_raw: ref void, enabled: bool) bool = trus
 pub fn relative_mouse_state(x: ref f32, y: ref f32) void = {
     trust sdl.SDL_GetRelativeMouseState(x, y)
 }
-
 
 pub fn create_mesh(
     runtime_raw: ref void,
@@ -1835,7 +1893,6 @@ pub fn destroy_mesh_raw(runtime_raw: ref void, mesh_raw: ref void) void = trust 
     }
     @free(mesh_raw)
 }
-
 
 pub fn begin_frame(runtime_raw: ref void, width: mut ref u32, height: mut ref u32) bool = trust {
     exoerr.clear()
@@ -2222,7 +2279,12 @@ pub fn apply_post_process_with_light(
 
     val fu: mut CompositeUniforms = {
         bloom: { x: bloom_intensity, y: bloom_on, z: godray_on, w: fxaa_on },
-        vignette: { x: vignette_intensity, y: settings.vignette.smoothness, z: vignette_on, w: 0.0 as f32 },
+        vignette: {
+            x: vignette_intensity,
+            y: settings.vignette.smoothness,
+            z: vignette_on,
+            w: 0.0 as f32
+        },
         color: { x: exposure, y: contrast, z: saturation, w: aberration },
         screen: {
             x: (1.0 as f32) / (runtime.render_width as f32),
@@ -2284,15 +2346,34 @@ pub fn debug_dump_scene(runtime_raw: ref void, path: ref u8) void = trust {
     val w: u32 = runtime.render_width
     val h: u32 = runtime.render_height
     val byte_size: u32 = w * h * (4 as u32)
-    val info: mut sdl.SDLGPUTransferBufferCreateInfo = { usage: sdl.SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD, size: byte_size, props: 0 as u32 }
+    val info: mut sdl.SDLGPUTransferBufferCreateInfo = {
+        usage: sdl.SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD,
+        size: byte_size,
+        props: 0 as u32
+    }
     val tbuf: ref void = sdl.SDL_CreateGPUTransferBuffer(runtime.device, @addr(info))
     if tbuf == none {
         return
     }
     val cmd: ref void = sdl.SDL_AcquireGPUCommandBuffer(runtime.device)
     val pass: ref void = sdl.SDL_BeginGPUCopyPass(cmd)
-    val src: mut sdl.SDLGPUTextureRegion = { texture: runtime.scene_color, mip_level: 0 as u32, layer: 0 as u32, x: 0 as u32, y: 0 as u32, z: 0 as u32, w: w, h: h, d: 1 as u32 }
-    val dst: mut sdl.SDLGPUTextureTransferInfo = { transfer_buffer: tbuf, offset: 0 as u32, pixels_per_row: w, rows_per_layer: h }
+    val src: mut sdl.SDLGPUTextureRegion = {
+        texture: runtime.scene_color,
+        mip_level: 0 as u32,
+        layer: 0 as u32,
+        x: 0 as u32,
+        y: 0 as u32,
+        z: 0 as u32,
+        w: w,
+        h: h,
+        d: 1 as u32
+    }
+    val dst: mut sdl.SDLGPUTextureTransferInfo = {
+        transfer_buffer: tbuf,
+        offset: 0 as u32,
+        pixels_per_row: w,
+        rows_per_layer: h
+    }
     sdl.SDL_DownloadFromGPUTexture(pass, @addr(src), @addr(dst))
     sdl.SDL_EndGPUCopyPass(pass)
     sdl.SDL_SubmitGPUCommandBuffer(cmd)
@@ -2316,12 +2397,31 @@ pub fn submit_frame_capture(runtime_raw: ref void, path: ref u8) bool = trust {
     val tbuf: mut ref void = none
     if path != none && string.len_raw(path) > (0 as usize) && runtime.swapchain_texture != none {
         val byte_size: u32 = w * h * (4 as u32)
-        val info: mut sdl.SDLGPUTransferBufferCreateInfo = { usage: sdl.SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD, size: byte_size, props: 0 as u32 }
+        val info: mut sdl.SDLGPUTransferBufferCreateInfo = {
+            usage: sdl.SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD,
+            size: byte_size,
+            props: 0 as u32
+        }
         tbuf = sdl.SDL_CreateGPUTransferBuffer(runtime.device, @addr(info))
         if tbuf != none {
             val pass: ref void = sdl.SDL_BeginGPUCopyPass(runtime.command_buffer)
-            val src: mut sdl.SDLGPUTextureRegion = { texture: runtime.swapchain_texture, mip_level: 0 as u32, layer: 0 as u32, x: 0 as u32, y: 0 as u32, z: 0 as u32, w: w, h: h, d: 1 as u32 }
-            val dst: mut sdl.SDLGPUTextureTransferInfo = { transfer_buffer: tbuf, offset: 0 as u32, pixels_per_row: w, rows_per_layer: h }
+            val src: mut sdl.SDLGPUTextureRegion = {
+                texture: runtime.swapchain_texture,
+                mip_level: 0 as u32,
+                layer: 0 as u32,
+                x: 0 as u32,
+                y: 0 as u32,
+                z: 0 as u32,
+                w: w,
+                h: h,
+                d: 1 as u32
+            }
+            val dst: mut sdl.SDLGPUTextureTransferInfo = {
+                transfer_buffer: tbuf,
+                offset: 0 as u32,
+                pixels_per_row: w,
+                rows_per_layer: h
+            }
             sdl.SDL_DownloadFromGPUTexture(pass, @addr(src), @addr(dst))
             sdl.SDL_EndGPUCopyPass(pass)
         }
@@ -2343,7 +2443,6 @@ pub fn submit_frame_capture(runtime_raw: ref void, path: ref u8) bool = trust {
 pub fn submit_frame(runtime_raw: ref void) bool = trust {
     return submit_frame_capture(runtime_raw, none as ref u8)
 }
-
 
 pub fn draw_scene_mesh(
     runtime_raw: ref void,
@@ -2378,7 +2477,12 @@ pub fn draw_scene_mesh(
     fu.camera_glow = math.vec4_from_ptr(camera_pos, glow)
     fu.alpha_pad = { x: alpha, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
     fu.sky_top = { x: runtime.sky_top.x, y: runtime.sky_top.y, z: runtime.sky_top.z, w: 0.0 as f32 }
-    fu.sky_horizon = { x: runtime.sky_horizon.x, y: runtime.sky_horizon.y, z: runtime.sky_horizon.z, w: 0.0 as f32 }
+    fu.sky_horizon = {
+        x: runtime.sky_horizon.x,
+        y: runtime.sky_horizon.y,
+        z: runtime.sky_horizon.z,
+        w: 0.0 as f32
+    }
     fu.ambient_pad = { x: runtime.ambient, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
     val light_count: mut i32 = 0 as i32
     for scene_light in runtime.lights {
@@ -2449,7 +2553,6 @@ pub fn draw_scene_mesh(
         0 as u32
     )
 }
-
 
 pub fn draw_floor_raw(
     runtime_raw: ref void,
@@ -2558,7 +2661,6 @@ pub fn draw_glow(
     )
 }
 
-
 pub fn upload_mesh(
     runtime: ref void,
     vertices: ref void,
@@ -2654,7 +2756,6 @@ pub fn update_mesh_vertices(
     sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, transfer)
     return true
 }
-
 
 pub fn draw_mesh_textured(
     runtime: ref void,
@@ -3070,7 +3171,12 @@ pub fn draw_water(
             math.vec3(0.0 as f32, 0.0 as f32, 0.0 as f32)
         ))
     val fu: mut WaterFragmentUniforms = {
-        camera_pos: { x: camera.position.x, y: camera.position.y, z: camera.position.z, w: wave_offset },
+        camera_pos: {
+            x: camera.position.x,
+            y: camera.position.y,
+            z: camera.position.z,
+            w: wave_offset
+        },
         water_color: { x: color.x, y: color.y, z: color.z, w: center_x },
         light_dir: { x: light_dir.x, y: light_dir.y, z: light_dir.z, w: light.intensity },
         water_params: { x: corner_radius, y: size_x, z: size_z, w: center_z }

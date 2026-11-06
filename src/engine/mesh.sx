@@ -4,6 +4,7 @@ val ecs      = use("../ecs.sx")
 val glb      = use("glb.sx")
 val json     = use("std/json")
 val bin      = use("std/encoding/binary")
+val mem      = use("../mem.sx")
 val PI: f64 = 3.14159265358979323846
 
 fn write_vertex(
@@ -46,7 +47,7 @@ fn write_vertex_uv(
 /// buffer; each primitive becomes a draw range with its own material texture.
 pub fn upload_model_asset(runtime: ref void, asset: ecs.ModelAsset) renderer.ModelGPU = trust {
     val rt: mut ref renderer.Renderer = runtime as mut ref renderer.Renderer
-    val textures: mut list[ref void] = []
+    val textures: mut list[ref void] = mem.persistent[ref void]()
     val material_index: mut usize = 0 as usize
     for image_index in asset.material_images {
         val texture: mut ref void = none as ref void
@@ -76,7 +77,7 @@ pub fn upload_model_asset(runtime: ref void, asset: ecs.ModelAsset) renderer.Mod
 
     val result: mut renderer.ModelGPU = {
         mesh: { raw: none as ref void, index_count: 0 as i32 },
-        submeshes: [],
+        submeshes: mem.persistent[renderer.ModelSubmesh](),
         textures: textures,
         asset: asset,
         base_vertices: none as ref f32,
@@ -332,7 +333,6 @@ pub fn upload_glb_model(runtime: ref void, model: ecs.GlbModel) renderer.MeshGPU
     @free(json_buf as ref void)
     return result
 }
-
 
 pub fn cube_face(
     vertices: ref void,

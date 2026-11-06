@@ -6,6 +6,7 @@ val input     = use("../src/engine/input.sx")
 val audio     = use("../src/engine/audio.sx")
 val physics   = use("../src/physics.sx")
 val math      = use("std/math")
+val mem       = use("../src/mem.sx")
 
 val (
     ORB_COUNT: i32      = 9
@@ -32,7 +33,7 @@ fn make_orb(x: f32, y: f32, z: f32, radius: f32, r: f32, g: f32, b: f32) ecs.Sph
 }
 
 fn build_orbs() list[ecs.SphereEntity] = {
-    val orbs: mut list[ecs.SphereEntity] = []
+    val orbs: mut list[ecs.SphereEntity] = mem.persistent[ecs.SphereEntity]()
     @append(
         orbs,
         make_orb(
@@ -359,7 +360,7 @@ pub fn (CrystalRun) on_update(game: mut self, app: mut engine.ExoApp, dt: f32, t
         game.pulse = game.pulse - dt * (2.4 as f32)
     }
     val glow: f32 = (1.0 as f32) + game.pulse * (1.8 as f32)
-    val animated: mut list[ecs.SphereEntity] = []
+    val animated: mut list[ecs.SphereEntity] = mem.scoped[ecs.SphereEntity]()
     val hit_index: mut i32 = -1 as i32
     val index: mut i32 = 0 as i32
     for orb in game.orb_home {
@@ -477,11 +478,11 @@ pub fn main() i32 = {
     }
     val audio_cfg: audio.AudioBankConfig = {
         master_volume: 96 as i32,
-        clips: [{
+        clips: mem.persistent1[audio.AudioClip]({
                 path: "./assets/example_sound.wav",
                 loops: 0 as i32,
                 volume: 96 as i32
-            }]
+            })
     }
 
     val builder: mut engine.ExoAppBuilder = engine.new_app()

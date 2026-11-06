@@ -4,6 +4,7 @@ val engine    = use("../src/engine.sx")
 val rendering = use("../src/rendering.sx")
 val sdl       = use("../src/engine/sdl.sx")
 val input     = use("../src/engine/input.sx")
+val mem       = use("../src/mem.sx")
 
 val MAZE_ROWS: i32 = 21
 val MAZE_COLS: i32 = 19
@@ -71,7 +72,7 @@ type (engine.AppEvents) PacmanGame = {
 }
 
 fn maze_rows() list[ref u8] = {
-    val rows: mut list[ref u8] = []
+    val rows: mut list[ref u8] = mem.persistent[ref u8]()
     @append(rows, "###################")
     @append(rows, "#........#........#")
     @append(rows, "#o##.###.#.###.##o#")
@@ -153,7 +154,7 @@ fn make_ghost(sx: i32, sz: i32, r: f32, g: f32, b: f32) Ghost = {
 }
 
 fn build_pellets(game: mut PacmanGame) void = {
-    val pellets: mut list[Pellet] = []
+    val pellets: mut list[Pellet] = mem.persistent[Pellet]()
     val r: mut i32 = 0 as i32
     for r < MAZE_ROWS {
         val c: mut i32 = 0 as i32
@@ -173,7 +174,7 @@ fn build_pellets(game: mut PacmanGame) void = {
 }
 
 fn build_ghosts(game: mut PacmanGame) void = {
-    val ghosts: mut list[Ghost] = []
+    val ghosts: mut list[Ghost] = mem.persistent[Ghost]()
     @append(ghosts, make_ghost(9 as i32, 9 as i32, 1.00 as f32, 0.22 as f32, 0.22 as f32))
     @append(ghosts, make_ghost(7 as i32, 7 as i32, 1.00 as f32, 0.52 as f32, 0.78 as f32))
     @append(ghosts, make_ghost(11 as i32, 7 as i32, 1.00 as f32, 0.55 as f32, 0.30 as f32))
@@ -228,8 +229,8 @@ fn reset_game(game: mut PacmanGame) void = {
 fn make_game(rows: list[ref u8]) PacmanGame = {
     val game: mut PacmanGame = {
         rows: rows,
-        pellets: [],
-        ghosts: [],
+        pellets: mem.persistent[Pellet](),
+        ghosts: mem.persistent[Ghost](),
         pellets_left: 0 as i32,
         score: 0 as i32,
         lives: START_LIVES,
@@ -530,7 +531,7 @@ fn check_ghost_hits(game: mut PacmanGame) void = {
 }
 
 fn sync_scene(game: PacmanGame, app: mut engine.ExoApp, time: f32) void = {
-    val spheres: mut list[ecs.SphereEntity] = []
+    val spheres: mut list[ecs.SphereEntity] = mem.scoped[ecs.SphereEntity]()
     for pellet in game.pellets {
         if !pellet.eaten {
             val wx: f32 = world_x(pellet.x as f32)

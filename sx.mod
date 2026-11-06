@@ -1,4 +1,4 @@
-spectre_version "v0.0.14"
+spectre_version "v0.0.15"
 version "v0.0.2"
 
 build dev {
