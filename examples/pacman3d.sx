@@ -6,18 +6,20 @@ val sdl       = use("../src/engine/sdl.sx")
 val input     = use("../src/engine/input.sx")
 val mem       = use("../src/mem.sx")
 
-val MAZE_ROWS: i32 = 21
-val MAZE_COLS: i32 = 19
-val CELL_SIZE: f32 = 1.0 as f32
-val PAC_SPEED: f32 = 5.8 as f32
-val GHOST_BASE_SPEED: f32 = 3.9 as f32
-val FRIGHT_TIME: f32 = 8.0 as f32
-val START_LIVES: i32 = 3
-val PAC_START_X: i32 = 9
-val PAC_START_Z: i32 = 15
-val PI: f32 = 3.14159265 as f32
-val KEY_0: i32 = 39
-val KEY_F12: i32 = 69
+val (
+    MAZE_ROWS: i32        = 21
+    MAZE_COLS: i32        = 19
+    CELL_SIZE: f32        = 1.0 as f32
+    PAC_SPEED: f32        = 5.8 as f32
+    GHOST_BASE_SPEED: f32 = 3.9 as f32
+    FRIGHT_TIME: f32      = 8.0 as f32
+    START_LIVES: i32      = 3
+    PAC_START_X: i32      = 9
+    PAC_START_Z: i32      = 15
+    PI: f32               = 3.14159265 as f32
+    KEY_0: i32            = 39
+    KEY_F12: i32          = 69
+)
 
 type Pellet = {
     x: i32
