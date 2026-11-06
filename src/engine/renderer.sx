@@ -321,6 +321,11 @@ pub type ScreenProjection = {
     visible: bool
 }
 
+pub type UiFragmentUniforms = {
+    color: mut math.Vec4f
+    params: mut math.Vec4f
+}
+
 pub type CompositeUniforms = {
     bloom: mut math.Vec4f
     vignette: mut math.Vec4f
@@ -1623,8 +1628,8 @@ pub fn create_pipelines(
     }
     runtime.ui_pipeline = create_ui_pipeline(
         runtime,
-        shader_cfg.scene.vertex_path,
-        shader_cfg.scene.fragment_path,
+        shader_cfg.ui.vertex_path,
+        shader_cfg.ui.fragment_path,
         runtime.swapchain_format
     )
     if runtime.ui_pipeline == none {
@@ -1971,6 +1976,55 @@ pub fn begin_pass_no_depth(runtime: mut ref Renderer, color_target: ref void) bo
         runtime.render_width,
         runtime.render_height
     )
+}
+
+pub fn begin_ui_pass(runtime_raw: ref void) bool = trust {
+    exoerr.clear()
+    if runtime_raw == none {
+        return exoerr.set("runtime unavailable")
+    }
+    val runtime: mut ref Renderer = runtime_raw as mut ref Renderer
+    if !runtime.frame_active || runtime.command_buffer == none || runtime.swapchain_texture == none {
+        return exoerr.set("no active frame")
+    }
+    if runtime.current_pass != none {
+        sdl.SDL_EndGPURenderPass(runtime.current_pass)
+        runtime.current_pass = none
+    }
+    val color_info: mut sdl.SDLGPUColorTargetInfo = {
+        texture: runtime.swapchain_texture,
+        mip_level: 0 as u32,
+        layer_or_depth_plane: 0 as u32,
+        clear_color: { r: 0.0 as f32, g: 0.0 as f32, b: 0.0 as f32, a: 0.0 as f32 },
+        load_op: sdl.SDL_GPU_LOADOP_LOAD,
+        store_op: sdl.SDL_GPU_STOREOP_STORE,
+        resolve_texture: none as ref void,
+        resolve_mip_level: 0 as u32,
+        resolve_layer: 0 as u32,
+        cycle: false,
+        cycle_resolve_texture: false,
+        padding1: 0 as u8,
+        padding2: 0 as u8
+    }
+    runtime.current_pass = sdl.SDL_BeginGPURenderPass(
+        runtime.command_buffer,
+        @addr(color_info),
+        1 as u32,
+        none as ref sdl.SDLGPUDepthStencilTargetInfo
+    )
+    if runtime.current_pass == none {
+        return false
+    }
+    val viewport: mut sdl.SDLGPUViewport = {
+        x: 0.0 as f32,
+        y: 0.0 as f32,
+        w: runtime.render_width as f32,
+        h: runtime.render_height as f32,
+        min_depth: 0.0 as f32,
+        max_depth: 1.0 as f32
+    }
+    sdl.SDL_SetGPUViewport(runtime.current_pass, @addr(viewport))
+    return true
 }
 
 pub fn bind_mesh(runtime: ref Renderer, mesh: ref GpuMesh) void = trust {
@@ -4580,11 +4634,12 @@ pub fn draw_ui_quad(
     if textured {
         has_tex = 1.0 as f32
     }
-    val fu: mut SceneFragmentUniforms = default_scene_fragment_uniforms()
-    fu.color_reflective = { x: color.x, y: color.y, z: color.z, w: 0.0 as f32 }
-    fu.alpha_pad = { x: alpha, y: has_tex, z: 1.0 as f32, w: 0.0 as f32 }
+    val fu: mut UiFragmentUniforms = {
+        color: { x: color.x, y: color.y, z: color.z, w: 1.0 as f32 },
+        params: { x: has_tex, y: alpha, z: 0.0 as f32, w: 0.0 as f32 }
+    }
     val tex: mut ref void = runtime.font_texture
-    if !textured {
+    if tex == none {
         tex = runtime.reflection_color
     }
     val binding: mut sdl.SDLGPUTextureSamplerBinding = {
@@ -4602,7 +4657,7 @@ pub fn draw_ui_quad(
         runtime.command_buffer,
         0 as u32,
         @addr(fu) as ref void,
-        @sizeof(SceneFragmentUniforms) as u32
+        @sizeof(UiFragmentUniforms) as u32
     )
     sdl.SDL_BindGPUFragmentSamplers(runtime.current_pass, 0 as u32, @addr(binding), 1 as u32)
     bind_mesh(runtime, quad_mesh.raw as ref GpuMesh)

@@ -508,14 +508,15 @@ pub fn ui_text(
     color: math.Vec3,
     alpha: f32
 ) void = {
-    @append(ui.texts, {
-            text: text,
-            x: x,
-            y: y,
-            scale: scale,
-            color: color,
-            alpha: alpha
-        })
+    val item: UiText = {
+        text: text,
+        x: x,
+        y: y,
+        scale: scale,
+        color: color,
+        alpha: alpha
+    }
+    @append(ui.texts, item)
 }
 
 pub fn ui_rect(
@@ -527,14 +528,15 @@ pub fn ui_rect(
     color: math.Vec3,
     alpha: f32
 ) void = {
-    @append(ui.rects, {
-            x: x,
-            y: y,
-            width: width,
-            height: height,
-            color: color,
-            alpha: alpha
-        })
+    val item: UiRect = {
+        x: x,
+        y: y,
+        width: width,
+        height: height,
+        color: color,
+        alpha: alpha
+    }
+    @append(ui.rects, item)
 }
 
 pub fn default_light() PointLight = {

@@ -19,6 +19,7 @@ pub type ExoShaderConfig = {
     scene: ShaderProgramConfig
     instanced: ShaderProgramConfig
     sky: ShaderProgramConfig
+    ui: ShaderProgramConfig
     floor: ShaderProgramConfig
     glow: ShaderProgramConfig
     water: ShaderProgramConfig
@@ -55,6 +56,10 @@ pub fn default_shader_config() ExoShaderConfig = {
             sky: {
                 vertex_path: "./assets/shaders/fullscreen.vert.msl",
                 fragment_path: "./assets/shaders/sky.frag.msl"
+            },
+            ui: {
+                vertex_path: "./assets/shaders/ui.vert.msl",
+                fragment_path: "./assets/shaders/ui.frag.msl"
             },
             floor: {
                 vertex_path: "./assets/shaders/floor.vert.msl",
@@ -112,6 +117,10 @@ pub fn default_shader_config() ExoShaderConfig = {
         sky: {
             vertex_path: "./assets/shaders/fullscreen.vert.spv",
             fragment_path: "./assets/shaders/sky.frag.spv"
+        },
+        ui: {
+            vertex_path: "./assets/shaders/ui.vert.spv",
+            fragment_path: "./assets/shaders/ui.frag.spv"
         },
         floor: {
             vertex_path: "./assets/shaders/floor.vert.spv",

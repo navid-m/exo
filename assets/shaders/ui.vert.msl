@@ -1,0 +1,32 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct UiVertexUniforms
+{
+    float4x4 uModel;
+    float4x4 uViewProj;
+    float4 uUvTransform;
+};
+
+struct main0_out
+{
+    float2 vTexCoord [[user(locn0)]];
+    float4 gl_Position [[position]];
+};
+
+struct main0_in
+{
+    float3 aPosition [[attribute(0)]];
+    float2 aTexCoord [[attribute(2)]];
+};
+
+vertex main0_out main0(main0_in in [[stage_in]], constant UiVertexUniforms& _17 [[buffer(0)]])
+{
+    main0_out out = {};
+    out.vTexCoord = (in.aTexCoord * _17.uUvTransform.xy) + _17.uUvTransform.zw;
+    out.gl_Position = _17.uViewProj * (_17.uModel * float4(in.aPosition, 1.0));
+    return out;
+}
+

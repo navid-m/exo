@@ -937,6 +937,12 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             exit_code = 1 as i32
             break
         }
+        renderer.end_pass(runtime)
+        if !renderer.begin_ui_pass(runtime) {
+            exoerr.print("SDL3 UI pass failed")
+            exit_code = 1 as i32
+            break
+        }
         renderer.render_ui(runtime, meshes, app.scene, frame_w as i32, frame_h as i32)
         renderer.end_pass(runtime)
         val capture_path: mut ref u8 = none as ref u8
