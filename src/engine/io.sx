@@ -33,14 +33,14 @@ pub fn resolve_path(path: ref u8) ref u8 = trust {
     val prefix: mut ref u8 = "."
     val depth: mut i32 = 0 as i32
     for depth < (4 as i32) {
-        val candidate: ref u8 = @fmt("{s}/{s}", {prefix, name})
+        val candidate: ref u8 = @fmtalloc("{s}/{s}", {prefix, name})
         val candidate_file: ref void = sdl.fopen(candidate, "rb")
         if candidate_file != none {
             sdl.fclose(candidate_file)
             return candidate
         }
-        prefix = @fmt("{s}/..", {prefix})
-        depth = depth + (1 as i32)
+        prefix = @fmtalloc("{s}/..", {prefix})
+        depth += (1 as i32)
     }
     return path
 }
