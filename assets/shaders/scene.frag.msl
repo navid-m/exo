@@ -16,6 +16,8 @@ struct SceneFragmentUniforms
     float4 uSkyHorizon;
     float4 uAmbientPad;
     float4 uLightMeta;
+    float4 uFogParams;
+    float4 uFogColor;
 };
 
 struct main0_out
@@ -33,7 +35,7 @@ struct main0_in
 static inline __attribute__((always_inline))
 float3 sky_color(thread const float3& direction_value, constant SceneFragmentUniforms& _31)
 {
-    float t = fast::clamp((direction_value.y * 0.5) + 0.5, 0.0, 1.0);
+    float t = clamp((direction_value.y * 0.5) + 0.5, 0.0, 1.0);
     return mix(_31.uSkyHorizon.xyz, _31.uSkyTop.xyz, float3(t));
 }
 
@@ -47,16 +49,16 @@ fragment main0_out main0(main0_in in [[stage_in]], constant SceneFragmentUniform
         out.FragColor = float4(ui_color, ui_tex.w * _31.uAlphaPad.x);
         return out;
     }
-    float3 normal_value = fast::normalize(in.vWorldNormal);
+    float3 normal_value = normalize(in.vWorldNormal);
     float3 camera_pos = _31.uCameraGlow.xyz;
-    float3 view_dir = fast::normalize(camera_pos - in.vWorldPos);
+    float3 view_dir = normalize(camera_pos - in.vWorldPos);
     float3 light_dir = float3(-0.4998001158237457275390625, 0.819672167301177978515625, 0.2798880636692047119140625);
-    float diff = fast::max(dot(normal_value, light_dir), 0.0);
+    float diff = max(dot(normal_value, light_dir), 0.0);
     float hemi = (normal_value.y * 0.5) + 0.5;
-    float3 half_vec = fast::normalize(light_dir + view_dir);
-    float spec = powr(fast::max(dot(normal_value, half_vec), 0.0), 36.0);
+    float3 half_vec = normalize(light_dir + view_dir);
+    float spec = powr(max(dot(normal_value, half_vec), 0.0), 36.0);
     float3 param = float3(0.0, (hemi * 2.0) - 1.0, 0.0);
-    float3 ambient = mix(float3(0.070000000298023223876953125, 0.0900000035762786865234375, 0.12999999523162841796875), sky_color(param, _31) * 0.2800000011920928955078125, float3(hemi)) * fast::max(_31.uAmbientPad.x, 0.0);
+    float3 ambient = mix(float3(0.070000000298023223876953125, 0.0900000035762786865234375, 0.12999999523162841796875), sky_color(param, _31) * 0.2800000011920928955078125, float3(hemi)) * max(_31.uAmbientPad.x, 0.0);
     float reflective = _31.uColorReflective.w;
     float glow = _31.uCameraGlow.w;
     float has_texture = _31.uAlphaPad.y;
@@ -77,16 +79,24 @@ fragment main0_out main0(main0_in in [[stage_in]], constant SceneFragmentUniform
         float4 color_radius = _31.uLightColorRadius[i];
         float3 to_light = pos_intensity.xyz - in.vWorldPos;
         float dist = length(to_light);
-        float radius = fast::max(color_radius.w, 0.001000000047497451305389404296875);
+        float radius = max(color_radius.w, 0.001000000047497451305389404296875);
         float att = 1.0 / (1.0 + ((dist * dist) / (radius * radius)));
-        float3 pl_dir = fast::normalize(to_light);
-        float pdiff = fast::max(dot(normal_value, pl_dir), 0.0);
-        float3 phalf = fast::normalize(pl_dir + view_dir);
-        float pspec = powr(fast::max(dot(normal_value, phalf), 0.0), 48.0);
+        float3 pl_dir = normalize(to_light);
+        float pdiff = max(dot(normal_value, pl_dir), 0.0);
+        float3 phalf = normalize(pl_dir + view_dir);
+        float pspec = powr(max(dot(normal_value, phalf), 0.0), 48.0);
         float light_intensity = pos_intensity.w;
         point_contrib += (((color_radius.xyz * light_intensity) * att) * (((base_color * pdiff) * 0.550000011920928955078125) + ((float3(1.0, 0.980000019073486328125, 0.959999978542327880859375) * pspec) * (0.07999999821186065673828125 + (reflective * 0.14000000059604644775390625)))));
     }
-    out.FragColor = float4(((base + highlight) + glow_value) + point_contrib, _31.uAlphaPad.x);
+    float3 final_color = ((base + highlight) + glow_value) + point_contrib;
+    if (_31.uFogParams.w > 0.5)
+    {
+        float fog_dist = length(camera_pos - in.vWorldPos);
+        float height_factor = exp((-max(in.vWorldPos.y - _31.uFogParams.y, 0.0)) * max(_31.uFogParams.z, 9.9999997473787516355514526367188e-05));
+        float fog_amount = 1.0 - exp(((-fog_dist) * max(_31.uFogParams.x, 0.0)) * height_factor);
+        final_color = mix(final_color, _31.uFogColor.xyz, float3(clamp(fog_amount, 0.0, 1.0)));
+    }
+    out.FragColor = float4(final_color, _31.uAlphaPad.x);
     return out;
 }
 

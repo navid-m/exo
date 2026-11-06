@@ -11,6 +11,8 @@ struct WaterFragmentUniforms
     float4 uWaterColor;
     float4 uLightDir;
     float4 uWaterParams;
+    float4 uFogParams;
+    float4 uFogColor;
 };
 
 struct main0_out
@@ -29,7 +31,7 @@ static inline __attribute__((always_inline))
 float sdRoundedRect(thread const float2& p, thread const float2& b, thread const float& r)
 {
     float2 q = (abs(p) - b) + float2(r);
-    return (length(fast::max(q, float2(0.0))) + fast::min(fast::max(q.x, q.y), 0.0)) - r;
+    return (length(max(q, float2(0.0))) + min(max(q.x, q.y), 0.0)) - r;
 }
 
 static inline __attribute__((always_inline))
@@ -40,7 +42,7 @@ float hash(thread float2& p)
     return fract(p.x * p.y);
 }
 
-fragment main0_out main0(main0_in in [[stage_in]], constant WaterFragmentUniforms& _74 [[buffer(0)]], texture2d<float> uReflectionTex [[texture(0)]], texture2d<float> uNormalMap [[texture(1)]], sampler uReflectionTexSmplr [[sampler(0)]], sampler uNormalMapSmplr [[sampler(1)]])
+fragment main0_out main0(main0_in in [[stage_in]], constant WaterFragmentUniforms& _74 [[buffer(0)]], texture2d<float> uNormalMap [[texture(0)]], texture2d<float> uReflectionTex [[texture(1)]], sampler uNormalMapSmplr [[sampler(0)]], sampler uReflectionTexSmplr [[sampler(1)]])
 {
     main0_out out = {};
     float time = _74.uCameraPos.w;
@@ -48,7 +50,7 @@ fragment main0_out main0(main0_in in [[stage_in]], constant WaterFragmentUniform
     float sz = _74.uWaterParams.z;
     float2 planePos = in.vWorldPos.xz - float2(_74.uWaterColor.w, _74.uWaterParams.w);
     float2 halfExt = float2(sx, sz) * 0.5;
-    float cornerR = _74.uWaterParams.x * fast::min(halfExt.x, halfExt.y);
+    float cornerR = _74.uWaterParams.x * min(halfExt.x, halfExt.y);
     float2 param = planePos;
     float2 param_1 = halfExt;
     float param_2 = cornerR;
@@ -62,9 +64,9 @@ fragment main0_out main0(main0_in in [[stage_in]], constant WaterFragmentUniform
     float2 uv2 = (in.vUV * 1.7000000476837158203125) + float2((-time) * 0.02999999932944774627685546875, time * 0.0500000007450580596923828125);
     float3 n1 = (uNormalMap.sample(uNormalMapSmplr, uv1).xyz * 2.0) - float3(1.0);
     float3 n2 = (uNormalMap.sample(uNormalMapSmplr, uv2).xyz * 2.0) - float3(1.0);
-    float3 tn = fast::normalize(n1 + n2);
-    float3 normal_value = fast::normalize(float3(tn.x * 0.25, 1.0, tn.y * 0.25));
-    float3 view_dir = fast::normalize(_74.uCameraPos.xyz - in.vWorldPos);
+    float3 tn = normalize(n1 + n2);
+    float3 normal_value = normalize(float3(tn.x * 0.25, 1.0, tn.y * 0.25));
+    float3 view_dir = normalize(_74.uCameraPos.xyz - in.vWorldPos);
     float2 distort = tn.xy * 0.039999999105930328369140625;
     float3 reflection = float3(0.0500000007450580596923828125, 0.119999997317790985107421875, 0.2199999988079071044921875);
     if (in.vReflectClip.w > 9.9999997473787516355514526367188e-05)
@@ -72,15 +74,15 @@ fragment main0_out main0(main0_in in [[stage_in]], constant WaterFragmentUniform
         float2 uv = ((in.vReflectClip.xy / float2(in.vReflectClip.w)) * 0.5) + float2(0.5);
         uv.y = 1.0 - uv.y;
         uv += distort;
-        uv = fast::clamp(uv, float2(0.001000000047497451305389404296875), float2(0.999000012874603271484375));
+        uv = clamp(uv, float2(0.001000000047497451305389404296875), float2(0.999000012874603271484375));
         reflection = uReflectionTex.sample(uReflectionTexSmplr, uv).xyz;
     }
-    float fresnel = powr(1.0 - fast::max(dot(view_dir, normal_value), 0.0), 4.0);
+    float fresnel = powr(1.0 - max(dot(view_dir, normal_value), 0.0), 4.0);
     fresnel = 0.07999999821186065673828125 + (fresnel * 0.819999992847442626953125);
     float3 water_tint = _74.uWaterColor.xyz;
-    float3 light_dir = fast::normalize(_74.uLightDir.xyz);
-    float3 half_vec = fast::normalize(view_dir + light_dir);
-    float spec = powr(fast::max(dot(normal_value, half_vec), 0.0), 96.0) * _74.uLightDir.w;
+    float3 light_dir = normalize(_74.uLightDir.xyz);
+    float3 half_vec = normalize(view_dir + light_dir);
+    float spec = powr(max(dot(normal_value, half_vec), 0.0), 96.0) * _74.uLightDir.w;
     float3 specular = (float3(1.0, 0.9700000286102294921875, 0.920000016689300537109375) * spec) * 0.699999988079071044921875;
     float3 color_value = mix(water_tint, reflection, float3(fresnel)) + specular;
     float alpha = (0.7200000286102294921875 + (fresnel * 0.2199999988079071044921875)) * edgeMask;
@@ -94,14 +96,14 @@ fragment main0_out main0(main0_in in [[stage_in]], constant WaterFragmentUniform
         {
             float2 nID = cellID + float2(float(dx), float(dy));
             float2 param_3 = nID;
-            float _347 = hash(param_3);
-            float h1 = _347;
+            float _353 = hash(param_3);
+            float h1 = _353;
             float2 param_4 = nID + float2(17.299999237060546875);
-            float _354 = hash(param_4);
-            float h2 = _354;
+            float _360 = hash(param_4);
+            float h2 = _360;
             float2 param_5 = nID + float2(31.700000762939453125);
-            float _361 = hash(param_5);
-            float h3 = _361;
+            float _367 = hash(param_5);
+            float h3 = _367;
             float drift = h3 * 6.28318023681640625;
             float2 center = float2(h1, h2) + (float2(cos((time * 0.60000002384185791015625) + drift), sin((time * 0.800000011920928955078125) + drift)) * 0.180000007152557373046875);
             float2 diff = (cellFrac - center) + float2(float(dx), float(dy));
@@ -112,11 +114,18 @@ fragment main0_out main0(main0_in in [[stage_in]], constant WaterFragmentUniform
             sparkle += blob;
         }
     }
-    sparkle = fast::clamp(sparkle, 0.0, 1.0);
-    float edgeFade = smoothstep(0.0, 0.4000000059604644775390625, (-dist) / fast::max(cornerR, 0.00999999977648258209228515625));
+    sparkle = clamp(sparkle, 0.0, 1.0);
+    float edgeFade = smoothstep(0.0, 0.4000000059604644775390625, (-dist) / max(cornerR, 0.00999999977648258209228515625));
     sparkle *= edgeFade;
     float3 sparkleColor = (float3(0.85000002384185791015625, 0.949999988079071044921875, 1.0) * sparkle) * 0.89999997615814208984375;
     color_value += sparkleColor;
+    if (_74.uFogParams.w > 0.5)
+    {
+        float fog_dist = length(_74.uCameraPos.xyz - in.vWorldPos);
+        float height_factor = exp((-max(in.vWorldPos.y - _74.uFogParams.y, 0.0)) * max(_74.uFogParams.z, 9.9999997473787516355514526367188e-05));
+        float fog_amount = 1.0 - exp(((-fog_dist) * max(_74.uFogParams.x, 0.0)) * height_factor);
+        color_value = mix(color_value, _74.uFogColor.xyz, float3(clamp(fog_amount, 0.0, 1.0)));
+    }
     out.FragColor = float4(color_value, alpha);
     return out;
 }

@@ -6,6 +6,8 @@ layout(location = 0) out vec4 FragColor;
 layout(set = 2, binding = 0) uniform sampler2D uSceneTex;
 layout(set = 2, binding = 1) uniform sampler2D uBloomTex;
 layout(set = 2, binding = 2) uniform sampler2D uGodrayTex;
+layout(set = 2, binding = 3) uniform sampler2D uFlareTex;
+layout(set = 2, binding = 4) uniform sampler3D uLutTex;
 
 layout(set = 3, binding = 0, std140) uniform CompositeUniforms {
     vec4 uBloom;         // x = intensity, y = enabled, z = godrays enabled, w = fxaa
@@ -13,6 +15,7 @@ layout(set = 3, binding = 0, std140) uniform CompositeUniforms {
     vec4 uColor;         // x = exposure, y = contrast, z = saturation, w = chromatic aberration
     vec4 uScreen;        // x = 1/width, y = 1/height, z = time, w = grain
     vec4 uVignetteColor;
+    vec4 uParams;        // x = tonemap operator, y = LUT strength, z = flare enabled, w = unused
 };
 
 float luma(vec3 color_value) {
@@ -26,6 +29,29 @@ vec3 aces_tonemap(vec3 x) {
     const float d = 0.59;
     const float e = 0.14;
     return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+
+vec3 reinhard_tonemap(vec3 x) {
+    return x / (vec3(1.0) + max(x, vec3(0.0)));
+}
+
+vec3 filmic_tonemap(vec3 x) {
+    x = max(x - vec3(0.004), vec3(0.0));
+    return (x * (6.2 * x + 0.5)) / (x * (6.2 * x + 1.7) + 0.06);
+}
+
+vec3 tonemap_color(vec3 color_value) {
+    int mode = int(uParams.x + 0.5);
+    if (mode == 1) {
+        return reinhard_tonemap(color_value);
+    }
+    if (mode == 2) {
+        return clamp(filmic_tonemap(color_value), 0.0, 1.0);
+    }
+    if (mode == 3) {
+        return clamp(color_value, 0.0, 1.0);
+    }
+    return aces_tonemap(color_value);
 }
 
 vec3 sample_scene(vec2 uv) {
@@ -64,8 +90,14 @@ void main() {
 
     vec3 bloom = texture(uBloomTex, uv).rgb * uBloom.x * uBloom.y;
     vec3 godrays = texture(uGodrayTex, uv).rgb * uBloom.z;
-    vec3 color_value = (scene_color + bloom + godrays) * uColor.x;
-    color_value = aces_tonemap(color_value);
+    vec3 flare = texture(uFlareTex, uv).rgb * uParams.z;
+    vec3 color_value = (scene_color + bloom + godrays + flare) * uColor.x;
+    color_value = tonemap_color(color_value);
+
+    if (uParams.y > 0.0) {
+        vec3 graded = texture(uLutTex, clamp(color_value, vec3(0.0), vec3(1.0))).rgb;
+        color_value = mix(color_value, graded, uParams.y);
+    }
 
     float luminance = luma(color_value);
     color_value = mix(vec3(luminance), color_value, uColor.z);

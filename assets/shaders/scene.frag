@@ -16,6 +16,8 @@ layout(set = 3, binding = 0, std140) uniform SceneFragmentUniforms {
     vec4 uSkyHorizon;
     vec4 uAmbientPad;
     vec4 uLightMeta;
+    vec4 uFogParams;   // x = density, y = height, z = falloff, w = enabled
+    vec4 uFogColor;
 };
 
 vec3 sky_color(vec3 direction_value) {
@@ -69,5 +71,12 @@ void main() {
         point_contrib += color_radius.xyz * light_intensity * att
             * (base_color * pdiff * 0.55 + vec3(1.0, 0.98, 0.96) * pspec * (0.08 + reflective * 0.14));
     }
-    FragColor = vec4(base + highlight + glow_value + point_contrib, uAlphaPad.x);
+    vec3 final_color = base + highlight + glow_value + point_contrib;
+    if (uFogParams.w > 0.5) {
+        float fog_dist = length(camera_pos - vWorldPos);
+        float height_factor = exp(-max(vWorldPos.y - uFogParams.y, 0.0) * max(uFogParams.z, 0.0001));
+        float fog_amount = 1.0 - exp(-fog_dist * max(uFogParams.x, 0.0) * height_factor);
+        final_color = mix(final_color, uFogColor.rgb, clamp(fog_amount, 0.0, 1.0));
+    }
+    FragColor = vec4(final_color, uAlphaPad.x);
 }

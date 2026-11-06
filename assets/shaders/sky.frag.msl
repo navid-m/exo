@@ -1,0 +1,44 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct SkyUniforms
+{
+    float4 uForward;
+    float4 uRight;
+    float4 uUp;
+    float4 uSkyTop;
+    float4 uSkyHorizon;
+    float4 uSunDir;
+    float4 uSunColor;
+};
+
+struct main0_out
+{
+    float4 FragColor [[color(0)]];
+};
+
+struct main0_in
+{
+    float2 vTexCoord [[user(locn0)]];
+};
+
+fragment main0_out main0(main0_in in [[stage_in]], constant SkyUniforms& _33 [[buffer(0)]])
+{
+    main0_out out = {};
+    float2 ndc = float2((in.vTexCoord.x * 2.0) - 1.0, 1.0 - (in.vTexCoord.y * 2.0));
+    float3 direction_value = normalize((_33.uForward.xyz + (((_33.uRight.xyz * ndc.x) * _33.uForward.w) * _33.uRight.w)) + ((_33.uUp.xyz * ndc.y) * _33.uForward.w));
+    float t = clamp((direction_value.y * 0.5) + 0.5, 0.0, 1.0);
+    float3 color_value = mix(_33.uSkyHorizon.xyz, _33.uSkyTop.xyz, float3(t));
+    float3 sun_dir = normalize(_33.uSunDir.xyz);
+    float cos_angle = dot(direction_value, sun_dir);
+    float outer = cos(max(_33.uSunDir.w, 9.9999997473787516355514526367188e-05));
+    float inner = cos(max(_33.uSunDir.w * 0.64999997615814208984375, 9.9999997473787516355514526367188e-05));
+    float disk = smoothstep(outer, inner, cos_angle);
+    float glow = powr(max(cos_angle, 0.0), 180.0) * 0.3499999940395355224609375;
+    color_value += (_33.uSunColor.xyz * ((disk * _33.uSunColor.w) + glow));
+    out.FragColor = float4(color_value, 1.0);
+    return out;
+}
+

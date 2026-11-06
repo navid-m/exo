@@ -136,3 +136,33 @@ pub fn view_projection(camera: Camera, width: i32, height: i32) math.Mat4 = {
     )
     return math.mat_mul(projection, view)
 }
+
+/// View-projection with a sub-pixel clip-space offset used by temporal AA.
+/// `jitter_x` and `jitter_y` are in normalized device coordinates.
+pub fn view_projection_jittered(
+    camera: Camera,
+    width: i32,
+    height: i32,
+    jitter_x: f32,
+    jitter_y: f32
+) math.Mat4 = {
+    val vp: math.Mat4 = view_projection(camera, width, height)
+    return math.mat4(
+        vp.m00 + jitter_x * vp.m30,
+        vp.m01 + jitter_x * vp.m31,
+        vp.m02 + jitter_x * vp.m32,
+        vp.m03 + jitter_x * vp.m33,
+        vp.m10 + jitter_y * vp.m30,
+        vp.m11 + jitter_y * vp.m31,
+        vp.m12 + jitter_y * vp.m32,
+        vp.m13 + jitter_y * vp.m33,
+        vp.m20,
+        vp.m21,
+        vp.m22,
+        vp.m23,
+        vp.m30,
+        vp.m31,
+        vp.m32,
+        vp.m33
+    )
+}

@@ -98,12 +98,15 @@ pub val (
     SDL_GPU_SHADERFORMAT_MSL: u32                  = 16
     SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD: i32        = 0
     SDL_GPU_TEXTURETYPE_2D: i32                    = 0
+    SDL_GPU_TEXTURETYPE_3D: i32                    = 2
     SDL_GPU_SAMPLECOUNT_1: i32                     = 0
     SDL_GPU_SHADERSTAGE_VERTEX: i32                = 0
     SDL_GPU_SHADERSTAGE_FRAGMENT: i32              = 1
     SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2: i32        = 10
     SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3: i32        = 11
+    SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4: i32        = 12
     SDL_GPU_VERTEXINPUTRATE_VERTEX: i32            = 0
+    SDL_GPU_VERTEXINPUTRATE_INSTANCE: i32          = 1
     SDL_GPU_PRIMITIVETYPE_TRIANGLELIST: i32        = 0
     SDL_GPU_FILLMODE_FILL: i32                     = 0
     SDL_GPU_CULLMODE_NONE: i32                     = 0
@@ -115,7 +118,9 @@ pub val (
     SDL_GPU_BLENDFACTOR_SRC_ALPHA: i32             = 7
     SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA: i32   = 8
     SDL_GPU_FILTER_LINEAR: i32                     = 1
+    SDL_GPU_FILTER_NEAREST: i32                    = 0
     SDL_GPU_SAMPLERMIPMAPMODE_LINEAR: i32          = 1
+    SDL_GPU_SAMPLERMIPMAPMODE_NEAREST: i32         = 0
     SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE: i32  = 2
     SDL_GPU_SAMPLERADDRESSMODE_REPEAT: i32         = 0
     SDL_GPU_LOADOP_CLEAR: i32                      = 1
@@ -407,6 +412,7 @@ pub val PROP_GPU_CREATE_SHADERS_MSL: ref u8 = "SDL.gpu.device.create.shaders.msl
 pub val PROP_GPU_CREATE_METAL_ALLOW_MACFAMILY1: ref u8 = "SDL.gpu.device.create.metal.allowmacfamily1"
 
 pub val SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM: i32 = 4
+pub val SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT: i32 = 29
 pub val SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD: i32 = 1
 
 pub extern type SDLEvent = {

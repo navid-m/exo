@@ -261,6 +261,16 @@ pub type WaterSurface = {
     corner_radius: f32
 }
 
+/// A per-instance transform and shading override for instanced meshes.
+pub type InstanceData = {
+    position: math.Vec3
+    scale: math.Vec3
+    rotation_y: f32
+    color: math.Vec3
+    glow: f32
+    reflective: f32
+}
+
 /// Rendering options that are owned by the scene, not the engine.
 pub type RenderSettings = {
     clear_top: math.Vec3
@@ -271,6 +281,17 @@ pub type RenderSettings = {
     enable_fxaa: bool
     enable_light_glow: bool
     ambient: f32
+    sky_enabled: bool
+    sun_enabled: bool
+    sun_direction: math.Vec3
+    sun_color: math.Vec3
+    sun_size: f32
+    sun_intensity: f32
+    fog_enabled: bool
+    fog_color: math.Vec3
+    fog_density: f32
+    fog_height: f32
+    fog_falloff: f32
     post_process: postprocess.PostProcessSettings
 }
 
@@ -307,6 +328,8 @@ pub type Scene3D = {
     gravity: mut f32
     floors: mut list[FloorCollider]
     waters: mut list[WaterSurface]
+    instance_cubes: mut list[InstanceData]
+    instance_spheres: mut list[InstanceData]
     render: mut RenderSettings
     ui: mut Ui
     next_entity_id: mut u64
@@ -449,6 +472,17 @@ pub fn default_render_settings() RenderSettings = {
         enable_fxaa: true,
         enable_light_glow: true,
         ambient: 0.30 as f32,
+        sky_enabled: false,
+        sun_enabled: false,
+        sun_direction: math.vec3(0.25 as f32, 0.55 as f32, -0.80 as f32),
+        sun_color: math.vec3(1.0 as f32, 0.94 as f32, 0.80 as f32),
+        sun_size: 0.018 as f32,
+        sun_intensity: 5.0 as f32,
+        fog_enabled: false,
+        fog_color: math.vec3(0.55 as f32, 0.62 as f32, 0.72 as f32),
+        fog_density: 0.025 as f32,
+        fog_height: 0.0 as f32,
+        fog_falloff: 0.12 as f32,
         post_process: postprocess.default_settings()
     }
 }
@@ -585,6 +619,8 @@ pub fn new_scene() Scene3D = {
         gravity: 9.8 as f32,
         floors: [],
         waters: [],
+        instance_cubes: [],
+        instance_spheres: [],
         render: default_render_settings(),
         ui: default_ui(),
         next_entity_id: 1 as u64
@@ -613,6 +649,14 @@ pub fn add_floor(scene: mut Scene3D, floor: FloorCollider) void = {
 
 pub fn add_water(scene: mut Scene3D, water: WaterSurface) void = {
     @append(scene.waters, water)
+}
+
+pub fn add_cube_instance(scene: mut Scene3D, instance: InstanceData) void = {
+    @append(scene.instance_cubes, instance)
+}
+
+pub fn add_sphere_instance(scene: mut Scene3D, instance: InstanceData) void = {
+    @append(scene.instance_spheres, instance)
 }
 
 pub fn add_sphere(scene: mut Scene3D, sphere: SphereEntity) u64 = {

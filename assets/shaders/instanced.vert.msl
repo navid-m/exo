@@ -1,0 +1,48 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct InstancedVertexUniforms
+{
+    float4x4 uViewProj;
+    float4 uUvTransform;
+};
+
+struct main0_out
+{
+    float3 vWorldPos [[user(locn0)]];
+    float3 vWorldNormal [[user(locn1)]];
+    float2 vTexCoord [[user(locn2)]];
+    float4 vColorGlow [[user(locn3)]];
+    float4 vReflectAlpha [[user(locn4)]];
+    float4 gl_Position [[position]];
+};
+
+struct main0_in
+{
+    float3 aPosition [[attribute(0)]];
+    float3 aNormal [[attribute(1)]];
+    float2 aTexCoord [[attribute(2)]];
+    float4 aModel0 [[attribute(3)]];
+    float4 aModel1 [[attribute(4)]];
+    float4 aModel2 [[attribute(5)]];
+    float4 aModel3 [[attribute(6)]];
+    float4 aColorGlow [[attribute(7)]];
+    float4 aReflectAlpha [[attribute(8)]];
+};
+
+vertex main0_out main0(main0_in in [[stage_in]], constant InstancedVertexUniforms& _78 [[buffer(0)]])
+{
+    main0_out out = {};
+    float4x4 model = float4x4(float4(in.aModel0), float4(in.aModel1), float4(in.aModel2), float4(in.aModel3));
+    float4 world = model * float4(in.aPosition, 1.0);
+    out.vWorldPos = world.xyz;
+    out.vWorldNormal = normalize((model * float4(in.aNormal, 0.0)).xyz);
+    out.vTexCoord = (in.aTexCoord * _78.uUvTransform.xy) + _78.uUvTransform.zw;
+    out.vColorGlow = in.aColorGlow;
+    out.vReflectAlpha = in.aReflectAlpha;
+    out.gl_Position = _78.uViewProj * world;
+    return out;
+}
+

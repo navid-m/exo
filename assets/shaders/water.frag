@@ -12,6 +12,8 @@ layout(set = 3, binding = 0, std140) uniform WaterFragmentUniforms {
     vec4 uWaterColor;    
     vec4 uLightDir;
     vec4 uWaterParams;
+    vec4 uFogParams;   // x = density, y = height, z = falloff, w = enabled
+    vec4 uFogColor;
 };
 
 float sdRoundedRect(vec2 p, vec2 b, float r) {
@@ -96,6 +98,13 @@ void main() {
 
     vec3 sparkleColor = vec3(0.85, 0.95, 1.0) * sparkle * 0.9;
     color_value += sparkleColor;
+
+    if (uFogParams.w > 0.5) {
+        float fog_dist = length(uCameraPos.xyz - vWorldPos);
+        float height_factor = exp(-max(vWorldPos.y - uFogParams.y, 0.0) * max(uFogParams.z, 0.0001));
+        float fog_amount = 1.0 - exp(-fog_dist * max(uFogParams.x, 0.0) * height_factor);
+        color_value = mix(color_value, uFogColor.rgb, clamp(fog_amount, 0.0, 1.0));
+    }
 
     FragColor = vec4(color_value, alpha);
 }

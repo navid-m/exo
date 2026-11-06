@@ -4,11 +4,12 @@ layout(location = 0) in vec2 vTexCoord;
 layout(location = 0) out vec4 FragColor;
 
 layout(set = 2, binding = 0) uniform sampler2D uSceneTex;
+layout(set = 2, binding = 1) uniform sampler2D uDepthTex;
 
 layout(set = 3, binding = 0, std140) uniform GodrayUniforms {
     vec4 uLight;  // xy = light position in UV space, z = intensity, w = threshold
     vec4 uParams; // x = decay, y = density, z = weight, w = sample count
-    vec4 uColor;  // rgb = shaft tint
+    vec4 uColor;  // rgb = shaft tint, w = depth occlusion enabled
 };
 
 float brightness_of(vec3 color_value) {
@@ -36,6 +37,10 @@ void main() {
         vec3 sample_color = texture(uSceneTex, clamp(coord, vec2(0.0), vec2(1.0))).rgb;
         // Only bright pixels feed the shafts; dark geometry occludes them.
         float mask = smoothstep(threshold, threshold + 0.20, brightness_of(sample_color));
+        if (uColor.w > 0.5) {
+            float scene_depth = texture(uDepthTex, clamp(coord, vec2(0.0), vec2(1.0))).r;
+            mask *= smoothstep(0.9995, 1.0, scene_depth);
+        }
         float weight = decay * max(uParams.z, 0.0);
         accum += sample_color * mask * weight;
         total_weight += weight;

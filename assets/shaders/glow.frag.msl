@@ -7,6 +7,7 @@ struct GlowFragmentUniforms
 {
     float4 uGlowColorIntensity;
     float4 uAlphaPad;
+    float4 uSoftParams;
 };
 
 struct main0_out
@@ -19,12 +20,19 @@ struct main0_in
     float3 vLocalPos [[user(locn0)]];
 };
 
-fragment main0_out main0(main0_in in [[stage_in]], constant GlowFragmentUniforms& _30 [[buffer(0)]])
+fragment main0_out main0(main0_in in [[stage_in]], constant GlowFragmentUniforms& _29 [[buffer(0)]], texture2d<float> uDepthTex [[texture(0)]], sampler uDepthTexSmplr [[sampler(0)]], float4 gl_FragCoord [[position]])
 {
     main0_out out = {};
     float radius = length(in.vLocalPos.xy) * 2.0;
-    float fade = powr(fast::max(1.0 - radius, 0.0), 2.0);
-    out.FragColor = float4(_30.uGlowColorIntensity.xyz * _30.uGlowColorIntensity.w, _30.uAlphaPad.x * fade);
+    float fade = powr(max(1.0 - radius, 0.0), 2.0);
+    float alpha = _29.uAlphaPad.x * fade;
+    if (_29.uSoftParams.w > 0.5)
+    {
+        float scene_depth = uDepthTex.sample(uDepthTexSmplr, (gl_FragCoord.xy * _29.uSoftParams.xy)).x;
+        float soft = clamp((scene_depth - gl_FragCoord.z) / max(_29.uSoftParams.z, 9.9999997473787516355514526367188e-05), 0.0, 1.0);
+        alpha *= soft;
+    }
+    out.FragColor = float4(_29.uGlowColorIntensity.xyz * _29.uGlowColorIntensity.w, alpha);
     return out;
 }
 

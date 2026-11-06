@@ -10,6 +10,8 @@ layout(set = 2, binding = 0) uniform sampler2D uReflectionTex;
 layout(set = 3, binding = 0, std140) uniform FloorFragmentUniforms {
     vec4 uCameraPos;
     vec4 uFloorColor;
+    vec4 uFogParams;   // x = density, y = height, z = falloff, w = enabled
+    vec4 uFogColor;
 };
 
 vec3 sky_color(vec3 direction_value) {
@@ -34,5 +36,12 @@ void main() {
     vec3 highlight = vec3(1.0, 0.98, 0.95)
         * pow(max(dot(reflect(-view_dir, normal_value), vec3(0.0, 1.0, 0.0)), 0.0), 18.0)
         * 0.04;
-    FragColor = vec4(color_value + highlight, 0.58);
+    color_value = color_value + highlight;
+    if (uFogParams.w > 0.5) {
+        float fog_dist = length(uCameraPos.xyz - vWorldPos);
+        float height_factor = exp(-max(vWorldPos.y - uFogParams.y, 0.0) * max(uFogParams.z, 0.0001));
+        float fog_amount = 1.0 - exp(-fog_dist * max(uFogParams.x, 0.0) * height_factor);
+        color_value = mix(color_value, uFogColor.rgb, clamp(fog_amount, 0.0, 1.0));
+    }
+    FragColor = vec4(color_value, 0.58);
 }

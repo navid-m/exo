@@ -8,6 +8,7 @@ val io          = use("io.sx")
 val exoerr      = use("error.sx")
 val animation   = use("animation.sx")
 val string      = use("std/string")
+val stdmath     = use("std/math")
 
 pub type MeshGPU = {
     raw: ref void
@@ -31,6 +32,12 @@ pub type ModelGPU = {
     skinned: bool
 }
 
+pub type InstanceGPU = {
+    buffer: mut ref void
+    count: mut u32
+    kind: i32
+}
+
 pub type SceneMeshes = {
     cube: MeshGPU
     sphere: MeshGPU
@@ -39,6 +46,8 @@ pub type SceneMeshes = {
     model_textures: list[ref void]
     model_draws: list[ModelGPU]
     custom: list[MeshGPU]
+    instance_cubes: InstanceGPU
+    instance_spheres: InstanceGPU
 }
 
 
@@ -72,6 +81,8 @@ pub type SceneFragmentUniforms = {
     sky_horizon: mut math.Vec4f
     ambient_pad: mut math.Vec4f
     light_meta: mut math.Vec4f
+    fog_params: mut math.Vec4f
+    fog_color: mut math.Vec4f
 }
 
 fn default_scene_fragment_uniforms() SceneFragmentUniforms = {
@@ -98,7 +109,9 @@ fn default_scene_fragment_uniforms() SceneFragmentUniforms = {
         sky_top: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
         sky_horizon: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
         ambient_pad: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
-        light_meta: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
+        light_meta: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        fog_params: { x: 0.0 as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        fog_color: { x: 0.55 as f32, y: 0.62 as f32, z: 0.72 as f32, w: 0.0 as f32 }
     }
 }
 
@@ -149,6 +162,57 @@ pub fn configure_scene_style(
     runtime.lights = lights
 }
 
+pub fn configure_sky(
+    runtime_raw: ref void,
+    sun_enabled: bool,
+    sun_direction: math.Vec3,
+    sun_color: math.Vec3,
+    sun_size: f32,
+    sun_intensity: f32
+) void = trust {
+    if runtime_raw == none {
+        return
+    }
+    val runtime: mut ref Renderer = runtime_raw as mut ref Renderer
+    runtime.sun_enabled = sun_enabled
+    runtime.sun_direction = sun_direction
+    runtime.sun_color = sun_color
+    runtime.sun_size = sun_size
+    runtime.sun_intensity = sun_intensity
+}
+
+pub fn configure_fog(
+    runtime_raw: ref void,
+    enabled: bool,
+    color: math.Vec3,
+    density: f32,
+    height: f32,
+    falloff: f32
+) void = trust {
+    if runtime_raw == none {
+        return
+    }
+    val runtime: mut ref Renderer = runtime_raw as mut ref Renderer
+    runtime.fog_enabled = enabled
+    runtime.fog_color = color
+    runtime.fog_density = density
+    runtime.fog_height = height
+    runtime.fog_falloff = falloff
+}
+
+pub fn set_camera_jitter(runtime_raw: ref void, x: f32, y: f32) void = trust {
+    if runtime_raw == none {
+        return
+    }
+    val runtime: mut ref Renderer = runtime_raw as mut ref Renderer
+    runtime.jitter_x = x
+    runtime.jitter_y = y
+}
+
+fn current_view_projection(runtime: ref Renderer, camera: cam.Camera, width: i32, height: i32) math.Mat4 = {
+    return cam.view_projection_jittered(camera, width, height, runtime.jitter_x, runtime.jitter_y)
+}
+
 /// Project a world-space point into screen UV space for full-screen effects
 /// such as godrays. The origin is the top-left of the render target. `visible`
 /// is false when the point is behind the camera or so far outside the viewport
@@ -169,6 +233,18 @@ pub fn project_to_screen(view_proj: math.Mat4, point: math.Vec3) ScreenProjectio
     return { x: uv_x, y: uv_y, visible: visible }
 }
 
+/// Project an infinite sun direction into screen space by sampling a far point
+/// along that direction from the camera.
+pub fn sun_screen_position(
+    view_proj: math.Mat4,
+    camera_pos: math.Vec3,
+    sun_direction: math.Vec3
+) ScreenProjection = {
+    val dir: math.Vec3 = math.vec3_normalize(sun_direction)
+    val point: math.Vec3 = math.vec3_add(camera_pos, math.vec3_scale(dir, 80.0 as f32))
+    return project_to_screen(view_proj, point)
+}
+
 pub type FloorVertexUniforms = {
     model: mut math.Mat4
     view_proj: mut math.Mat4
@@ -178,6 +254,8 @@ pub type FloorVertexUniforms = {
 pub type FloorFragmentUniforms = {
     camera_pos: mut math.Vec4f
     floor_color: mut math.Vec4f
+    fog_params: mut math.Vec4f
+    fog_color: mut math.Vec4f
 }
 
 pub type GlowVertexUniforms = {
@@ -191,6 +269,7 @@ pub type GlowVertexUniforms = {
 pub type GlowFragmentUniforms = {
     color_intensity: mut math.Vec4f
     alpha_pad: mut math.Vec4f
+    soft_params: mut math.Vec4f
 }
 
 pub type BloomThresholdUniforms = {
@@ -207,6 +286,35 @@ pub type GodrayUniforms = {
     color: mut math.Vec4f
 }
 
+pub type SharpenUniforms = {
+    params: mut math.Vec4f
+}
+
+pub type FlareUniforms = {
+    light: mut math.Vec4f
+    params: mut math.Vec4f
+    color: mut math.Vec4f
+}
+
+pub type TaaUniforms = {
+    params: mut math.Vec4f
+}
+
+pub type SkyUniforms = {
+    forward: mut math.Vec4f
+    right: mut math.Vec4f
+    up: mut math.Vec4f
+    sky_top: mut math.Vec4f
+    sky_horizon: mut math.Vec4f
+    sun_dir: mut math.Vec4f
+    sun_color: mut math.Vec4f
+}
+
+pub type InstancedVertexUniforms = {
+    view_proj: mut math.Mat4
+    uv_transform: mut math.Vec4f
+}
+
 pub type ScreenProjection = {
     x: f32
     y: f32
@@ -219,6 +327,7 @@ pub type CompositeUniforms = {
     color: mut math.Vec4f
     screen: mut math.Vec4f
     vignette_color: mut math.Vec4f
+    params: mut math.Vec4f
 }
 
 pub type WaterVertexUniforms = {
@@ -233,6 +342,8 @@ pub type WaterFragmentUniforms = {
     water_color: mut math.Vec4f
     light_dir: mut math.Vec4f
     water_params: mut math.Vec4f
+    fog_params: mut math.Vec4f
+    fog_color: mut math.Vec4f
 }
 
 
@@ -247,18 +358,25 @@ pub type Renderer = {
     window: mut ref void
     device: mut ref void
     scene_pipeline: mut ref void
+    instanced_pipeline: mut ref void
+    sky_pipeline: mut ref void
     floor_pipeline: mut ref void
     glow_pipeline: mut ref void
     bloom_threshold_pipeline: mut ref void
     bloom_blur_pipeline: mut ref void
     godray_pipeline: mut ref void
+    sharpen_pipeline: mut ref void
+    flare_pipeline: mut ref void
+    taa_pipeline: mut ref void
     post_pipeline: mut ref void
     water_pipeline: mut ref void
     ui_pipeline: mut ref void
     normal_map_texture: mut ref void
     glb_texture: mut ref void
     font_texture: mut ref void
+    lut_texture: mut ref void
     linear_sampler: mut ref void
+    nearest_sampler: mut ref void
     repeat_sampler: mut ref void
     reflection_color: mut ref void
     reflection_depth: mut ref void
@@ -267,17 +385,36 @@ pub type Renderer = {
     bloom_a: mut ref void
     bloom_b: mut ref void
     godray: mut ref void
+    flare: mut ref void
+    sharpen: mut ref void
+    taa_a: mut ref void
+    taa_b: mut ref void
     swapchain_texture: mut ref void
     command_buffer: mut ref void
     current_pass: mut ref void
     swapchain_format: mut i32
+    render_format: mut i32
     render_width: mut u32
     render_height: mut u32
     frame_active: mut bool
+    taa_valid: mut bool
+    taa_parity: mut bool
+    jitter_x: mut f32
+    jitter_y: mut f32
     sky_top: mut math.Vec3
     sky_horizon: mut math.Vec3
     ambient: mut f32
     lights: mut list[ecs.PointLight]
+    sun_enabled: mut bool
+    sun_direction: mut math.Vec3
+    sun_color: mut math.Vec3
+    sun_size: mut f32
+    sun_intensity: mut f32
+    fog_enabled: mut bool
+    fog_color: mut math.Vec3
+    fog_density: mut f32
+    fog_height: mut f32
+    fog_falloff: mut f32
 }
 
 
@@ -356,6 +493,156 @@ pub fn create_texture(
     return trust sdl.SDL_CreateGPUTexture(runtime.device, @addr(info))
 }
 
+pub fn create_texture_3d(
+    runtime: ref Renderer,
+    format: i32,
+    usage: u32,
+    width: u32,
+    height: u32,
+    depth: u32
+) ref void = {
+    val info: mut sdl.SDLGPUTextureCreateInfo = {
+        typ: 0 as i32,
+        format: 0 as i32,
+        usage: 0 as u32,
+        width: 0 as u32,
+        height: 0 as u32,
+        layer_count_or_depth: 0 as u32,
+        num_levels: 0 as u32,
+        sample_count: 0 as i32,
+        props: 0 as u32
+    }
+    info.typ = sdl.SDL_GPU_TEXTURETYPE_3D
+    info.format = format
+    info.usage = usage
+    info.width = width
+    info.height = height
+    info.layer_count_or_depth = depth
+    info.num_levels = 1 as u32
+    info.sample_count = sdl.SDL_GPU_SAMPLECOUNT_1
+    return trust sdl.SDL_CreateGPUTexture(runtime.device, @addr(info))
+}
+
+fn clamp01(value: f32) f32 = {
+    if value < (0.0 as f32) {
+        return 0.0 as f32
+    }
+    if value > (1.0 as f32) {
+        return 1.0 as f32
+    }
+    return value
+}
+
+fn lut_channel(value: f32) u8 = {
+    return (clamp01(value) * (255.0 as f32)) as u8
+}
+
+/// Build the default 16x16x16 cinematic grading LUT. It applies a soft
+/// contrast curve, cools the shadows and warms the highlights; the composite
+/// pass blends it by `ColorGradeSettings.strength`.
+fn create_default_lut(runtime: mut ref Renderer) ref void = trust {
+    val size: u32 = 16 as u32
+    val texel_count: u32 = size * size * size
+    val byte_size: u32 = texel_count * (4 as u32)
+    val texture: ref void = create_texture_3d(
+        runtime,
+        sdl.SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+        sdl.SDL_GPU_TEXTUREUSAGE_SAMPLER,
+        size,
+        size,
+        size
+    )
+    if texture == none {
+        return none as ref void
+    }
+    val data: ref u8 = @alloc(byte_size as usize) as ref u8
+    if data == none {
+        sdl.SDL_ReleaseGPUTexture(runtime.device, texture)
+        return none as ref void
+    }
+    val b: mut u32 = 0 as u32
+    for b < size {
+        val g: mut u32 = 0 as u32
+        for g < size {
+            val r: mut u32 = 0 as u32
+            for r < size {
+                val rf: f32 = ((r as f32) + (0.5 as f32)) / (size as f32)
+                val gf: f32 = ((g as f32) + (0.5 as f32)) / (size as f32)
+                val bf: f32 = ((b as f32) + (0.5 as f32)) / (size as f32)
+                val luma: f32 = rf * (0.299 as f32) + gf * (0.587 as f32) + bf * (0.114 as f32)
+                val shadow: f32 = (1.0 as f32 - luma) * (1.0 as f32 - luma)
+                val highlight: f32 = luma * luma
+                val rc: f32 = rf * (0.55 as f32) + (rf * rf * ((3.0 as f32) - (2.0 as f32) * rf)) * (0.45 as f32)
+                val gc: f32 = gf * (0.55 as f32) + (gf * gf * ((3.0 as f32) - (2.0 as f32) * gf)) * (0.45 as f32)
+                val bc: f32 = bf * (0.55 as f32) + (bf * bf * ((3.0 as f32) - (2.0 as f32) * bf)) * (0.45 as f32)
+                val out_r: f32 = rc + highlight * (0.035 as f32) - shadow * (0.018 as f32)
+                val out_g: f32 = gc + highlight * (0.012 as f32)
+                val out_b: f32 = bc + shadow * (0.055 as f32) - highlight * (0.010 as f32)
+                val index: u32 = (b * size * size + g * size + r) * (4 as u32)
+                @store8(@ptradd(data, index as usize), lut_channel(out_r))
+                @store8(@ptradd(data, (index + (1 as u32)) as usize), lut_channel(out_g))
+                @store8(@ptradd(data, (index + (2 as u32)) as usize), lut_channel(out_b))
+                @store8(@ptradd(data, (index + (3 as u32)) as usize), 255 as u8)
+                r = r + (1 as u32)
+            }
+            g = g + (1 as u32)
+        }
+        b = b + (1 as u32)
+    }
+    val tbuf_info: mut sdl.SDLGPUTransferBufferCreateInfo = {
+        usage: 0 as i32,
+        size: 0 as u32,
+        props: 0 as u32
+    }
+    tbuf_info.usage = sdl.SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
+    tbuf_info.size = byte_size
+    val tbuf: ref void = sdl.SDL_CreateGPUTransferBuffer(runtime.device, @addr(tbuf_info))
+    if tbuf == none {
+        @free(data as ref void)
+        sdl.SDL_ReleaseGPUTexture(runtime.device, texture)
+        return none as ref void
+    }
+    val mapped: ref void = sdl.SDL_MapGPUTransferBuffer(runtime.device, tbuf, false)
+    if mapped == none {
+        sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
+        @free(data as ref void)
+        sdl.SDL_ReleaseGPUTexture(runtime.device, texture)
+        return none as ref void
+    }
+    @memcpy(mapped, data as ref void, byte_size as usize)
+    sdl.SDL_UnmapGPUTransferBuffer(runtime.device, tbuf)
+    @free(data as ref void)
+    val cmd: ref void = sdl.SDL_AcquireGPUCommandBuffer(runtime.device)
+    if cmd == none {
+        sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
+        sdl.SDL_ReleaseGPUTexture(runtime.device, texture)
+        return none as ref void
+    }
+    val copy_pass: ref void = sdl.SDL_BeginGPUCopyPass(cmd)
+    val src: mut sdl.SDLGPUTextureTransferInfo = {
+        transfer_buffer: tbuf,
+        offset: 0 as u32,
+        pixels_per_row: size,
+        rows_per_layer: size
+    }
+    val dst: mut sdl.SDLGPUTextureRegion = {
+        texture: texture,
+        mip_level: 0 as u32,
+        layer: 0 as u32,
+        x: 0 as u32,
+        y: 0 as u32,
+        z: 0 as u32,
+        w: size,
+        h: size,
+        d: size
+    }
+    sdl.SDL_UploadToGPUTexture(copy_pass, @addr(src), @addr(dst), false)
+    sdl.SDL_EndGPUCopyPass(copy_pass)
+    sdl.SDL_SubmitGPUCommandBuffer(cmd)
+    sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
+    return texture
+}
+
 fn half_extent(value: u32) u32 = {
     val half: u32 = value / (2 as u32)
     if half < (1 as u32) {
@@ -393,15 +680,32 @@ pub fn release_render_targets(runtime: mut ref Renderer) void = trust {
         sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.godray)
         runtime.godray = none
     }
+    if runtime.flare != none {
+        sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.flare)
+        runtime.flare = none
+    }
+    if runtime.sharpen != none {
+        sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.sharpen)
+        runtime.sharpen = none
+    }
+    if runtime.taa_a != none {
+        sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.taa_a)
+        runtime.taa_a = none
+    }
+    if runtime.taa_b != none {
+        sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.taa_b)
+        runtime.taa_b = none
+    }
 }
 
 pub fn recreate_render_targets(runtime: mut ref Renderer, width: u32, height: u32) bool = trust {
     runtime.render_width = width
     runtime.render_height = height
+    runtime.taa_valid = false
     release_render_targets(runtime)
     runtime.reflection_color = create_texture(
         runtime,
-        runtime.swapchain_format,
+        runtime.render_format,
         sdl.SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | sdl.SDL_GPU_TEXTUREUSAGE_SAMPLER,
         width,
         height
@@ -422,7 +726,7 @@ pub fn recreate_render_targets(runtime: mut ref Renderer, width: u32, height: u3
     runtime.scene_depth = create_texture(
         runtime,
         sdl.SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
-        sdl.SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
+        sdl.SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | sdl.SDL_GPU_TEXTUREUSAGE_SAMPLER,
         width,
         height
     )
@@ -431,7 +735,7 @@ pub fn recreate_render_targets(runtime: mut ref Renderer, width: u32, height: u3
     }
     runtime.scene_color = create_texture(
         runtime,
-        runtime.swapchain_format,
+        runtime.render_format,
         sdl.SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | sdl.SDL_GPU_TEXTUREUSAGE_SAMPLER,
         width,
         height
@@ -439,11 +743,41 @@ pub fn recreate_render_targets(runtime: mut ref Renderer, width: u32, height: u3
     if runtime.scene_color == none {
         return false
     }
+    runtime.sharpen = create_texture(
+        runtime,
+        runtime.render_format,
+        sdl.SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | sdl.SDL_GPU_TEXTUREUSAGE_SAMPLER,
+        width,
+        height
+    )
+    if runtime.sharpen == none {
+        return false
+    }
+    runtime.taa_a = create_texture(
+        runtime,
+        runtime.render_format,
+        sdl.SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | sdl.SDL_GPU_TEXTUREUSAGE_SAMPLER,
+        width,
+        height
+    )
+    if runtime.taa_a == none {
+        return false
+    }
+    runtime.taa_b = create_texture(
+        runtime,
+        runtime.render_format,
+        sdl.SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | sdl.SDL_GPU_TEXTUREUSAGE_SAMPLER,
+        width,
+        height
+    )
+    if runtime.taa_b == none {
+        return false
+    }
     val bloom_width: u32 = half_extent(width)
     val bloom_height: u32 = half_extent(height)
     runtime.bloom_a = create_texture(
         runtime,
-        runtime.swapchain_format,
+        runtime.render_format,
         sdl.SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | sdl.SDL_GPU_TEXTUREUSAGE_SAMPLER,
         bloom_width,
         bloom_height
@@ -453,7 +787,7 @@ pub fn recreate_render_targets(runtime: mut ref Renderer, width: u32, height: u3
     }
     runtime.bloom_b = create_texture(
         runtime,
-        runtime.swapchain_format,
+        runtime.render_format,
         sdl.SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | sdl.SDL_GPU_TEXTUREUSAGE_SAMPLER,
         bloom_width,
         bloom_height
@@ -463,12 +797,22 @@ pub fn recreate_render_targets(runtime: mut ref Renderer, width: u32, height: u3
     }
     runtime.godray = create_texture(
         runtime,
-        runtime.swapchain_format,
+        runtime.render_format,
         sdl.SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | sdl.SDL_GPU_TEXTUREUSAGE_SAMPLER,
         bloom_width,
         bloom_height
     )
-    return runtime.godray != none
+    if runtime.godray == none {
+        return false
+    }
+    runtime.flare = create_texture(
+        runtime,
+        runtime.render_format,
+        sdl.SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | sdl.SDL_GPU_TEXTUREUSAGE_SAMPLER,
+        bloom_width,
+        bloom_height
+    )
+    return runtime.flare != none
 }
 
 pub fn create_pipeline(
@@ -742,6 +1086,198 @@ pub fn create_scene_pipeline(
     return pipeline
 }
 
+/// Instanced scene pipeline: slot 0 is the procedural mesh, slot 1 supplies a
+/// per-instance model matrix plus color/glow and reflectivity/alpha vectors.
+pub fn create_instanced_pipeline(
+    runtime: ref Renderer,
+    vs_path: ref u8,
+    fs_path: ref u8,
+    color_format: i32
+) ref void = trust {
+    val vs: ref void = load_shader(
+        runtime,
+        vs_path,
+        sdl.SDL_GPU_SHADERSTAGE_VERTEX,
+        0 as u32,
+        1 as u32
+    )
+    if vs == none {
+        return none as ref void
+    }
+    val fs: ref void = load_shader(
+        runtime,
+        fs_path,
+        sdl.SDL_GPU_SHADERSTAGE_FRAGMENT,
+        0 as u32,
+        1 as u32
+    )
+    if fs == none {
+        sdl.SDL_ReleaseGPUShader(runtime.device, vs)
+        return none as ref void
+    }
+    val buffers: ref void = @alloc(2 as usize * @sizeof(sdl.SDLGPUVertexBufferDescription) as usize)
+    val b0: mut ref sdl.SDLGPUVertexBufferDescription = buffers as mut ref sdl.SDLGPUVertexBufferDescription
+    val b1: mut ref sdl.SDLGPUVertexBufferDescription = @ptradd(
+        buffers,
+        @sizeof(sdl.SDLGPUVertexBufferDescription) as usize
+    ) as mut ref sdl.SDLGPUVertexBufferDescription
+    b0.slot = 0 as u32
+    b0.pitch = 32 as u32
+    b0.input_rate = sdl.SDL_GPU_VERTEXINPUTRATE_VERTEX
+    b0.instance_step_rate = 0 as u32
+    b1.slot = 1 as u32
+    b1.pitch = 96 as u32
+    b1.input_rate = sdl.SDL_GPU_VERTEXINPUTRATE_INSTANCE
+    b1.instance_step_rate = 0 as u32
+    val attrs: ref void = @alloc(9 as usize * @sizeof(sdl.SDLGPUVertexAttribute) as usize)
+    val a0: mut ref sdl.SDLGPUVertexAttribute = attrs as mut ref sdl.SDLGPUVertexAttribute
+    val a1: mut ref sdl.SDLGPUVertexAttribute = @ptradd(attrs, @sizeof(sdl.SDLGPUVertexAttribute) as usize) as mut ref sdl.SDLGPUVertexAttribute
+    val a2: mut ref sdl.SDLGPUVertexAttribute = @ptradd(attrs, (2 as usize) * (@sizeof(sdl.SDLGPUVertexAttribute) as usize)) as mut ref sdl.SDLGPUVertexAttribute
+    val a3: mut ref sdl.SDLGPUVertexAttribute = @ptradd(attrs, (3 as usize) * (@sizeof(sdl.SDLGPUVertexAttribute) as usize)) as mut ref sdl.SDLGPUVertexAttribute
+    val a4: mut ref sdl.SDLGPUVertexAttribute = @ptradd(attrs, (4 as usize) * (@sizeof(sdl.SDLGPUVertexAttribute) as usize)) as mut ref sdl.SDLGPUVertexAttribute
+    val a5: mut ref sdl.SDLGPUVertexAttribute = @ptradd(attrs, (5 as usize) * (@sizeof(sdl.SDLGPUVertexAttribute) as usize)) as mut ref sdl.SDLGPUVertexAttribute
+    val a6: mut ref sdl.SDLGPUVertexAttribute = @ptradd(attrs, (6 as usize) * (@sizeof(sdl.SDLGPUVertexAttribute) as usize)) as mut ref sdl.SDLGPUVertexAttribute
+    val a7: mut ref sdl.SDLGPUVertexAttribute = @ptradd(attrs, (7 as usize) * (@sizeof(sdl.SDLGPUVertexAttribute) as usize)) as mut ref sdl.SDLGPUVertexAttribute
+    val a8: mut ref sdl.SDLGPUVertexAttribute = @ptradd(attrs, (8 as usize) * (@sizeof(sdl.SDLGPUVertexAttribute) as usize)) as mut ref sdl.SDLGPUVertexAttribute
+    a0.location = 0 as u32
+    a0.buffer_slot = 0 as u32
+    a0.format = sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3
+    a0.offset = 0 as u32
+    a1.location = 1 as u32
+    a1.buffer_slot = 0 as u32
+    a1.format = sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3
+    a1.offset = 12 as u32
+    a2.location = 2 as u32
+    a2.buffer_slot = 0 as u32
+    a2.format = sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2
+    a2.offset = 24 as u32
+    a3.location = 3 as u32
+    a3.buffer_slot = 1 as u32
+    a3.format = sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4
+    a3.offset = 0 as u32
+    a4.location = 4 as u32
+    a4.buffer_slot = 1 as u32
+    a4.format = sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4
+    a4.offset = 16 as u32
+    a5.location = 5 as u32
+    a5.buffer_slot = 1 as u32
+    a5.format = sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4
+    a5.offset = 32 as u32
+    a6.location = 6 as u32
+    a6.buffer_slot = 1 as u32
+    a6.format = sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4
+    a6.offset = 48 as u32
+    a7.location = 7 as u32
+    a7.buffer_slot = 1 as u32
+    a7.format = sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4
+    a7.offset = 64 as u32
+    a8.location = 8 as u32
+    a8.buffer_slot = 1 as u32
+    a8.format = sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4
+    a8.offset = 80 as u32
+    val color_target: mut sdl.SDLGPUColorTargetDescription = {
+        format: color_format,
+        blend_state: {
+            src_color_blendfactor: 0 as i32,
+            dst_color_blendfactor: 0 as i32,
+            color_blend_op: 0 as i32,
+            src_alpha_blendfactor: 0 as i32,
+            dst_alpha_blendfactor: 0 as i32,
+            alpha_blend_op: 0 as i32,
+            color_write_mask: 0 as u8,
+            enable_blend: false,
+            enable_color_write_mask: false,
+            padding1: 0 as u8,
+            padding2: 0 as u8
+        }
+    }
+    val info: mut sdl.SDLGPUGraphicsPipelineCreateInfo = {
+        vertex_shader: vs,
+        fragment_shader: fs,
+        vertex_input_state: {
+            vertex_buffer_descriptions: none as ref sdl.SDLGPUVertexBufferDescription,
+            num_vertex_buffers: 0 as u32,
+            vertex_attributes: none as ref sdl.SDLGPUVertexAttribute,
+            num_vertex_attributes: 0 as u32
+        },
+        primitive_type: 0 as i32,
+        rasterizer_state: {
+            fill_mode: 0 as i32,
+            cull_mode: 0 as i32,
+            front_face: 0 as i32,
+            depth_bias_constant_factor: 0.0 as f32,
+            depth_bias_clamp: 0.0 as f32,
+            depth_bias_slope_factor: 0.0 as f32,
+            enable_depth_bias: false,
+            enable_depth_clip: false,
+            padding1: 0 as u8,
+            padding2: 0 as u8
+        },
+        multisample_state: {
+            sample_count: 0 as i32,
+            sample_mask: 0 as u32,
+            enable_mask: false,
+            enable_alpha_to_coverage: false,
+            padding2: 0 as u8,
+            padding3: 0 as u8
+        },
+        depth_stencil_state: {
+            compare_op: 0 as i32,
+            back_stencil_state: {
+                fail_op: 0 as i32,
+                pass_op: 0 as i32,
+                depth_fail_op: 0 as i32,
+                compare_op: 0 as i32
+            },
+            front_stencil_state: {
+                fail_op: 0 as i32,
+                pass_op: 0 as i32,
+                depth_fail_op: 0 as i32,
+                compare_op: 0 as i32
+            },
+            compare_mask: 0 as u8,
+            write_mask: 0 as u8,
+            enable_depth_test: true,
+            enable_depth_write: true,
+            enable_stencil_test: false,
+            padding1: 0 as u8,
+            padding2: 0 as u8,
+            padding3: 0 as u8
+        },
+        target_info: {
+            color_target_descriptions: none as ref sdl.SDLGPUColorTargetDescription,
+            num_color_targets: 0 as u32,
+            depth_stencil_format: 0 as i32,
+            has_depth_stencil_target: false,
+            padding1: 0 as u8,
+            padding2: 0 as u8,
+            padding3: 0 as u8
+        },
+        props: 0 as u32
+    }
+    info.vertex_input_state.vertex_buffer_descriptions = buffers as ref sdl.SDLGPUVertexBufferDescription
+    info.vertex_input_state.num_vertex_buffers = 2 as u32
+    info.vertex_input_state.vertex_attributes = attrs as ref sdl.SDLGPUVertexAttribute
+    info.vertex_input_state.num_vertex_attributes = 9 as u32
+    info.primitive_type = sdl.SDL_GPU_PRIMITIVETYPE_TRIANGLELIST
+    info.rasterizer_state.fill_mode = sdl.SDL_GPU_FILLMODE_FILL
+    info.rasterizer_state.cull_mode = sdl.SDL_GPU_CULLMODE_NONE
+    info.rasterizer_state.front_face = sdl.SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE
+    info.rasterizer_state.enable_depth_clip = true
+    info.multisample_state.sample_count = sdl.SDL_GPU_SAMPLECOUNT_1
+    info.depth_stencil_state.compare_op = sdl.SDL_GPU_COMPAREOP_LESS_OR_EQUAL
+    info.target_info.color_target_descriptions = @addr(color_target)
+    info.target_info.num_color_targets = 1 as u32
+    info.target_info.depth_stencil_format = sdl.SDL_GPU_TEXTUREFORMAT_D32_FLOAT
+    info.target_info.has_depth_stencil_target = true
+    val pipeline: ref void = sdl.SDL_CreateGPUGraphicsPipeline(runtime.device, @addr(info))
+    sdl.SDL_ReleaseGPUShader(runtime.device, fs)
+    sdl.SDL_ReleaseGPUShader(runtime.device, vs)
+    @free(attrs)
+    @free(buffers)
+    return pipeline
+}
+
 /// UI pipeline: same vertex layout/shader as the scene pipeline, but no depth
 /// target and alpha blending so HUD quads can be drawn directly to the swapchain.
 pub fn create_ui_pipeline(
@@ -845,7 +1381,8 @@ pub fn create_postprocess_pipeline(
     fs_path: ref u8,
     color_format: i32,
     fragment_samplers: u32,
-    fragment_uniforms: u32
+    fragment_uniforms: u32,
+    has_depth: bool
 ) ref void = trust {
     val vs: ref void = load_shader(
         runtime,
@@ -958,7 +1495,10 @@ pub fn create_postprocess_pipeline(
     info.multisample_state.sample_count = sdl.SDL_GPU_SAMPLECOUNT_1
     info.target_info.color_target_descriptions = @addr(color_target)
     info.target_info.num_color_targets = 1 as u32
-    info.target_info.has_depth_stencil_target = false
+    if has_depth {
+        info.target_info.depth_stencil_format = sdl.SDL_GPU_TEXTUREFORMAT_D32_FLOAT
+        info.target_info.has_depth_stencil_target = true
+    }
     val pipeline: ref void = sdl.SDL_CreateGPUGraphicsPipeline(runtime.device, @addr(info))
     sdl.SDL_ReleaseGPUShader(runtime.device, fs)
     sdl.SDL_ReleaseGPUShader(runtime.device, vs)
@@ -1055,9 +1595,30 @@ pub fn create_pipelines(
         runtime,
         shader_cfg.scene.vertex_path,
         shader_cfg.scene.fragment_path,
-        runtime.swapchain_format
+        runtime.render_format
     )
     if runtime.scene_pipeline == none {
+        return false
+    }
+    runtime.instanced_pipeline = create_instanced_pipeline(
+        runtime,
+        shader_cfg.instanced.vertex_path,
+        shader_cfg.instanced.fragment_path,
+        runtime.render_format
+    )
+    if runtime.instanced_pipeline == none {
+        return false
+    }
+    runtime.sky_pipeline = create_postprocess_pipeline(
+        runtime,
+        shader_cfg.sky.vertex_path,
+        shader_cfg.sky.fragment_path,
+        runtime.render_format,
+        0 as u32,
+        1 as u32,
+        true
+    )
+    if runtime.sky_pipeline == none {
         return false
     }
     runtime.ui_pipeline = create_ui_pipeline(
@@ -1073,7 +1634,7 @@ pub fn create_pipelines(
         runtime,
         shader_cfg.floor.vertex_path,
         shader_cfg.floor.fragment_path,
-        runtime.swapchain_format,
+        runtime.render_format,
         true,
         sdl.SDL_GPU_BLENDFACTOR_SRC_ALPHA,
         sdl.SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
@@ -1089,14 +1650,14 @@ pub fn create_pipelines(
         runtime,
         shader_cfg.glow.vertex_path,
         shader_cfg.glow.fragment_path,
-        runtime.swapchain_format,
+        runtime.render_format,
         true,
         sdl.SDL_GPU_BLENDFACTOR_SRC_ALPHA,
         sdl.SDL_GPU_BLENDFACTOR_ONE,
         sdl.SDL_GPU_BLENDFACTOR_ONE,
         sdl.SDL_GPU_BLENDFACTOR_ONE,
         false,
-        0 as u32
+        1 as u32
     )
     if runtime.glow_pipeline == none {
         return false
@@ -1105,9 +1666,10 @@ pub fn create_pipelines(
         runtime,
         shader_cfg.post_process.threshold.vertex_path,
         shader_cfg.post_process.threshold.fragment_path,
-        runtime.swapchain_format,
+        runtime.render_format,
         1 as u32,
-        1 as u32
+        1 as u32,
+        false
     )
     if runtime.bloom_threshold_pipeline == none {
         return false
@@ -1116,9 +1678,10 @@ pub fn create_pipelines(
         runtime,
         shader_cfg.post_process.blur.vertex_path,
         shader_cfg.post_process.blur.fragment_path,
-        runtime.swapchain_format,
+        runtime.render_format,
         1 as u32,
-        1 as u32
+        1 as u32,
+        false
     )
     if runtime.bloom_blur_pipeline == none {
         return false
@@ -1127,11 +1690,48 @@ pub fn create_pipelines(
         runtime,
         shader_cfg.post_process.godrays.vertex_path,
         shader_cfg.post_process.godrays.fragment_path,
-        runtime.swapchain_format,
+        runtime.render_format,
+        2 as u32,
         1 as u32,
-        1 as u32
+        false
     )
     if runtime.godray_pipeline == none {
+        return false
+    }
+    runtime.sharpen_pipeline = create_postprocess_pipeline(
+        runtime,
+        shader_cfg.post_process.sharpen.vertex_path,
+        shader_cfg.post_process.sharpen.fragment_path,
+        runtime.render_format,
+        1 as u32,
+        1 as u32,
+        false
+    )
+    if runtime.sharpen_pipeline == none {
+        return false
+    }
+    runtime.flare_pipeline = create_postprocess_pipeline(
+        runtime,
+        shader_cfg.post_process.flare.vertex_path,
+        shader_cfg.post_process.flare.fragment_path,
+        runtime.render_format,
+        1 as u32,
+        1 as u32,
+        false
+    )
+    if runtime.flare_pipeline == none {
+        return false
+    }
+    runtime.taa_pipeline = create_postprocess_pipeline(
+        runtime,
+        shader_cfg.post_process.taa.vertex_path,
+        shader_cfg.post_process.taa.fragment_path,
+        runtime.render_format,
+        2 as u32,
+        1 as u32,
+        false
+    )
+    if runtime.taa_pipeline == none {
         return false
     }
     runtime.post_pipeline = create_postprocess_pipeline(
@@ -1139,8 +1739,9 @@ pub fn create_pipelines(
         shader_cfg.post_process.composite.vertex_path,
         shader_cfg.post_process.composite.fragment_path,
         runtime.swapchain_format,
-        2 as u32,
-        1 as u32
+        5 as u32,
+        1 as u32,
+        false
     )
     if runtime.post_pipeline == none {
         return false
@@ -1149,7 +1750,7 @@ pub fn create_pipelines(
         runtime,
         shader_cfg.water.vertex_path,
         shader_cfg.water.fragment_path,
-        runtime.swapchain_format,
+        runtime.render_format,
         true,
         sdl.SDL_GPU_BLENDFACTOR_SRC_ALPHA,
         sdl.SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
@@ -1165,6 +1766,26 @@ pub fn destroy_pipelines(runtime: mut ref Renderer) void = trust {
     if runtime.post_pipeline != none {
         sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.post_pipeline)
         runtime.post_pipeline = none
+    }
+    if runtime.taa_pipeline != none {
+        sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.taa_pipeline)
+        runtime.taa_pipeline = none
+    }
+    if runtime.flare_pipeline != none {
+        sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.flare_pipeline)
+        runtime.flare_pipeline = none
+    }
+    if runtime.sharpen_pipeline != none {
+        sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.sharpen_pipeline)
+        runtime.sharpen_pipeline = none
+    }
+    if runtime.sky_pipeline != none {
+        sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.sky_pipeline)
+        runtime.sky_pipeline = none
+    }
+    if runtime.instanced_pipeline != none {
+        sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.instanced_pipeline)
+        runtime.instanced_pipeline = none
     }
     if runtime.bloom_blur_pipeline != none {
         sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.bloom_blur_pipeline)
@@ -1393,9 +2014,17 @@ pub fn destroy_runtime_resources(runtime: mut ref Renderer) void = trust {
         sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.normal_map_texture)
         runtime.normal_map_texture = none
     }
+    if runtime.lut_texture != none {
+        sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.lut_texture)
+        runtime.lut_texture = none
+    }
     if runtime.repeat_sampler != none {
         sdl.SDL_ReleaseGPUSampler(runtime.device, runtime.repeat_sampler)
         runtime.repeat_sampler = none
+    }
+    if runtime.nearest_sampler != none {
+        sdl.SDL_ReleaseGPUSampler(runtime.device, runtime.nearest_sampler)
+        runtime.nearest_sampler = none
     }
     if runtime.linear_sampler != none {
         sdl.SDL_ReleaseGPUSampler(runtime.device, runtime.linear_sampler)
@@ -1557,6 +2186,20 @@ pub fn create(
     runtime.sky_horizon = math.vec3(0.05 as f32, 0.08 as f32, 0.14 as f32)
     runtime.ambient = 0.30 as f32
     runtime.lights = []
+    runtime.sun_enabled = false
+    runtime.sun_direction = math.vec3(0.25 as f32, 0.55 as f32, -0.80 as f32)
+    runtime.sun_color = math.vec3(1.0 as f32, 0.94 as f32, 0.80 as f32)
+    runtime.sun_size = 0.018 as f32
+    runtime.sun_intensity = 5.0 as f32
+    runtime.fog_enabled = false
+    runtime.fog_color = math.vec3(0.55 as f32, 0.62 as f32, 0.72 as f32)
+    runtime.fog_density = 0.025 as f32
+    runtime.fog_height = 0.0 as f32
+    runtime.fog_falloff = 0.12 as f32
+    runtime.jitter_x = 0.0 as f32
+    runtime.jitter_y = 0.0 as f32
+    runtime.taa_valid = false
+    runtime.taa_parity = false
     runtime.window = sdl.SDL_CreateWindow(title, width, height, 0 as u64)
     if runtime.window == none {
         destroy(runtime as ref void)
@@ -1572,6 +2215,7 @@ pub fn create(
         return none as ref void
     }
     runtime.swapchain_format = sdl.SDL_GetGPUSwapchainTextureFormat(runtime.device, runtime.window)
+    runtime.render_format = sdl.SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT
     if !create_pipelines(runtime, shader_cfg) {
         destroy(runtime as ref void)
         return none as ref void
@@ -1606,6 +2250,26 @@ pub fn create(
         destroy(runtime as ref void)
         return none as ref void
     }
+    val nearest_info: mut sdl.SDLGPUSamplerCreateInfo = {
+        min_filter: 0 as i32, mag_filter: 0 as i32, mipmap_mode: 0 as i32,
+        address_mode_u: 0 as i32, address_mode_v: 0 as i32, address_mode_w: 0 as i32,
+        mip_lod_bias: 0.0 as f32, max_anisotropy: 0.0 as f32, compare_op: 0 as i32,
+        min_lod: 0.0 as f32, max_lod: 0.0 as f32,
+        enable_anisotropy: false, enable_compare: false,
+        padding1: 0 as u8, padding2: 0 as u8, props: 0 as u32
+    }
+    nearest_info.min_filter = sdl.SDL_GPU_FILTER_NEAREST
+    nearest_info.mag_filter = sdl.SDL_GPU_FILTER_NEAREST
+    nearest_info.mipmap_mode = sdl.SDL_GPU_SAMPLERMIPMAPMODE_NEAREST
+    nearest_info.address_mode_u = sdl.SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE
+    nearest_info.address_mode_v = sdl.SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE
+    nearest_info.address_mode_w = sdl.SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE
+    nearest_info.max_lod = 1.0 as f32
+    runtime.nearest_sampler = sdl.SDL_CreateGPUSampler(runtime.device, @addr(nearest_info))
+    if runtime.nearest_sampler == none {
+        destroy(runtime as ref void)
+        return none as ref void
+    }
     val repeat_info: mut sdl.SDLGPUSamplerCreateInfo = {
         min_filter: 0 as i32, mag_filter: 0 as i32, mipmap_mode: 0 as i32,
         address_mode_u: 0 as i32, address_mode_v: 0 as i32, address_mode_w: 0 as i32,
@@ -1627,6 +2291,11 @@ pub fn create(
         return none as ref void
     }
     if !recreate_render_targets(runtime, width as u32, height as u32) {
+        destroy(runtime as ref void)
+        return none as ref void
+    }
+    runtime.lut_texture = create_default_lut(runtime)
+    if runtime.lut_texture == none {
         destroy(runtime as ref void)
         return none as ref void
     }
@@ -2012,11 +2681,117 @@ pub fn apply_post_process_with_light(
     }
 
     val active: bool = enabled && settings.enabled
+    val sharpen_active: bool = active && settings.sharpen.enabled && settings.sharpen.strength > (0.0 as f32) && runtime.sharpen_pipeline != none && runtime.sharpen != none && runtime.linear_sampler != none
+    val taa_active: bool = active && settings.taa.enabled && runtime.taa_pipeline != none && runtime.taa_a != none && runtime.taa_b != none && runtime.linear_sampler != none
     val bloom_active: bool = active && settings.bloom.enabled && runtime.bloom_threshold_pipeline != none && runtime.bloom_blur_pipeline != none && runtime.bloom_a != none && runtime.bloom_b != none && runtime.linear_sampler != none
     val godray_active: bool = active && settings.godrays.enabled && light_visible && runtime.godray_pipeline != none && runtime.godray != none && runtime.linear_sampler != none
+    val flare_active: bool = active && settings.flare.enabled && light_visible && runtime.flare_pipeline != none && runtime.flare != none && runtime.linear_sampler != none
+    val lut_active: bool = active && settings.color_grade.enabled && settings.color_grade.strength > (0.0 as f32) && runtime.lut_texture != none && runtime.linear_sampler != none
 
+    if !taa_active {
+        runtime.taa_valid = false
+    }
+
+    val scene_source: mut ref void = runtime.scene_color
     val bloom_width: u32 = half_extent(runtime.render_width)
     val bloom_height: u32 = half_extent(runtime.render_height)
+
+    if sharpen_active {
+        if !begin_pass_no_depth_sized(
+            runtime,
+            runtime.sharpen,
+            runtime.render_width,
+            runtime.render_height
+        ) {
+            return false
+        }
+        sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.sharpen_pipeline)
+        val sharpen_binding: mut sdl.SDLGPUTextureSamplerBinding = {
+            texture: scene_source,
+            sampler: runtime.linear_sampler
+        }
+        sdl.SDL_BindGPUFragmentSamplers(
+            runtime.current_pass,
+            0 as u32,
+            @addr(sharpen_binding),
+            1 as u32
+        )
+        val sharpen_uniforms: mut SharpenUniforms = {
+            params: {
+                x: settings.sharpen.strength,
+                y: (1.0 as f32) / (runtime.render_width as f32),
+                z: (1.0 as f32) / (runtime.render_height as f32),
+                w: 0.0 as f32
+            }
+        }
+        sdl.SDL_PushGPUFragmentUniformData(
+            runtime.command_buffer,
+            0 as u32,
+            @addr(sharpen_uniforms) as ref void,
+            @sizeof(SharpenUniforms) as u32
+        )
+        sdl.SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
+        end_pass(runtime as ref void)
+        scene_source = runtime.sharpen
+    }
+
+    if taa_active {
+        val history_texture: mut ref void = runtime.taa_a
+        val output_texture: mut ref void = runtime.taa_b
+        if runtime.taa_parity {
+            history_texture = runtime.taa_b
+            output_texture = runtime.taa_a
+        }
+        if !begin_pass_no_depth_sized(
+            runtime,
+            output_texture,
+            runtime.render_width,
+            runtime.render_height
+        ) {
+            return false
+        }
+        sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.taa_pipeline)
+        val bindings: ref void = @alloc(2 as usize * @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize)
+        val t0: mut ref sdl.SDLGPUTextureSamplerBinding = bindings as mut ref sdl.SDLGPUTextureSamplerBinding
+        val t1: mut ref sdl.SDLGPUTextureSamplerBinding = @ptradd(
+            bindings,
+            @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize
+        ) as mut ref sdl.SDLGPUTextureSamplerBinding
+        t0.texture = scene_source
+        t0.sampler = runtime.linear_sampler
+        t1.texture = history_texture
+        t1.sampler = runtime.linear_sampler
+        sdl.SDL_BindGPUFragmentSamplers(
+            runtime.current_pass,
+            0 as u32,
+            bindings as ref sdl.SDLGPUTextureSamplerBinding,
+            2 as u32
+        )
+        @free(bindings)
+        val history_valid: mut f32 = 0.0 as f32
+        if runtime.taa_valid {
+            history_valid = 1.0 as f32
+        }
+        val taa_uniforms: mut TaaUniforms = {
+            params: {
+                x: settings.taa.blend,
+                y: history_valid,
+                z: (1.0 as f32) / (runtime.render_width as f32),
+                w: (1.0 as f32) / (runtime.render_height as f32)
+            }
+        }
+        sdl.SDL_PushGPUFragmentUniformData(
+            runtime.command_buffer,
+            0 as u32,
+            @addr(taa_uniforms) as ref void,
+            @sizeof(TaaUniforms) as u32
+        )
+        sdl.SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
+        end_pass(runtime as ref void)
+        scene_source = output_texture
+        runtime.taa_parity = !runtime.taa_parity
+        runtime.taa_valid = true
+    }
 
     if bloom_active {
         if !begin_pass_no_depth_sized(runtime, runtime.bloom_a, bloom_width, bloom_height) {
@@ -2024,7 +2799,7 @@ pub fn apply_post_process_with_light(
         }
         sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.bloom_threshold_pipeline)
         val scene_binding: mut sdl.SDLGPUTextureSamplerBinding = {
-            texture: runtime.scene_color,
+            texture: scene_source,
             sampler: runtime.linear_sampler
         }
         sdl.SDL_BindGPUFragmentSamplers(
@@ -2093,16 +2868,31 @@ pub fn apply_post_process_with_light(
             return false
         }
         sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.godray_pipeline)
-        val scene_binding: mut sdl.SDLGPUTextureSamplerBinding = {
-            texture: runtime.scene_color,
-            sampler: runtime.linear_sampler
+        val bindings_raw: ref void = @alloc(2 as usize * @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize)
+        val g0: mut ref sdl.SDLGPUTextureSamplerBinding = bindings_raw as mut ref sdl.SDLGPUTextureSamplerBinding
+        val g1: mut ref sdl.SDLGPUTextureSamplerBinding = @ptradd(
+            bindings_raw,
+            @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize
+        ) as mut ref sdl.SDLGPUTextureSamplerBinding
+        val depth_on: mut f32 = 0.0 as f32
+        val depth_texture: mut ref void = scene_source
+        val depth_sampler: mut ref void = runtime.linear_sampler
+        if settings.godrays.depth_occlusion && runtime.scene_depth != none && runtime.nearest_sampler != none {
+            depth_on = 1.0 as f32
+            depth_texture = runtime.scene_depth
+            depth_sampler = runtime.nearest_sampler
         }
+        g0.texture = scene_source
+        g0.sampler = runtime.linear_sampler
+        g1.texture = depth_texture
+        g1.sampler = depth_sampler
         sdl.SDL_BindGPUFragmentSamplers(
             runtime.current_pass,
             0 as u32,
-            @addr(scene_binding),
-            1 as u32
+            bindings_raw as ref sdl.SDLGPUTextureSamplerBinding,
+            2 as u32
         )
+        @free(bindings_raw)
         val samples_raw: i32 = settings.godrays.samples
         val samples: mut i32 = samples_raw
         if samples < (1 as i32) {
@@ -2128,7 +2918,7 @@ pub fn apply_post_process_with_light(
                 x: settings.godrays.color.x,
                 y: settings.godrays.color.y,
                 z: settings.godrays.color.z,
-                w: 0.0 as f32
+                w: depth_on
             }
         }
         sdl.SDL_PushGPUFragmentUniformData(
@@ -2136,6 +2926,51 @@ pub fn apply_post_process_with_light(
             0 as u32,
             @addr(godray_uniforms) as ref void,
             @sizeof(GodrayUniforms) as u32
+        )
+        sdl.SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
+        end_pass(runtime as ref void)
+    }
+
+    if flare_active {
+        if !begin_pass_no_depth_sized(runtime, runtime.flare, bloom_width, bloom_height) {
+            return false
+        }
+        sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.flare_pipeline)
+        val flare_binding: mut sdl.SDLGPUTextureSamplerBinding = {
+            texture: scene_source,
+            sampler: runtime.linear_sampler
+        }
+        sdl.SDL_BindGPUFragmentSamplers(
+            runtime.current_pass,
+            0 as u32,
+            @addr(flare_binding),
+            1 as u32
+        )
+        val flare_uniforms: mut FlareUniforms = {
+            light: {
+                x: light_screen_x,
+                y: light_screen_y,
+                z: settings.flare.intensity,
+                w: settings.flare.threshold
+            },
+            params: {
+                x: settings.flare.width,
+                y: settings.flare.ghosts,
+                z: (runtime.render_width as f32) / (runtime.render_height as f32),
+                w: 1.0 as f32
+            },
+            color: {
+                x: settings.flare.color.x,
+                y: settings.flare.color.y,
+                z: settings.flare.color.z,
+                w: 0.0 as f32
+            }
+        }
+        sdl.SDL_PushGPUFragmentUniformData(
+            runtime.command_buffer,
+            0 as u32,
+            @addr(flare_uniforms) as ref void,
+            @sizeof(FlareUniforms) as u32
         )
         sdl.SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
         end_pass(runtime as ref void)
@@ -2151,15 +2986,23 @@ pub fn apply_post_process_with_light(
     }
     sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.post_pipeline)
 
-    val bloom_texture: mut ref void = runtime.scene_color
+    val bloom_texture: mut ref void = scene_source
     if bloom_active {
         bloom_texture = runtime.bloom_a
     }
-    val godray_texture: mut ref void = runtime.scene_color
+    val godray_texture: mut ref void = scene_source
     if godray_active {
         godray_texture = runtime.godray
     }
-    val bindings_raw: ref void = @alloc(3 as usize * @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize)
+    val flare_texture: mut ref void = scene_source
+    if flare_active {
+        flare_texture = runtime.flare
+    }
+    val lut_texture: mut ref void = runtime.lut_texture
+    if lut_texture == none {
+        lut_texture = runtime.scene_color
+    }
+    val bindings_raw: ref void = @alloc(5 as usize * @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize)
     val b0: mut ref sdl.SDLGPUTextureSamplerBinding = bindings_raw as mut ref sdl.SDLGPUTextureSamplerBinding
     val b1: mut ref sdl.SDLGPUTextureSamplerBinding = @ptradd(
         bindings_raw,
@@ -2169,17 +3012,29 @@ pub fn apply_post_process_with_light(
         bindings_raw,
         (2 as usize) * (@sizeof(sdl.SDLGPUTextureSamplerBinding) as usize)
     ) as mut ref sdl.SDLGPUTextureSamplerBinding
-    b0.texture = runtime.scene_color
+    val b3: mut ref sdl.SDLGPUTextureSamplerBinding = @ptradd(
+        bindings_raw,
+        (3 as usize) * (@sizeof(sdl.SDLGPUTextureSamplerBinding) as usize)
+    ) as mut ref sdl.SDLGPUTextureSamplerBinding
+    val b4: mut ref sdl.SDLGPUTextureSamplerBinding = @ptradd(
+        bindings_raw,
+        (4 as usize) * (@sizeof(sdl.SDLGPUTextureSamplerBinding) as usize)
+    ) as mut ref sdl.SDLGPUTextureSamplerBinding
+    b0.texture = scene_source
     b0.sampler = runtime.linear_sampler
     b1.texture = bloom_texture
     b1.sampler = runtime.linear_sampler
     b2.texture = godray_texture
     b2.sampler = runtime.linear_sampler
+    b3.texture = flare_texture
+    b3.sampler = runtime.linear_sampler
+    b4.texture = lut_texture
+    b4.sampler = runtime.linear_sampler
     sdl.SDL_BindGPUFragmentSamplers(
         runtime.current_pass,
         0 as u32,
         bindings_raw as ref sdl.SDLGPUTextureSamplerBinding,
-        3 as u32
+        5 as u32
     )
     @free(bindings_raw)
 
@@ -2191,6 +3046,15 @@ pub fn apply_post_process_with_light(
     if godray_active {
         godray_on = 1.0 as f32
     }
+    val flare_on: mut f32 = 0.0 as f32
+    if flare_active {
+        flare_on = 1.0 as f32
+    }
+    val lut_strength: mut f32 = 0.0 as f32
+    if lut_active {
+        lut_strength = settings.color_grade.strength
+    }
+    val tonemap_value: f32 = settings.tonemap as f32
     val vignette_on: mut f32 = 0.0 as f32
     if active && settings.vignette.enabled {
         vignette_on = 1.0 as f32
@@ -2235,6 +3099,12 @@ pub fn apply_post_process_with_light(
             y: settings.vignette.color.y,
             z: settings.vignette.color.z,
             w: 0.0 as f32
+        },
+        params: {
+            x: tonemap_value,
+            y: lut_strength,
+            z: flare_on,
+            w: 0.0 as f32
         }
     }
     sdl.SDL_PushGPUFragmentUniformData(
@@ -2245,6 +3115,63 @@ pub fn apply_post_process_with_light(
     )
     sdl.SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
     return true
+}
+
+fn half_to_f32(h: u16) f32 = {
+    val sign_bit: u16 = (h >> (15 as u32)) & (1 as u16)
+    val exponent: u16 = (h >> (10 as u32)) & (31 as u16)
+    val mantissa: u16 = h & (1023 as u16)
+    val sign_value: mut f32 = 1.0 as f32
+    if sign_bit != (0 as u16) {
+        sign_value = -1.0 as f32
+    }
+    if exponent == (0 as u16) {
+        if mantissa == (0 as u16) {
+            return 0.0 as f32
+        }
+        return sign_value * ((mantissa as f32) / (1024.0 as f32))
+            * (stdmath.pow_f64(2.0 as f64, -14.0 as f64) as f32)
+    }
+    if exponent == (31 as u16) {
+        return sign_value * 65504.0 as f32
+    }
+    return sign_value * ((1.0 as f32) + (mantissa as f32) / (1024.0 as f32))
+        * (stdmath.pow_f64(2.0 as f64, (exponent as f64) - 15.0) as f32)
+}
+
+fn write_mapped_ppm_hdr(runtime: ref Renderer, tbuf: ref void, path: ref u8) void = trust {
+    val w: u32 = runtime.render_width
+    val h: u32 = runtime.render_height
+    val mapped: ref u8 = sdl.SDL_MapGPUTransferBuffer(runtime.device, tbuf, false) as ref u8
+    if mapped != none {
+        val rgb: ref u8 = @alloc((w * h * (3 as u32)) as usize) as ref u8
+        val i: mut u32 = 0 as u32
+        for i < (w * h) {
+            val o: usize = (i as usize) * (8 as usize)
+            val r: f32 = half_to_f32(@load16(@ptradd(mapped, o) as ref u16))
+            val g: f32 = half_to_f32(@load16(@ptradd(mapped, o + (2 as usize)) as ref u16))
+            val b: f32 = half_to_f32(@load16(@ptradd(mapped, o + (4 as usize)) as ref u16))
+            val r_ldr: f32 = r / ((1.0 as f32) + r)
+            val g_ldr: f32 = g / ((1.0 as f32) + g)
+            val b_ldr: f32 = b / ((1.0 as f32) + b)
+            val d: usize = (i as usize) * (3 as usize)
+            @store8(@ptradd(rgb, d), (stdmath.pow_f64(clamp01(r_ldr) as f64, 1.0 / 2.2) * 255.0) as u8)
+            @store8(@ptradd(rgb, d + (1 as usize)), (stdmath.pow_f64(clamp01(g_ldr) as f64, 1.0 / 2.2) * 255.0) as u8)
+            @store8(@ptradd(rgb, d + (2 as usize)), (stdmath.pow_f64(clamp01(b_ldr) as f64, 1.0 / 2.2) * 255.0) as u8)
+            i = i + (1 as u32)
+        }
+        val file: ref void = sdl.fopen(path, "wb")
+        if file != none {
+            val hdr: ref u8 = @alloc(64 as usize) as ref u8
+            @snprintf(hdr, 64 as usize, "P6\n{lld} {lld}\n255\n", {w as i64, h as i64})
+            sdl.fwrite(hdr as ref void, 1 as usize, string.len_raw(hdr), file)
+            sdl.fwrite(rgb as ref void, 1 as usize, (w * h * (3 as u32)) as usize, file)
+            sdl.fclose(file)
+            @free(hdr)
+        }
+        @free(rgb)
+        sdl.SDL_UnmapGPUTransferBuffer(runtime.device, tbuf)
+    }
 }
 
 fn write_mapped_ppm(runtime: ref Renderer, tbuf: ref void, path: ref u8) void = trust {
@@ -2283,7 +3210,7 @@ pub fn debug_dump_scene(runtime_raw: ref void, path: ref u8) void = trust {
     val runtime: ref Renderer = runtime_raw as ref Renderer
     val w: u32 = runtime.render_width
     val h: u32 = runtime.render_height
-    val byte_size: u32 = w * h * (4 as u32)
+    val byte_size: u32 = w * h * (8 as u32)
     val info: mut sdl.SDLGPUTransferBufferCreateInfo = { usage: sdl.SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD, size: byte_size, props: 0 as u32 }
     val tbuf: ref void = sdl.SDL_CreateGPUTransferBuffer(runtime.device, @addr(info))
     if tbuf == none {
@@ -2297,7 +3224,7 @@ pub fn debug_dump_scene(runtime_raw: ref void, path: ref u8) void = trust {
     sdl.SDL_EndGPUCopyPass(pass)
     sdl.SDL_SubmitGPUCommandBuffer(cmd)
     sdl.SDL_WaitForGPUIdle(runtime.device)
-    write_mapped_ppm(runtime, tbuf, path)
+    write_mapped_ppm_hdr(runtime, tbuf, path)
     sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
 }
 
@@ -2410,6 +3337,22 @@ pub fn draw_scene_mesh(
         light_count = 1 as i32
     }
     fu.light_meta = { x: light_count as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
+    val fog_on: mut f32 = 0.0 as f32
+    if runtime.fog_enabled && runtime.fog_density > (0.0 as f32) {
+        fog_on = 1.0 as f32
+    }
+    fu.fog_params = {
+        x: runtime.fog_density,
+        y: runtime.fog_height,
+        z: runtime.fog_falloff,
+        w: fog_on
+    }
+    fu.fog_color = {
+        x: runtime.fog_color.x,
+        y: runtime.fog_color.y,
+        z: runtime.fog_color.z,
+        w: 0.0 as f32
+    }
     val has_tex: mut f32 = 0.0 as f32
     val tex_to_bind: mut ref void = runtime.reflection_color
     if texture_raw != none {
@@ -2470,9 +3413,25 @@ pub fn draw_floor_raw(
         view_proj: math.transpose_mat4_ptr(view_proj),
         reflect_view_proj: math.transpose_mat4_ptr(reflect_view_proj)
     }
+    val fog_on: mut f32 = 0.0 as f32
+    if runtime.fog_enabled && runtime.fog_density > (0.0 as f32) {
+        fog_on = 1.0 as f32
+    }
     val fu: mut FloorFragmentUniforms = {
         camera_pos: math.vec4_from_ptr(camera_pos, 0.0 as f32),
-        floor_color: math.vec4_from_ptr(floor_color, 1.0 as f32)
+        floor_color: math.vec4_from_ptr(floor_color, 1.0 as f32),
+        fog_params: {
+            x: runtime.fog_density,
+            y: runtime.fog_height,
+            z: runtime.fog_falloff,
+            w: fog_on
+        },
+        fog_color: {
+            x: runtime.fog_color.x,
+            y: runtime.fog_color.y,
+            z: runtime.fog_color.z,
+            w: 0.0 as f32
+        }
     }
     val binding: mut sdl.SDLGPUTextureSamplerBinding = {
         texture: none as ref void,
@@ -2530,9 +3489,19 @@ pub fn draw_glow(
         camera_right: math.vec4_from_ptr(camera_right, 0.0 as f32),
         camera_up: math.vec4_from_ptr(camera_up, 0.0 as f32)
     }
+    val soft_on: mut f32 = 0.0 as f32
+    if runtime.scene_depth != none && runtime.nearest_sampler != none {
+        soft_on = 1.0 as f32
+    }
     val fu: mut GlowFragmentUniforms = {
         color_intensity: math.vec4_from_ptr(color, intensity),
-        alpha_pad: { x: alpha, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
+        alpha_pad: { x: alpha, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 },
+        soft_params: {
+            x: (1.0 as f32) / (runtime.render_width as f32),
+            y: (1.0 as f32) / (runtime.render_height as f32),
+            z: 0.02 as f32,
+            w: soft_on
+        }
     }
     sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.glow_pipeline)
     sdl.SDL_PushGPUVertexUniformData(
@@ -2547,6 +3516,11 @@ pub fn draw_glow(
         @addr(fu) as ref void,
         @sizeof(GlowFragmentUniforms) as u32
     )
+    val depth_binding: mut sdl.SDLGPUTextureSamplerBinding = {
+        texture: runtime.scene_depth,
+        sampler: runtime.nearest_sampler
+    }
+    sdl.SDL_BindGPUFragmentSamplers(runtime.current_pass, 0 as u32, @addr(depth_binding), 1 as u32)
     bind_mesh(runtime, mesh)
     sdl.SDL_DrawGPUIndexedPrimitives(
         runtime.current_pass,
@@ -2558,6 +3532,221 @@ pub fn draw_glow(
     )
 }
 
+
+pub fn draw_instanced_batch(
+    runtime_raw: ref void,
+    mesh: MeshGPU,
+    batch: InstanceGPU,
+    view_proj: math.Mat4,
+    camera: cam.Camera
+) void = trust {
+    if runtime_raw == none || mesh.raw == none || batch.buffer == none || batch.count == (0 as u32) {
+        return
+    }
+    val runtime: ref Renderer = runtime_raw as ref Renderer
+    if runtime.instanced_pipeline == none {
+        return
+    }
+    val vu: mut InstancedVertexUniforms = {
+        view_proj: math.transpose_mat4_ptr(@addr(view_proj.m00)),
+        uv_transform: { x: 1.0 as f32, y: 1.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
+    }
+    val fu: mut SceneFragmentUniforms = default_scene_fragment_uniforms()
+    fu.camera_glow = {
+        x: camera.position.x,
+        y: camera.position.y,
+        z: camera.position.z,
+        w: 0.0 as f32
+    }
+    fu.sky_top = {
+        x: runtime.sky_top.x,
+        y: runtime.sky_top.y,
+        z: runtime.sky_top.z,
+        w: 0.0 as f32
+    }
+    fu.sky_horizon = {
+        x: runtime.sky_horizon.x,
+        y: runtime.sky_horizon.y,
+        z: runtime.sky_horizon.z,
+        w: 0.0 as f32
+    }
+    fu.ambient_pad = { x: runtime.ambient, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
+    val light_count: mut i32 = 0 as i32
+    for scene_light in runtime.lights {
+        if light_count < (8 as i32) {
+            set_light_uniform(fu, light_count, scene_light)
+            light_count = light_count + (1 as i32)
+        }
+    }
+    fu.light_meta = { x: light_count as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
+    val fog_on: mut f32 = 0.0 as f32
+    if runtime.fog_enabled && runtime.fog_density > (0.0 as f32) {
+        fog_on = 1.0 as f32
+    }
+    fu.fog_params = {
+        x: runtime.fog_density,
+        y: runtime.fog_height,
+        z: runtime.fog_falloff,
+        w: fog_on
+    }
+    fu.fog_color = {
+        x: runtime.fog_color.x,
+        y: runtime.fog_color.y,
+        z: runtime.fog_color.z,
+        w: 0.0 as f32
+    }
+    sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.instanced_pipeline)
+    sdl.SDL_PushGPUVertexUniformData(
+        runtime.command_buffer,
+        0 as u32,
+        @addr(vu) as ref void,
+        @sizeof(InstancedVertexUniforms) as u32
+    )
+    sdl.SDL_PushGPUFragmentUniformData(
+        runtime.command_buffer,
+        0 as u32,
+        @addr(fu) as ref void,
+        @sizeof(SceneFragmentUniforms) as u32
+    )
+    val vertex_binding: mut sdl.SDLGPUBufferBinding = {
+        buffer: mesh.raw,
+        offset: 0 as u32
+    }
+    val gpu_mesh: ref GpuMesh = mesh.raw as ref GpuMesh
+    vertex_binding.buffer = gpu_mesh.vertex_buffer
+    val index_binding: mut sdl.SDLGPUBufferBinding = {
+        buffer: gpu_mesh.index_buffer,
+        offset: 0 as u32
+    }
+    val instance_binding: mut sdl.SDLGPUBufferBinding = {
+        buffer: batch.buffer,
+        offset: 0 as u32
+    }
+    sdl.SDL_BindGPUVertexBuffers(runtime.current_pass, 0 as u32, @addr(vertex_binding), 1 as u32)
+    sdl.SDL_BindGPUVertexBuffers(runtime.current_pass, 1 as u32, @addr(instance_binding), 1 as u32)
+    sdl.SDL_BindGPUIndexBuffer(
+        runtime.current_pass,
+        @addr(index_binding),
+        sdl.SDL_GPU_INDEXELEMENTSIZE_32BIT
+    )
+    sdl.SDL_DrawGPUIndexedPrimitives(
+        runtime.current_pass,
+        gpu_mesh.index_count,
+        batch.count,
+        0 as u32,
+        0 as i32,
+        0 as u32
+    )
+}
+
+pub fn upload_instance_batch(runtime: ref void, instances: list[ecs.InstanceData], kind: i32) InstanceGPU = trust {
+    exoerr.clear()
+    if runtime == none {
+        return { buffer: none as ref void, count: 0 as u32, kind: kind }
+    }
+    val rt: ref Renderer = runtime as ref Renderer
+    val count: u32 = @len(instances) as u32
+    if count == (0 as u32) {
+        return { buffer: none as ref void, count: 0 as u32, kind: kind }
+    }
+    val floats_per_instance: u32 = 24 as u32
+    val byte_size: u32 = count * floats_per_instance * (4 as u32)
+    val data: ref f32 = @alloc(byte_size as usize) as ref f32
+    if data == none {
+        return { buffer: none as ref void, count: 0 as u32, kind: kind }
+    }
+    val index: mut u32 = 0 as u32
+    for instance in instances {
+        val model: math.Mat4 = math.model_matrix_scaled(instance.position, instance.scale, instance.rotation_y)
+        math.store_f32(data as ref void, (index + (0 as u32)) as usize, model.m00)
+        math.store_f32(data as ref void, (index + (1 as u32)) as usize, model.m10)
+        math.store_f32(data as ref void, (index + (2 as u32)) as usize, model.m20)
+        math.store_f32(data as ref void, (index + (3 as u32)) as usize, model.m30)
+        math.store_f32(data as ref void, (index + (4 as u32)) as usize, model.m01)
+        math.store_f32(data as ref void, (index + (5 as u32)) as usize, model.m11)
+        math.store_f32(data as ref void, (index + (6 as u32)) as usize, model.m21)
+        math.store_f32(data as ref void, (index + (7 as u32)) as usize, model.m31)
+        math.store_f32(data as ref void, (index + (8 as u32)) as usize, model.m02)
+        math.store_f32(data as ref void, (index + (9 as u32)) as usize, model.m12)
+        math.store_f32(data as ref void, (index + (10 as u32)) as usize, model.m22)
+        math.store_f32(data as ref void, (index + (11 as u32)) as usize, model.m32)
+        math.store_f32(data as ref void, (index + (12 as u32)) as usize, model.m03)
+        math.store_f32(data as ref void, (index + (13 as u32)) as usize, model.m13)
+        math.store_f32(data as ref void, (index + (14 as u32)) as usize, model.m23)
+        math.store_f32(data as ref void, (index + (15 as u32)) as usize, model.m33)
+        math.store_f32(data as ref void, (index + (16 as u32)) as usize, instance.color.x)
+        math.store_f32(data as ref void, (index + (17 as u32)) as usize, instance.color.y)
+        math.store_f32(data as ref void, (index + (18 as u32)) as usize, instance.color.z)
+        math.store_f32(data as ref void, (index + (19 as u32)) as usize, instance.glow)
+        math.store_f32(data as ref void, (index + (20 as u32)) as usize, instance.reflective)
+        math.store_f32(data as ref void, (index + (21 as u32)) as usize, 1.0 as f32)
+        math.store_f32(data as ref void, (index + (22 as u32)) as usize, 0.0 as f32)
+        math.store_f32(data as ref void, (index + (23 as u32)) as usize, 0.0 as f32)
+        index = index + floats_per_instance
+    }
+    val buffer_info: mut sdl.SDLGPUBufferCreateInfo = {
+        usage: sdl.SDL_GPU_BUFFERUSAGE_VERTEX,
+        size: byte_size,
+        props: 0 as u32
+    }
+    val buffer: ref void = sdl.SDL_CreateGPUBuffer(rt.device, @addr(buffer_info))
+    if buffer == none {
+        @free(data as ref void)
+        return { buffer: none as ref void, count: 0 as u32, kind: kind }
+    }
+    val tbuf_info: mut sdl.SDLGPUTransferBufferCreateInfo = {
+        usage: sdl.SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD,
+        size: byte_size,
+        props: 0 as u32
+    }
+    val tbuf: ref void = sdl.SDL_CreateGPUTransferBuffer(rt.device, @addr(tbuf_info))
+    if tbuf == none {
+        @free(data as ref void)
+        sdl.SDL_ReleaseGPUBuffer(rt.device, buffer)
+        return { buffer: none as ref void, count: 0 as u32, kind: kind }
+    }
+    val mapped: ref void = sdl.SDL_MapGPUTransferBuffer(rt.device, tbuf, false)
+    if mapped == none {
+        @free(data as ref void)
+        sdl.SDL_ReleaseGPUTransferBuffer(rt.device, tbuf)
+        sdl.SDL_ReleaseGPUBuffer(rt.device, buffer)
+        return { buffer: none as ref void, count: 0 as u32, kind: kind }
+    }
+    @memcpy(mapped, data as ref void, byte_size as usize)
+    @free(data as ref void)
+    sdl.SDL_UnmapGPUTransferBuffer(rt.device, tbuf)
+    val cmd: ref void = sdl.SDL_AcquireGPUCommandBuffer(rt.device)
+    if cmd == none {
+        sdl.SDL_ReleaseGPUTransferBuffer(rt.device, tbuf)
+        sdl.SDL_ReleaseGPUBuffer(rt.device, buffer)
+        return { buffer: none as ref void, count: 0 as u32, kind: kind }
+    }
+    val copy_pass: ref void = sdl.SDL_BeginGPUCopyPass(cmd)
+    val src: mut sdl.SDLGPUTransferBufferLocation = {
+        transfer_buffer: tbuf,
+        offset: 0 as u32
+    }
+    val dst: mut sdl.SDLGPUBufferRegion = {
+        buffer: buffer,
+        offset: 0 as u32,
+        size: byte_size
+    }
+    sdl.SDL_UploadToGPUBuffer(copy_pass, @addr(src), @addr(dst), false)
+    sdl.SDL_EndGPUCopyPass(copy_pass)
+    sdl.SDL_SubmitGPUCommandBuffer(cmd)
+    sdl.SDL_ReleaseGPUTransferBuffer(rt.device, tbuf)
+    return { buffer: buffer, count: count, kind: kind }
+}
+
+pub fn destroy_instance_batch(runtime: ref void, batch: InstanceGPU) void = trust {
+    if runtime == none {
+        return
+    }
+    val rt: ref Renderer = runtime as ref Renderer
+    if batch.buffer != none {
+        sdl.SDL_ReleaseGPUBuffer(rt.device, batch.buffer)
+    }
+}
 
 pub fn upload_mesh(
     runtime: ref void,
@@ -3069,11 +4258,27 @@ pub fn draw_water(
             light.position,
             math.vec3(0.0 as f32, 0.0 as f32, 0.0 as f32)
         ))
+    val fog_on: mut f32 = 0.0 as f32
+    if rt.fog_enabled && rt.fog_density > (0.0 as f32) {
+        fog_on = 1.0 as f32
+    }
     val fu: mut WaterFragmentUniforms = {
         camera_pos: { x: camera.position.x, y: camera.position.y, z: camera.position.z, w: wave_offset },
         water_color: { x: color.x, y: color.y, z: color.z, w: center_x },
         light_dir: { x: light_dir.x, y: light_dir.y, z: light_dir.z, w: light.intensity },
-        water_params: { x: corner_radius, y: size_x, z: size_z, w: center_z }
+        water_params: { x: corner_radius, y: size_x, z: size_z, w: center_z },
+        fog_params: {
+            x: rt.fog_density,
+            y: rt.fog_height,
+            z: rt.fog_falloff,
+            w: fog_on
+        },
+        fog_color: {
+            x: rt.fog_color.x,
+            y: rt.fog_color.y,
+            z: rt.fog_color.z,
+            w: 0.0 as f32
+        }
     }
     sdl.SDL_BindGPUGraphicsPipeline(rt.current_pass, rt.water_pipeline)
     sdl.SDL_PushGPUVertexUniformData(
@@ -3121,6 +4326,69 @@ pub fn draw_water(
     )
 }
 
+pub fn draw_sky(
+    runtime_raw: ref void,
+    camera: cam.Camera,
+    width: i32,
+    height: i32
+) void = trust {
+    if runtime_raw == none {
+        return
+    }
+    val runtime: ref Renderer = runtime_raw as ref Renderer
+    if runtime.sky_pipeline == none {
+        return
+    }
+    val forward: math.Vec3 = cam.camera_forward(camera)
+    val world_up: math.Vec3 = math.vec3(0.0 as f32, 1.0 as f32, 0.0 as f32)
+    val right: math.Vec3 = math.vec3_normalize(math.vec3_cross(forward, world_up))
+    val up: math.Vec3 = math.vec3_normalize(math.vec3_cross(right, forward))
+    val aspect: f32 = (width as f32) / (height as f32)
+    val sun_dir: math.Vec3 = math.vec3_normalize(runtime.sun_direction)
+    val su: mut SkyUniforms = {
+        forward: {
+            x: forward.x,
+            y: forward.y,
+            z: forward.z,
+            w: 0.577350269 as f32
+        },
+        right: { x: right.x, y: right.y, z: right.z, w: aspect },
+        up: { x: up.x, y: up.y, z: up.z, w: 0.0 as f32 },
+        sky_top: {
+            x: runtime.sky_top.x,
+            y: runtime.sky_top.y,
+            z: runtime.sky_top.z,
+            w: 0.0 as f32
+        },
+        sky_horizon: {
+            x: runtime.sky_horizon.x,
+            y: runtime.sky_horizon.y,
+            z: runtime.sky_horizon.z,
+            w: 0.0 as f32
+        },
+        sun_dir: {
+            x: sun_dir.x,
+            y: sun_dir.y,
+            z: sun_dir.z,
+            w: runtime.sun_size
+        },
+        sun_color: {
+            x: runtime.sun_color.x,
+            y: runtime.sun_color.y,
+            z: runtime.sun_color.z,
+            w: runtime.sun_intensity
+        }
+    }
+    sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.sky_pipeline)
+    sdl.SDL_PushGPUFragmentUniformData(
+        runtime.command_buffer,
+        0 as u32,
+        @addr(su) as ref void,
+        @sizeof(SkyUniforms) as u32
+    )
+    sdl.SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
+}
+
 pub fn render_reflection_scene(
     runtime: ref void,
     resources: SceneMeshes,
@@ -3135,7 +4403,7 @@ pub fn render_reflection_scene(
         mirror_y = water.y
     }
     val mirrored: cam.Camera = cam.mirrored_camera(camera, mirror_y)
-    val reflect_vp: math.Mat4 = cam.view_projection(mirrored, width, height)
+    val reflect_vp: math.Mat4 = current_view_projection(runtime as ref Renderer, mirrored, width, height)
     draw_scene_entities(
         runtime,
         resources,
@@ -3157,8 +4425,17 @@ pub fn render_scene(
     height: i32,
     time: f32
 ) void = trust {
-    val vp: math.Mat4 = cam.view_projection(camera, width, height)
+    if scene.render.sky_enabled {
+        draw_sky(runtime, camera, width, height)
+    }
+    val vp: math.Mat4 = current_view_projection(runtime as ref Renderer, camera, width, height)
     draw_scene_entities(runtime, resources, scene, camera, vp, time, 1.00 as f32, true)
+    if resources.instance_cubes.count > (0 as u32) {
+        draw_instanced_batch(runtime, resources.cube, resources.instance_cubes, vp, camera)
+    }
+    if resources.instance_spheres.count > (0 as u32) {
+        draw_instanced_batch(runtime, resources.sphere, resources.instance_spheres, vp, camera)
+    }
     for floor in scene.floors {
         val floor_position: math.Vec3 = math.vec3(
             floor.center_x,
@@ -3166,7 +4443,8 @@ pub fn render_scene(
             floor.center_z
         )
         val floor_scale: math.Vec3 = math.vec3(floor.size_x, 0.16 as f32, floor.size_z)
-        val reflect_vp: math.Mat4 = cam.view_projection(
+        val reflect_vp: math.Mat4 = current_view_projection(
+            runtime as ref Renderer,
             cam.mirrored_camera(camera, floor.y),
             width,
             height
@@ -3206,7 +4484,8 @@ pub fn render_scene(
             water_scale,
             0.0 as f32
         )
-        val reflect_water_vp: math.Mat4 = cam.view_projection(
+        val reflect_water_vp: math.Mat4 = current_view_projection(
+            runtime as ref Renderer,
             cam.mirrored_camera(camera, fit_y),
             width,
             height

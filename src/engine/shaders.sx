@@ -9,11 +9,16 @@ pub type PostProcessShaderConfig = {
     threshold: ShaderProgramConfig
     blur: ShaderProgramConfig
     godrays: ShaderProgramConfig
+    sharpen: ShaderProgramConfig
+    flare: ShaderProgramConfig
+    taa: ShaderProgramConfig
     composite: ShaderProgramConfig
 }
 
 pub type ExoShaderConfig = {
     scene: ShaderProgramConfig
+    instanced: ShaderProgramConfig
+    sky: ShaderProgramConfig
     floor: ShaderProgramConfig
     glow: ShaderProgramConfig
     water: ShaderProgramConfig
@@ -43,6 +48,14 @@ pub fn default_shader_config() ExoShaderConfig = {
                 vertex_path: "./assets/shaders/scene.vert.msl",
                 fragment_path: "./assets/shaders/scene.frag.msl"
             },
+            instanced: {
+                vertex_path: "./assets/shaders/instanced.vert.msl",
+                fragment_path: "./assets/shaders/instanced.frag.msl"
+            },
+            sky: {
+                vertex_path: "./assets/shaders/fullscreen.vert.msl",
+                fragment_path: "./assets/shaders/sky.frag.msl"
+            },
             floor: {
                 vertex_path: "./assets/shaders/floor.vert.msl",
                 fragment_path: "./assets/shaders/floor.frag.msl"
@@ -68,6 +81,18 @@ pub fn default_shader_config() ExoShaderConfig = {
                     vertex_path: "./assets/shaders/fullscreen.vert.msl",
                     fragment_path: "./assets/shaders/godrays.frag.msl"
                 },
+                sharpen: {
+                    vertex_path: "./assets/shaders/fullscreen.vert.msl",
+                    fragment_path: "./assets/shaders/sharpen.frag.msl"
+                },
+                flare: {
+                    vertex_path: "./assets/shaders/fullscreen.vert.msl",
+                    fragment_path: "./assets/shaders/flare.frag.msl"
+                },
+                taa: {
+                    vertex_path: "./assets/shaders/fullscreen.vert.msl",
+                    fragment_path: "./assets/shaders/taa.frag.msl"
+                },
                 composite: {
                     vertex_path: "./assets/shaders/fullscreen.vert.msl",
                     fragment_path: "./assets/shaders/composite.frag.msl"
@@ -79,6 +104,14 @@ pub fn default_shader_config() ExoShaderConfig = {
         scene: {
             vertex_path: "./assets/shaders/scene.vert.spv",
             fragment_path: "./assets/shaders/scene.frag.spv"
+        },
+        instanced: {
+            vertex_path: "./assets/shaders/instanced.vert.spv",
+            fragment_path: "./assets/shaders/instanced.frag.spv"
+        },
+        sky: {
+            vertex_path: "./assets/shaders/fullscreen.vert.spv",
+            fragment_path: "./assets/shaders/sky.frag.spv"
         },
         floor: {
             vertex_path: "./assets/shaders/floor.vert.spv",
@@ -104,6 +137,18 @@ pub fn default_shader_config() ExoShaderConfig = {
             godrays: {
                 vertex_path: "./assets/shaders/fullscreen.vert.spv",
                 fragment_path: "./assets/shaders/godrays.frag.spv"
+            },
+            sharpen: {
+                vertex_path: "./assets/shaders/fullscreen.vert.spv",
+                fragment_path: "./assets/shaders/sharpen.frag.spv"
+            },
+            flare: {
+                vertex_path: "./assets/shaders/fullscreen.vert.spv",
+                fragment_path: "./assets/shaders/flare.frag.spv"
+            },
+            taa: {
+                vertex_path: "./assets/shaders/fullscreen.vert.spv",
+                fragment_path: "./assets/shaders/taa.frag.spv"
             },
             composite: {
                 vertex_path: "./assets/shaders/fullscreen.vert.spv",

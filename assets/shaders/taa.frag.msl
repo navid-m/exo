@@ -1,0 +1,52 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct TaaUniforms
+{
+    float4 uParams;
+};
+
+struct main0_out
+{
+    float4 FragColor [[color(0)]];
+};
+
+struct main0_in
+{
+    float2 vTexCoord [[user(locn0)]];
+};
+
+fragment main0_out main0(main0_in in [[stage_in]], constant TaaUniforms& _24 [[buffer(0)]], texture2d<float> uSceneTex [[texture(0)]], texture2d<float> uHistoryTex [[texture(1)]], sampler uSceneTexSmplr [[sampler(0)]], sampler uHistoryTexSmplr [[sampler(1)]])
+{
+    main0_out out = {};
+    float3 current = uSceneTex.sample(uSceneTexSmplr, in.vTexCoord).xyz;
+    if (_24.uParams.y < 0.5)
+    {
+        out.FragColor = float4(current, 1.0);
+        return out;
+    }
+    float2 texel = _24.uParams.zw;
+    float3 neighborhood_min = current;
+    float3 neighborhood_max = current;
+    for (int y = -1; y <= 1; y++)
+    {
+        for (int x = -1; x <= 1; x++)
+        {
+            if ((x == 0) && (y == 0))
+            {
+                continue;
+            }
+            float3 sample_color = uSceneTex.sample(uSceneTexSmplr, (in.vTexCoord + (float2(float(x), float(y)) * texel))).xyz;
+            neighborhood_min = min(neighborhood_min, sample_color);
+            neighborhood_max = max(neighborhood_max, sample_color);
+        }
+    }
+    float3 history = uHistoryTex.sample(uHistoryTexSmplr, in.vTexCoord).xyz;
+    history = clamp(history, neighborhood_min, neighborhood_max);
+    float3 color_value = mix(current, history, float3(clamp(_24.uParams.x, 0.0, 0.999000012874603271484375)));
+    out.FragColor = float4(color_value, 1.0);
+    return out;
+}
+

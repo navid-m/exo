@@ -9,6 +9,8 @@ struct FloorFragmentUniforms
 {
     float4 uCameraPos;
     float4 uFloorColor;
+    float4 uFogParams;
+    float4 uFogColor;
 };
 
 struct main0_out
@@ -26,15 +28,15 @@ struct main0_in
 static inline __attribute__((always_inline))
 float3 sky_color(thread const float3& direction_value)
 {
-    float t = fast::clamp((direction_value.y * 0.5) + 0.5, 0.0, 1.0);
+    float t = clamp((direction_value.y * 0.5) + 0.5, 0.0, 1.0);
     return mix(float3(0.0500000007450580596923828125, 0.07999999821186065673828125, 0.14000000059604644775390625), float3(0.2599999904632568359375, 0.4799999892711639404296875, 0.839999973773956298828125), float3(t));
 }
 
 fragment main0_out main0(main0_in in [[stage_in]], constant FloorFragmentUniforms& _47 [[buffer(0)]], texture2d<float> uReflectionTex [[texture(0)]], sampler uReflectionTexSmplr [[sampler(0)]])
 {
     main0_out out = {};
-    float3 normal_value = fast::normalize(in.vWorldNormal);
-    float3 view_dir = fast::normalize(_47.uCameraPos.xyz - in.vWorldPos);
+    float3 normal_value = normalize(in.vWorldNormal);
+    float3 view_dir = normalize(_47.uCameraPos.xyz - in.vWorldPos);
     float3 param = reflect(-view_dir, normal_value);
     float3 reflection = sky_color(param);
     if (in.vReflectClip.w > 9.9999997473787516355514526367188e-05)
@@ -74,11 +76,19 @@ fragment main0_out main0(main0_in in [[stage_in]], constant FloorFragmentUniform
             reflection = uReflectionTex.sample(uReflectionTexSmplr, uv).xyz;
         }
     }
-    float fresnel = powr(1.0 - fast::max(dot(view_dir, normal_value), 0.0), 5.0);
+    float fresnel = powr(1.0 - max(dot(view_dir, normal_value), 0.0), 5.0);
     float3 tint = _47.uFloorColor.xyz;
     float3 color_value = mix(tint, reflection, float3(0.4199999868869781494140625 + (fresnel * 0.36000001430511474609375)));
-    float3 highlight = (float3(1.0, 0.980000019073486328125, 0.949999988079071044921875) * powr(fast::max(dot(reflect(-view_dir, normal_value), float3(0.0, 1.0, 0.0)), 0.0), 18.0)) * 0.039999999105930328369140625;
-    out.FragColor = float4(color_value + highlight, 0.579999983310699462890625);
+    float3 highlight = (float3(1.0, 0.980000019073486328125, 0.949999988079071044921875) * powr(max(dot(reflect(-view_dir, normal_value), float3(0.0, 1.0, 0.0)), 0.0), 18.0)) * 0.039999999105930328369140625;
+    color_value += highlight;
+    if (_47.uFogParams.w > 0.5)
+    {
+        float fog_dist = length(_47.uCameraPos.xyz - in.vWorldPos);
+        float height_factor = exp((-max(in.vWorldPos.y - _47.uFogParams.y, 0.0)) * max(_47.uFogParams.z, 9.9999997473787516355514526367188e-05));
+        float fog_amount = 1.0 - exp(((-fog_dist) * max(_47.uFogParams.x, 0.0)) * height_factor);
+        color_value = mix(color_value, _47.uFogColor.xyz, float3(clamp(fog_amount, 0.0, 1.0)));
+    }
+    out.FragColor = float4(color_value, 0.579999983310699462890625);
     return out;
 }
 

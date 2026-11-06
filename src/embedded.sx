@@ -9,6 +9,9 @@ pub type EmbeddedAsset = {
 
 val scene_vert_spv = @embed("../assets/shaders/scene.vert.spv")
 val scene_frag_spv = @embed("../assets/shaders/scene.frag.spv")
+val instanced_vert_spv = @embed("../assets/shaders/instanced.vert.spv")
+val instanced_frag_spv = @embed("../assets/shaders/instanced.frag.spv")
+val sky_frag_spv = @embed("../assets/shaders/sky.frag.spv")
 val floor_vert_spv = @embed("../assets/shaders/floor.vert.spv")
 val floor_frag_spv = @embed("../assets/shaders/floor.frag.spv")
 val glow_vert_spv = @embed("../assets/shaders/glow.vert.spv")
@@ -19,10 +22,16 @@ val fullscreen_vert_spv = @embed("../assets/shaders/fullscreen.vert.spv")
 val bloom_threshold_frag_spv = @embed("../assets/shaders/bloom_threshold.frag.spv")
 val bloom_blur_frag_spv = @embed("../assets/shaders/bloom_blur.frag.spv")
 val godrays_frag_spv = @embed("../assets/shaders/godrays.frag.spv")
+val sharpen_frag_spv = @embed("../assets/shaders/sharpen.frag.spv")
+val flare_frag_spv = @embed("../assets/shaders/flare.frag.spv")
+val taa_frag_spv = @embed("../assets/shaders/taa.frag.spv")
 val composite_frag_spv = @embed("../assets/shaders/composite.frag.spv")
 
 val scene_vert_msl = @embed("../assets/shaders/scene.vert.msl")
 val scene_frag_msl = @embed("../assets/shaders/scene.frag.msl")
+val instanced_vert_msl = @embed("../assets/shaders/instanced.vert.msl")
+val instanced_frag_msl = @embed("../assets/shaders/instanced.frag.msl")
+val sky_frag_msl = @embed("../assets/shaders/sky.frag.msl")
 val floor_vert_msl = @embed("../assets/shaders/floor.vert.msl")
 val floor_frag_msl = @embed("../assets/shaders/floor.frag.msl")
 val glow_vert_msl = @embed("../assets/shaders/glow.vert.msl")
@@ -33,6 +42,9 @@ val fullscreen_vert_msl = @embed("../assets/shaders/fullscreen.vert.msl")
 val bloom_threshold_frag_msl = @embed("../assets/shaders/bloom_threshold.frag.msl")
 val bloom_blur_frag_msl = @embed("../assets/shaders/bloom_blur.frag.msl")
 val godrays_frag_msl = @embed("../assets/shaders/godrays.frag.msl")
+val sharpen_frag_msl = @embed("../assets/shaders/sharpen.frag.msl")
+val flare_frag_msl = @embed("../assets/shaders/flare.frag.msl")
+val taa_frag_msl = @embed("../assets/shaders/taa.frag.msl")
 val composite_frag_msl = @embed("../assets/shaders/composite.frag.msl")
 
 val default_font = @embed("../assets/fonts/default.png")
@@ -79,6 +91,30 @@ pub fn find(key: ref u8) option[EmbeddedAsset] = trust {
             "./assets/shaders/scene.frag.spv",
             scene_frag_spv,
             @embedlen("../assets/shaders/scene.frag.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/instanced.vert.spv",
+            instanced_vert_spv,
+            @embedlen("../assets/shaders/instanced.vert.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/instanced.frag.spv",
+            instanced_frag_spv,
+            @embedlen("../assets/shaders/instanced.frag.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/sky.frag.spv",
+            sky_frag_spv,
+            @embedlen("../assets/shaders/sky.frag.spv")
         )
     )
     @append(
@@ -164,6 +200,30 @@ pub fn find(key: ref u8) option[EmbeddedAsset] = trust {
     @append(
         assets,
         asset(
+            "./assets/shaders/sharpen.frag.spv",
+            sharpen_frag_spv,
+            @embedlen("../assets/shaders/sharpen.frag.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/flare.frag.spv",
+            flare_frag_spv,
+            @embedlen("../assets/shaders/flare.frag.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/taa.frag.spv",
+            taa_frag_spv,
+            @embedlen("../assets/shaders/taa.frag.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
             "./assets/shaders/composite.frag.spv",
             composite_frag_spv,
             @embedlen("../assets/shaders/composite.frag.spv")
@@ -184,6 +244,30 @@ pub fn find(key: ref u8) option[EmbeddedAsset] = trust {
             "./assets/shaders/scene.frag.msl",
             scene_frag_msl,
             @embedlen("../assets/shaders/scene.frag.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/instanced.vert.msl",
+            instanced_vert_msl,
+            @embedlen("../assets/shaders/instanced.vert.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/instanced.frag.msl",
+            instanced_frag_msl,
+            @embedlen("../assets/shaders/instanced.frag.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/sky.frag.msl",
+            sky_frag_msl,
+            @embedlen("../assets/shaders/sky.frag.msl")
         )
     )
     @append(
@@ -264,6 +348,30 @@ pub fn find(key: ref u8) option[EmbeddedAsset] = trust {
             "./assets/shaders/godrays.frag.msl",
             godrays_frag_msl,
             @embedlen("../assets/shaders/godrays.frag.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/sharpen.frag.msl",
+            sharpen_frag_msl,
+            @embedlen("../assets/shaders/sharpen.frag.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/flare.frag.msl",
+            flare_frag_msl,
+            @embedlen("../assets/shaders/flare.frag.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/taa.frag.msl",
+            taa_frag_msl,
+            @embedlen("../assets/shaders/taa.frag.msl")
         )
     )
     @append(

@@ -22,42 +22,46 @@ struct main0_in
     float2 vTexCoord [[user(locn0)]];
 };
 
-static inline float brightness_of(float3 color_value)
+static inline __attribute__((always_inline))
+float brightness_of(thread const float3& color_value)
 {
-    return max(color_value.r, max(color_value.g, color_value.b));
+    return max(color_value.x, max(color_value.y, color_value.z));
 }
 
-fragment main0_out main0(main0_in in [[stage_in]], constant GodrayUniforms& u [[buffer(0)]], texture2d<float> uSceneTex [[texture(0)]], sampler uSceneTexSmplr [[sampler(0)]], float4 gl_FragCoord [[position]])
+fragment main0_out main0(main0_in in [[stage_in]], constant GodrayUniforms& _38 [[buffer(0)]], texture2d<float> uSceneTex [[texture(0)]], texture2d<float> uDepthTex [[texture(1)]], sampler uSceneTexSmplr [[sampler(0)]], sampler uDepthTexSmplr [[sampler(1)]], float4 gl_FragCoord [[position]])
 {
     main0_out out = {};
     float2 uv = in.vTexCoord;
-    float samples = clamp(u.uParams.w, 1.0, 64.0);
-    float2 delta = (uv - u.uLight.xy) * (u.uParams.y / samples);
-
-    float dither = fract(sin(dot(gl_FragCoord.xy, float2(12.9898, 78.233))) * 43758.5453);
+    float samples = clamp(_38.uParams.w, 1.0, 64.0);
+    float2 delta = (uv - _38.uLight.xy) * (_38.uParams.y / samples);
+    float dither = fract(sin(dot(gl_FragCoord.xy, float2(12.98980045318603515625, 78.233001708984375))) * 43758.546875);
     float2 coord = uv - (delta * dither);
-
     float decay = 1.0;
     float total_weight = 0.0;
     float3 accum = float3(0.0);
-    float threshold = max(u.uLight.w, 0.0);
-
+    float threshold = max(_38.uLight.w, 0.0);
     for (int i = 0; i < 64; i++)
     {
         if (float(i) >= samples)
         {
             break;
         }
-        float3 sample_color = uSceneTex.sample(uSceneTexSmplr, clamp(coord, float2(0.0), float2(1.0))).rgb;
-        float mask = smoothstep(threshold, threshold + 0.20, brightness_of(sample_color));
-        float weight = decay * max(u.uParams.z, 0.0);
-        accum += sample_color * mask * weight;
+        float3 sample_color = uSceneTex.sample(uSceneTexSmplr, clamp(coord, float2(0.0), float2(1.0))).xyz;
+        float3 param = sample_color;
+        float mask = smoothstep(threshold, threshold + 0.20000000298023223876953125, brightness_of(param));
+        if (_38.uColor.w > 0.5)
+        {
+            float scene_depth = uDepthTex.sample(uDepthTexSmplr, clamp(coord, float2(0.0), float2(1.0))).x;
+            mask *= smoothstep(0.999499976634979248046875, 1.0, scene_depth);
+        }
+        float weight = decay * max(_38.uParams.z, 0.0);
+        accum += ((sample_color * mask) * weight);
         total_weight += weight;
-        decay *= u.uParams.x;
+        decay *= _38.uParams.x;
         coord -= delta;
     }
-
-    accum /= float3(max(total_weight, 0.0001));
-    out.FragColor = float4(accum * u.uColor.rgb * u.uLight.z, 1.0);
+    accum /= float3(max(total_weight, 9.9999997473787516355514526367188e-05));
+    out.FragColor = float4((accum * _38.uColor.xyz) * _38.uLight.z, 1.0);
     return out;
 }
+

@@ -1,0 +1,74 @@
+#pragma clang diagnostic ignored "-Wmissing-prototypes"
+
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct FlareUniforms
+{
+    float4 uLight;
+    float4 uParams;
+    float4 uColor;
+};
+
+struct main0_out
+{
+    float4 FragColor [[color(0)]];
+};
+
+struct main0_in
+{
+    float2 vTexCoord [[user(locn0)]];
+};
+
+static inline __attribute__((always_inline))
+float bright_mask(thread const float3& color_value, thread const float& threshold)
+{
+    return smoothstep(threshold, threshold + 0.20000000298023223876953125, max(color_value.x, max(color_value.y, color_value.z)));
+}
+
+fragment main0_out main0(main0_in in [[stage_in]], constant FlareUniforms& _44 [[buffer(0)]], texture2d<float> uSceneTex [[texture(0)]], sampler uSceneTexSmplr [[sampler(0)]])
+{
+    main0_out out = {};
+    float2 uv = in.vTexCoord;
+    float2 light = _44.uLight.xy;
+    float threshold = max(_44.uLight.w, 0.0);
+    float3 accum = float3(0.0);
+    float vertical = exp((-abs(uv.y - light.y)) * 150.0);
+    if (vertical > 0.001000000047497451305389404296875)
+    {
+        for (int i = 0; i < 24; i++)
+        {
+            float t = ((float(i) / 23.0) * 2.0) - 1.0;
+            float2 p = float2(light.x + (t * _44.uParams.x), light.y);
+            float3 sample_color = uSceneTex.sample(uSceneTexSmplr, clamp(p, float2(0.0), float2(1.0))).xyz;
+            float3 param = sample_color;
+            float param_1 = threshold;
+            float mask = bright_mask(param, param_1);
+            float falloff = exp((-abs(t)) * 4.0);
+            accum += ((sample_color * mask) * falloff);
+        }
+        accum /= float3(24.0);
+        accum *= (vertical * 2.400000095367431640625);
+    }
+    float2 halo_delta = (uv - light) * float2(_44.uParams.z, 1.0);
+    float halo = exp((-dot(halo_delta, halo_delta)) * 220.0);
+    accum += ((_44.uColor.xyz * halo) * 0.800000011920928955078125);
+    float2 axis = float2(0.5) - light;
+    for (int i_1 = 0; i_1 < 4; i_1++)
+    {
+        float k = 0.449999988079071044921875 + (float(i_1) * 0.4199999868869781494140625);
+        float2 ghost_pos = light + ((axis * k) * 2.2000000476837158203125);
+        float3 ghost_color = uSceneTex.sample(uSceneTexSmplr, clamp(ghost_pos, float2(0.0), float2(1.0))).xyz;
+        float3 param_2 = ghost_color;
+        float param_3 = threshold;
+        float ghost_mask = bright_mask(param_2, param_3);
+        float2 ghost_delta = (uv - ghost_pos) * float2(_44.uParams.z, 1.0);
+        float blob = exp((-dot(ghost_delta, ghost_delta)) * 900.0);
+        accum += ((((ghost_color * ghost_mask) * blob) * _44.uParams.y) * (1.0 - (float(i_1) * 0.180000007152557373046875)));
+    }
+    out.FragColor = float4((accum * _44.uColor.xyz) * _44.uLight.z, 1.0);
+    return out;
+}
+

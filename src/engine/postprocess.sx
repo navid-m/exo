@@ -1,5 +1,10 @@
 val math = use("math.sx")
 
+pub val TONEMAP_ACES: i32 = 0
+pub val TONEMAP_REINHARD: i32 = 1
+pub val TONEMAP_FILMIC: i32 = 2
+pub val TONEMAP_NEUTRAL: i32 = 3
+
 pub type BloomSettings = {
     enabled: bool
     threshold: f32
@@ -21,6 +26,7 @@ pub type VignetteSettings = {
 /// blur over bright parts of the scene; no extra scene geometry is required.
 pub type GodraySettings = {
     enabled: bool
+    depth_occlusion: bool
     intensity: f32
     threshold: f32
     decay: f32
@@ -30,6 +36,31 @@ pub type GodraySettings = {
     color: math.Vec3
 }
 
+pub type SharpenSettings = {
+    enabled: bool
+    strength: f32
+}
+
+pub type ColorGradeSettings = {
+    enabled: bool
+    strength: f32
+}
+
+pub type FlareSettings = {
+    enabled: bool
+    intensity: f32
+    threshold: f32
+    width: f32
+    ghosts: f32
+    color: math.Vec3
+}
+
+pub type TaaSettings = {
+    enabled: bool
+    blend: f32
+    jitter: f32
+}
+
 /// Engine-owned post-processing settings. Games may tune these, but the
 /// engine does not attach any gameplay meaning to them.
 pub type PostProcessSettings = {
@@ -37,6 +68,11 @@ pub type PostProcessSettings = {
     bloom: BloomSettings
     vignette: VignetteSettings
     godrays: GodraySettings
+    sharpen: SharpenSettings
+    color_grade: ColorGradeSettings
+    flare: FlareSettings
+    taa: TaaSettings
+    tonemap: i32
     exposure: f32
     contrast: f32
     saturation: f32
@@ -64,6 +100,7 @@ pub fn default_settings() PostProcessSettings = {
         },
         godrays: {
             enabled: false,
+            depth_occlusion: true,
             intensity: 0.70 as f32,
             threshold: 0.60 as f32,
             decay: 0.96 as f32,
@@ -72,6 +109,28 @@ pub fn default_settings() PostProcessSettings = {
             samples: 32 as i32,
             color: math.vec3(1.0 as f32, 0.95 as f32, 0.82 as f32)
         },
+        sharpen: {
+            enabled: false,
+            strength: 0.35 as f32
+        },
+        color_grade: {
+            enabled: false,
+            strength: 0.75 as f32
+        },
+        flare: {
+            enabled: false,
+            intensity: 0.65 as f32,
+            threshold: 0.70 as f32,
+            width: 0.55 as f32,
+            ghosts: 0.45 as f32,
+            color: math.vec3(1.0 as f32, 0.80 as f32, 0.55 as f32)
+        },
+        taa: {
+            enabled: false,
+            blend: 0.90 as f32,
+            jitter: 1.0 as f32
+        },
+        tonemap: TONEMAP_ACES,
         exposure: 1.0 as f32,
         contrast: 1.0 as f32,
         saturation: 1.0 as f32,

@@ -135,6 +135,8 @@ type SceneResources = {
     model_textures: mut list[ref void]
     model_draws: mut list[renderer.ModelGPU]
     custom: mut list[renderer.MeshGPU]
+    instance_cubes: mut renderer.InstanceGPU
+    instance_spheres: mut renderer.InstanceGPU
     revision: mut u64
     loaded: mut bool
 }
@@ -436,6 +438,8 @@ fn empty_scene_resources() SceneResources = {
         model_textures: [],
         model_draws: [],
         custom: [],
+        instance_cubes: { buffer: none as ref void, count: 0 as u32, kind: 0 as i32 },
+        instance_spheres: { buffer: none as ref void, count: 0 as u32, kind: 1 as i32 },
         revision: 0 as u64,
         loaded: false
     }
@@ -465,10 +469,18 @@ fn release_scene_resources(runtime: ref void, resources: mut SceneResources) voi
     for custom_mesh in resources.custom {
         renderer.destroy_mesh(runtime, custom_mesh)
     }
+    if resources.instance_cubes.buffer != none {
+        renderer.destroy_instance_batch(runtime, resources.instance_cubes)
+    }
+    if resources.instance_spheres.buffer != none {
+        renderer.destroy_instance_batch(runtime, resources.instance_spheres)
+    }
     resources.models = []
     resources.model_textures = []
     resources.model_draws = []
     resources.custom = []
+    resources.instance_cubes = { buffer: none as ref void, count: 0 as u32, kind: 0 as i32 }
+    resources.instance_spheres = { buffer: none as ref void, count: 0 as u32, kind: 1 as i32 }
 }
 
 fn load_scene_resources(runtime: ref void, scene: ecs.Scene3D) SceneResources = trust {
@@ -482,13 +494,20 @@ fn load_scene_resources(runtime: ref void, scene: ecs.Scene3D) SceneResources = 
         @append(resources.model_draws, mesh.upload_model_asset(runtime, instance.asset))
     }
     for instance in scene.mesh_instances {
-        @append(resources.custom, renderer.upload_mesh(
+        val uploaded_mesh: renderer.MeshGPU = renderer.upload_mesh(
                 runtime,
                 instance.geometry.vertices as ref void,
                 instance.geometry.vertex_float_count,
                 instance.geometry.indices as ref void,
                 instance.geometry.index_count
-            ))
+            )
+        @append(resources.custom, uploaded_mesh)
+    }
+    if @len(scene.instance_cubes) > (0 as usize) {
+        resources.instance_cubes = renderer.upload_instance_batch(runtime, scene.instance_cubes, 0 as i32)
+    }
+    if @len(scene.instance_spheres) > (0 as usize) {
+        resources.instance_spheres = renderer.upload_instance_batch(runtime, scene.instance_spheres, 1 as i32)
     }
     resources.loaded = true
     return resources
@@ -507,7 +526,9 @@ fn scene_meshes(
         models: resources.models,
         model_textures: resources.model_textures,
         model_draws: resources.model_draws,
-        custom: resources.custom
+        custom: resources.custom,
+        instance_cubes: resources.instance_cubes,
+        instance_spheres: resources.instance_spheres
     }
 }
 
@@ -789,6 +810,22 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             app.scene.render.ambient,
             app.scene.lights
         )
+        renderer.configure_sky(
+            runtime,
+            app.scene.render.sun_enabled,
+            app.scene.render.sun_direction,
+            app.scene.render.sun_color,
+            app.scene.render.sun_size,
+            app.scene.render.sun_intensity
+        )
+        renderer.configure_fog(
+            runtime,
+            app.scene.render.fog_enabled,
+            app.scene.render.fog_color,
+            app.scene.render.fog_density,
+            app.scene.render.fog_height,
+            app.scene.render.fog_falloff
+        )
 
         val frame_w: mut u32 = app.config.width as u32
         val frame_h: mut u32 = app.config.height as u32
@@ -797,6 +834,30 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             exit_code = 1 as i32
             break
         }
+        val taa_on: bool = app.scene.render.post_process.enabled && app.scene.render.post_process.taa.enabled
+        val jitter_scale: mut f32 = 0.0 as f32
+        if taa_on {
+            jitter_scale = app.scene.render.post_process.taa.jitter
+        }
+        val jitter_x: mut f32 = 0.0 as f32
+        val jitter_y: mut f32 = 0.0 as f32
+        val jitter_phase: i32 = ((app.frame % (4 as u64)) as i32)
+        if jitter_phase == (0 as i32) {
+            jitter_x = 0.25 as f32
+            jitter_y = -0.25 as f32
+        } elif jitter_phase == (1 as i32) {
+            jitter_x = -0.25 as f32
+            jitter_y = 0.25 as f32
+        } elif jitter_phase == (2 as i32) {
+            jitter_x = -0.25 as f32
+            jitter_y = -0.25 as f32
+        } else {
+            jitter_x = 0.25 as f32
+            jitter_y = 0.25 as f32
+        }
+        jitter_x = jitter_x * jitter_scale * (2.0 as f32) / (frame_w as f32)
+        jitter_y = jitter_y * jitter_scale * (2.0 as f32) / (frame_h as f32)
+        renderer.set_camera_jitter(runtime, jitter_x, jitter_y)
         if !renderer.begin_reflection_pass(
             runtime,
             app.scene.render.clear_bottom.x,
@@ -841,11 +902,28 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             app.time
         )
         renderer.end_pass(runtime)
-        val godray_light: ecs.PointLight = renderer.primary_light(app.scene)
-        val godray_projection: renderer.ScreenProjection = renderer.project_to_screen(
-            cam.view_projection(app.camera, frame_w as i32, frame_h as i32),
-            godray_light.position
+        val godray_projection: mut renderer.ScreenProjection = {
+            x: 0.5 as f32,
+            y: 0.42 as f32,
+            visible: false
+        }
+        val jittered_vp = cam.view_projection_jittered(
+            app.camera,
+            frame_w as i32,
+            frame_h as i32,
+            jitter_x,
+            jitter_y
         )
+        if app.scene.render.sun_enabled {
+            godray_projection = renderer.sun_screen_position(
+                jittered_vp,
+                app.camera.position,
+                app.scene.render.sun_direction
+            )
+        } else {
+            val godray_light: ecs.PointLight = renderer.primary_light(app.scene)
+            godray_projection = renderer.project_to_screen(jittered_vp, godray_light.position)
+        }
         if !renderer.apply_post_process_with_light(
             runtime,
             app.scene.render.post_process,
