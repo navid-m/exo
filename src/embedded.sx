@@ -18,6 +18,7 @@ val water_frag_spv = @embed("../assets/shaders/water.frag.spv")
 val fullscreen_vert_spv = @embed("../assets/shaders/fullscreen.vert.spv")
 val bloom_threshold_frag_spv = @embed("../assets/shaders/bloom_threshold.frag.spv")
 val bloom_blur_frag_spv = @embed("../assets/shaders/bloom_blur.frag.spv")
+val godrays_frag_spv = @embed("../assets/shaders/godrays.frag.spv")
 val composite_frag_spv = @embed("../assets/shaders/composite.frag.spv")
 
 val scene_vert_msl = @embed("../assets/shaders/scene.vert.msl")
@@ -31,6 +32,7 @@ val water_frag_msl = @embed("../assets/shaders/water.frag.msl")
 val fullscreen_vert_msl = @embed("../assets/shaders/fullscreen.vert.msl")
 val bloom_threshold_frag_msl = @embed("../assets/shaders/bloom_threshold.frag.msl")
 val bloom_blur_frag_msl = @embed("../assets/shaders/bloom_blur.frag.msl")
+val godrays_frag_msl = @embed("../assets/shaders/godrays.frag.msl")
 val composite_frag_msl = @embed("../assets/shaders/composite.frag.msl")
 
 val default_font = @embed("../assets/fonts/default.png")
@@ -154,6 +156,14 @@ pub fn find(key: ref u8) option[EmbeddedAsset] = trust {
     @append(
         assets,
         asset(
+            "./assets/shaders/godrays.frag.spv",
+            godrays_frag_spv,
+            @embedlen("../assets/shaders/godrays.frag.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
             "./assets/shaders/composite.frag.spv",
             composite_frag_spv,
             @embedlen("../assets/shaders/composite.frag.spv")
@@ -246,6 +256,14 @@ pub fn find(key: ref u8) option[EmbeddedAsset] = trust {
             "./assets/shaders/bloom_blur.frag.msl",
             bloom_blur_frag_msl,
             @embedlen("../assets/shaders/bloom_blur.frag.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/godrays.frag.msl",
+            godrays_frag_msl,
+            @embedlen("../assets/shaders/godrays.frag.msl")
         )
     )
     @append(

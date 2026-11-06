@@ -149,6 +149,26 @@ pub fn configure_scene_style(
     runtime.lights = lights
 }
 
+/// Project a world-space point into screen UV space for full-screen effects
+/// such as godrays. The origin is the top-left of the render target. `visible`
+/// is false when the point is behind the camera or so far outside the viewport
+/// that a screen-space effect would no longer be meaningful. Off-screen light
+/// sources are allowed, which lets shafts enter from the edge of the frame.
+pub fn project_to_screen(view_proj: math.Mat4, point: math.Vec3) ScreenProjection = {
+    val clip_x: f32 = view_proj.m00 * point.x + view_proj.m01 * point.y + view_proj.m02 * point.z + view_proj.m03
+    val clip_y: f32 = view_proj.m10 * point.x + view_proj.m11 * point.y + view_proj.m12 * point.z + view_proj.m13
+    val clip_w: f32 = view_proj.m30 * point.x + view_proj.m31 * point.y + view_proj.m32 * point.z + view_proj.m33
+    if clip_w <= (0.0001 as f32) {
+        return { x: 0.5 as f32, y: 0.5 as f32, visible: false }
+    }
+    val ndc_x: f32 = clip_x / clip_w
+    val ndc_y: f32 = clip_y / clip_w
+    val uv_x: f32 = ndc_x * (0.5 as f32) + (0.5 as f32)
+    val uv_y: f32 = (0.5 as f32) - ndc_y * (0.5 as f32)
+    val visible: bool = uv_x >= (-2.0 as f32) && uv_x <= (3.0 as f32) && uv_y >= (-2.0 as f32) && uv_y <= (3.0 as f32)
+    return { x: uv_x, y: uv_y, visible: visible }
+}
+
 pub type FloorVertexUniforms = {
     model: mut math.Mat4
     view_proj: mut math.Mat4
@@ -179,6 +199,18 @@ pub type BloomThresholdUniforms = {
 
 pub type BloomBlurUniforms = {
     texel_direction: mut math.Vec4f
+}
+
+pub type GodrayUniforms = {
+    light: mut math.Vec4f
+    params: mut math.Vec4f
+    color: mut math.Vec4f
+}
+
+pub type ScreenProjection = {
+    x: f32
+    y: f32
+    visible: bool
 }
 
 pub type CompositeUniforms = {
@@ -219,6 +251,7 @@ pub type Renderer = {
     glow_pipeline: mut ref void
     bloom_threshold_pipeline: mut ref void
     bloom_blur_pipeline: mut ref void
+    godray_pipeline: mut ref void
     post_pipeline: mut ref void
     water_pipeline: mut ref void
     ui_pipeline: mut ref void
@@ -233,6 +266,7 @@ pub type Renderer = {
     scene_depth: mut ref void
     bloom_a: mut ref void
     bloom_b: mut ref void
+    godray: mut ref void
     swapchain_texture: mut ref void
     command_buffer: mut ref void
     current_pass: mut ref void
@@ -355,6 +389,10 @@ pub fn release_render_targets(runtime: mut ref Renderer) void = trust {
         sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.bloom_b)
         runtime.bloom_b = none
     }
+    if runtime.godray != none {
+        sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.godray)
+        runtime.godray = none
+    }
 }
 
 pub fn recreate_render_targets(runtime: mut ref Renderer, width: u32, height: u32) bool = trust {
@@ -420,7 +458,17 @@ pub fn recreate_render_targets(runtime: mut ref Renderer, width: u32, height: u3
         bloom_width,
         bloom_height
     )
-    return runtime.bloom_b != none
+    if runtime.bloom_b == none {
+        return false
+    }
+    runtime.godray = create_texture(
+        runtime,
+        runtime.swapchain_format,
+        sdl.SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | sdl.SDL_GPU_TEXTUREUSAGE_SAMPLER,
+        bloom_width,
+        bloom_height
+    )
+    return runtime.godray != none
 }
 
 pub fn create_pipeline(
@@ -1075,6 +1123,17 @@ pub fn create_pipelines(
     if runtime.bloom_blur_pipeline == none {
         return false
     }
+    runtime.godray_pipeline = create_postprocess_pipeline(
+        runtime,
+        shader_cfg.post_process.godrays.vertex_path,
+        shader_cfg.post_process.godrays.fragment_path,
+        runtime.swapchain_format,
+        1 as u32,
+        1 as u32
+    )
+    if runtime.godray_pipeline == none {
+        return false
+    }
     runtime.post_pipeline = create_postprocess_pipeline(
         runtime,
         shader_cfg.post_process.composite.vertex_path,
@@ -1110,6 +1169,10 @@ pub fn destroy_pipelines(runtime: mut ref Renderer) void = trust {
     if runtime.bloom_blur_pipeline != none {
         sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.bloom_blur_pipeline)
         runtime.bloom_blur_pipeline = none
+    }
+    if runtime.godray_pipeline != none {
+        sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.godray_pipeline)
+        runtime.godray_pipeline = none
     }
     if runtime.bloom_threshold_pipeline != none {
         sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.bloom_threshold_pipeline)
@@ -1906,12 +1969,38 @@ fn bloom_blur_pass(
 
 /// Run the engine post-process stack and leave the swapchain pass open so UI
 /// can be drawn on top. The engine owns the implementation; games only provide
-/// generic PostProcessSettings.
+/// generic PostProcessSettings. When godrays are enabled this convenience
+/// wrapper assumes a light near the upper middle of the screen; use
+/// `apply_post_process_with_light` to supply an exact projected light position.
 pub fn apply_post_process(
     runtime_raw: ref void,
     settings: postprocess.PostProcessSettings,
     enabled: bool,
     time: f32
+) bool = trust {
+    return apply_post_process_with_light(
+        runtime_raw,
+        settings,
+        enabled,
+        time,
+        0.5 as f32,
+        0.42 as f32,
+        settings.godrays.enabled
+    )
+}
+
+/// Run the engine post-process stack with an explicit screen-space light
+/// position. `light_screen_x`/`light_screen_y` are in UV space with the origin
+/// at the top left. The godray pass is skipped when `light_visible` is false or
+/// the light is behind the camera.
+pub fn apply_post_process_with_light(
+    runtime_raw: ref void,
+    settings: postprocess.PostProcessSettings,
+    enabled: bool,
+    time: f32,
+    light_screen_x: f32,
+    light_screen_y: f32,
+    light_visible: bool
 ) bool = trust {
     if runtime_raw == none {
         exoerr.clear()
@@ -1924,6 +2013,7 @@ pub fn apply_post_process(
 
     val active: bool = enabled && settings.enabled
     val bloom_active: bool = active && settings.bloom.enabled && runtime.bloom_threshold_pipeline != none && runtime.bloom_blur_pipeline != none && runtime.bloom_a != none && runtime.bloom_b != none && runtime.linear_sampler != none
+    val godray_active: bool = active && settings.godrays.enabled && light_visible && runtime.godray_pipeline != none && runtime.godray != none && runtime.linear_sampler != none
 
     val bloom_width: u32 = half_extent(runtime.render_width)
     val bloom_height: u32 = half_extent(runtime.render_height)
@@ -1998,6 +2088,59 @@ pub fn apply_post_process(
         }
     }
 
+    if godray_active {
+        if !begin_pass_no_depth_sized(runtime, runtime.godray, bloom_width, bloom_height) {
+            return false
+        }
+        sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.godray_pipeline)
+        val scene_binding: mut sdl.SDLGPUTextureSamplerBinding = {
+            texture: runtime.scene_color,
+            sampler: runtime.linear_sampler
+        }
+        sdl.SDL_BindGPUFragmentSamplers(
+            runtime.current_pass,
+            0 as u32,
+            @addr(scene_binding),
+            1 as u32
+        )
+        val samples_raw: i32 = settings.godrays.samples
+        val samples: mut i32 = samples_raw
+        if samples < (1 as i32) {
+            samples = 1 as i32
+        }
+        if samples > (64 as i32) {
+            samples = 64 as i32
+        }
+        val godray_uniforms: mut GodrayUniforms = {
+            light: {
+                x: light_screen_x,
+                y: light_screen_y,
+                z: settings.godrays.intensity,
+                w: settings.godrays.threshold
+            },
+            params: {
+                x: settings.godrays.decay,
+                y: settings.godrays.density,
+                z: settings.godrays.weight,
+                w: samples as f32
+            },
+            color: {
+                x: settings.godrays.color.x,
+                y: settings.godrays.color.y,
+                z: settings.godrays.color.z,
+                w: 0.0 as f32
+            }
+        }
+        sdl.SDL_PushGPUFragmentUniformData(
+            runtime.command_buffer,
+            0 as u32,
+            @addr(godray_uniforms) as ref void,
+            @sizeof(GodrayUniforms) as u32
+        )
+        sdl.SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
+        end_pass(runtime as ref void)
+    }
+
     if !begin_pass_no_depth_sized(
         runtime,
         runtime.swapchain_texture,
@@ -2012,27 +2155,41 @@ pub fn apply_post_process(
     if bloom_active {
         bloom_texture = runtime.bloom_a
     }
-    val bindings_raw: ref void = @alloc(2 as usize * @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize)
+    val godray_texture: mut ref void = runtime.scene_color
+    if godray_active {
+        godray_texture = runtime.godray
+    }
+    val bindings_raw: ref void = @alloc(3 as usize * @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize)
     val b0: mut ref sdl.SDLGPUTextureSamplerBinding = bindings_raw as mut ref sdl.SDLGPUTextureSamplerBinding
     val b1: mut ref sdl.SDLGPUTextureSamplerBinding = @ptradd(
         bindings_raw,
         @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize
     ) as mut ref sdl.SDLGPUTextureSamplerBinding
+    val b2: mut ref sdl.SDLGPUTextureSamplerBinding = @ptradd(
+        bindings_raw,
+        (2 as usize) * (@sizeof(sdl.SDLGPUTextureSamplerBinding) as usize)
+    ) as mut ref sdl.SDLGPUTextureSamplerBinding
     b0.texture = runtime.scene_color
     b0.sampler = runtime.linear_sampler
     b1.texture = bloom_texture
     b1.sampler = runtime.linear_sampler
+    b2.texture = godray_texture
+    b2.sampler = runtime.linear_sampler
     sdl.SDL_BindGPUFragmentSamplers(
         runtime.current_pass,
         0 as u32,
         bindings_raw as ref sdl.SDLGPUTextureSamplerBinding,
-        2 as u32
+        3 as u32
     )
     @free(bindings_raw)
 
     val bloom_on: mut f32 = 0.0 as f32
     if bloom_active {
         bloom_on = 1.0 as f32
+    }
+    val godray_on: mut f32 = 0.0 as f32
+    if godray_active {
+        godray_on = 1.0 as f32
     }
     val vignette_on: mut f32 = 0.0 as f32
     if active && settings.vignette.enabled {
@@ -2064,7 +2221,7 @@ pub fn apply_post_process(
     }
 
     val fu: mut CompositeUniforms = {
-        bloom: { x: bloom_intensity, y: bloom_on, z: 0.0 as f32, w: fxaa_on },
+        bloom: { x: bloom_intensity, y: bloom_on, z: godray_on, w: fxaa_on },
         vignette: { x: vignette_intensity, y: settings.vignette.smoothness, z: vignette_on, w: 0.0 as f32 },
         color: { x: exposure, y: contrast, z: saturation, w: aberration },
         screen: {

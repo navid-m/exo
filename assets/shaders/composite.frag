@@ -5,9 +5,10 @@ layout(location = 0) out vec4 FragColor;
 
 layout(set = 2, binding = 0) uniform sampler2D uSceneTex;
 layout(set = 2, binding = 1) uniform sampler2D uBloomTex;
+layout(set = 2, binding = 2) uniform sampler2D uGodrayTex;
 
 layout(set = 3, binding = 0, std140) uniform CompositeUniforms {
-    vec4 uBloom;         // x = intensity, y = enabled, z = unused, w = fxaa
+    vec4 uBloom;         // x = intensity, y = enabled, z = godrays enabled, w = fxaa
     vec4 uVignette;      // x = intensity, y = smoothness, z = enabled
     vec4 uColor;         // x = exposure, y = contrast, z = saturation, w = chromatic aberration
     vec4 uScreen;        // x = 1/width, y = 1/height, z = time, w = grain
@@ -62,7 +63,8 @@ void main() {
     }
 
     vec3 bloom = texture(uBloomTex, uv).rgb * uBloom.x * uBloom.y;
-    vec3 color_value = (scene_color + bloom) * uColor.x;
+    vec3 godrays = texture(uGodrayTex, uv).rgb * uBloom.z;
+    vec3 color_value = (scene_color + bloom + godrays) * uColor.x;
     color_value = aces_tonemap(color_value);
 
     float luminance = luma(color_value);

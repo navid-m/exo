@@ -8,6 +8,7 @@ pub type ShaderProgramConfig = {
 pub type PostProcessShaderConfig = {
     threshold: ShaderProgramConfig
     blur: ShaderProgramConfig
+    godrays: ShaderProgramConfig
     composite: ShaderProgramConfig
 }
 
@@ -63,6 +64,10 @@ pub fn default_shader_config() ExoShaderConfig = {
                     vertex_path: "./assets/shaders/fullscreen.vert.msl",
                     fragment_path: "./assets/shaders/bloom_blur.frag.msl"
                 },
+                godrays: {
+                    vertex_path: "./assets/shaders/fullscreen.vert.msl",
+                    fragment_path: "./assets/shaders/godrays.frag.msl"
+                },
                 composite: {
                     vertex_path: "./assets/shaders/fullscreen.vert.msl",
                     fragment_path: "./assets/shaders/composite.frag.msl"
@@ -95,6 +100,10 @@ pub fn default_shader_config() ExoShaderConfig = {
             blur: {
                 vertex_path: "./assets/shaders/fullscreen.vert.spv",
                 fragment_path: "./assets/shaders/bloom_blur.frag.spv"
+            },
+            godrays: {
+                vertex_path: "./assets/shaders/fullscreen.vert.spv",
+                fragment_path: "./assets/shaders/godrays.frag.spv"
             },
             composite: {
                 vertex_path: "./assets/shaders/fullscreen.vert.spv",

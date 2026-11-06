@@ -841,11 +841,19 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             app.time
         )
         renderer.end_pass(runtime)
-        if !renderer.apply_post_process(
+        val godray_light: ecs.PointLight = renderer.primary_light(app.scene)
+        val godray_projection: renderer.ScreenProjection = renderer.project_to_screen(
+            cam.view_projection(app.camera, frame_w as i32, frame_h as i32),
+            godray_light.position
+        )
+        if !renderer.apply_post_process_with_light(
             runtime,
             app.scene.render.post_process,
             app.scene.render.enable_fxaa,
-            app.time
+            app.time,
+            godray_projection.x,
+            godray_projection.y,
+            godray_projection.visible
         ) {
             exoerr.print("SDL3 postprocess pass failed")
             exit_code = 1 as i32

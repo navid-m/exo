@@ -1,0 +1,63 @@
+#pragma clang diagnostic ignored "-Wmissing-prototypes"
+
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct GodrayUniforms
+{
+    float4 uLight;
+    float4 uParams;
+    float4 uColor;
+};
+
+struct main0_out
+{
+    float4 FragColor [[color(0)]];
+};
+
+struct main0_in
+{
+    float2 vTexCoord [[user(locn0)]];
+};
+
+static inline float brightness_of(float3 color_value)
+{
+    return max(color_value.r, max(color_value.g, color_value.b));
+}
+
+fragment main0_out main0(main0_in in [[stage_in]], constant GodrayUniforms& u [[buffer(0)]], texture2d<float> uSceneTex [[texture(0)]], sampler uSceneTexSmplr [[sampler(0)]], float4 gl_FragCoord [[position]])
+{
+    main0_out out = {};
+    float2 uv = in.vTexCoord;
+    float samples = clamp(u.uParams.w, 1.0, 64.0);
+    float2 delta = (uv - u.uLight.xy) * (u.uParams.y / samples);
+
+    float dither = fract(sin(dot(gl_FragCoord.xy, float2(12.9898, 78.233))) * 43758.5453);
+    float2 coord = uv - (delta * dither);
+
+    float decay = 1.0;
+    float total_weight = 0.0;
+    float3 accum = float3(0.0);
+    float threshold = max(u.uLight.w, 0.0);
+
+    for (int i = 0; i < 64; i++)
+    {
+        if (float(i) >= samples)
+        {
+            break;
+        }
+        float3 sample_color = uSceneTex.sample(uSceneTexSmplr, clamp(coord, float2(0.0), float2(1.0))).rgb;
+        float mask = smoothstep(threshold, threshold + 0.20, brightness_of(sample_color));
+        float weight = decay * max(u.uParams.z, 0.0);
+        accum += sample_color * mask * weight;
+        total_weight += weight;
+        decay *= u.uParams.x;
+        coord -= delta;
+    }
+
+    accum /= float3(max(total_weight, 0.0001));
+    out.FragColor = float4(accum * u.uColor.rgb * u.uLight.z, 1.0);
+    return out;
+}

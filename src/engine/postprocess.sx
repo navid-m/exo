@@ -16,12 +16,27 @@ pub type VignetteSettings = {
     color: math.Vec3
 }
 
+/// Screen-space light shafts radiating from the scene's primary point light.
+/// The engine projects that light into screen space and performs a radial
+/// blur over bright parts of the scene; no extra scene geometry is required.
+pub type GodraySettings = {
+    enabled: bool
+    intensity: f32
+    threshold: f32
+    decay: f32
+    density: f32
+    weight: f32
+    samples: i32
+    color: math.Vec3
+}
+
 /// Engine-owned post-processing settings. Games may tune these, but the
 /// engine does not attach any gameplay meaning to them.
 pub type PostProcessSettings = {
     enabled: bool
     bloom: BloomSettings
     vignette: VignetteSettings
+    godrays: GodraySettings
     exposure: f32
     contrast: f32
     saturation: f32
@@ -46,6 +61,16 @@ pub fn default_settings() PostProcessSettings = {
             intensity: 0.18 as f32,
             smoothness: 0.65 as f32,
             color: math.vec3(0.0 as f32, 0.0 as f32, 0.0 as f32)
+        },
+        godrays: {
+            enabled: false,
+            intensity: 0.70 as f32,
+            threshold: 0.60 as f32,
+            decay: 0.96 as f32,
+            density: 0.85 as f32,
+            weight: 1.0 as f32,
+            samples: 32 as i32,
+            color: math.vec3(1.0 as f32, 0.95 as f32, 0.82 as f32)
         },
         exposure: 1.0 as f32,
         contrast: 1.0 as f32,
