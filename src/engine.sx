@@ -16,6 +16,7 @@ val mem      = use("mem.sx")
 val (
     DEFAULT_SCREEN_WIDTH: i32  = 1440
     DEFAULT_SCREEN_HEIGHT: i32 = 900
+    DEFAULT_FONT_SIZE: f32     = 8.0
 )
 
 pub type ExoConfig = {
@@ -27,6 +28,9 @@ pub type ExoConfig = {
     auto_camera: bool
     fixed_dt: f32
     font_path: ref u8
+    font_data: ref u8
+    font_len: usize
+    font_size: f32
     debug_dump_path: ref u8
     debug_frame: i32
 }
@@ -207,6 +211,9 @@ pub fn default_config() ExoConfig = {
         auto_camera: false,
         fixed_dt: 0.0 as f32,
         font_path: "./assets/fonts/default.ttf",
+        font_data: none as ref u8,
+        font_len: 0 as usize,
+        font_size: DEFAULT_FONT_SIZE,
         debug_dump_path: "",
         debug_frame: -1 as i32
     }
@@ -263,6 +270,9 @@ pub type ExoAppBuilder = {
     auto_camera: mut bool
     fixed_dt: mut f32
     font_path: mut ref u8
+    font_data: mut ref u8
+    font_len: mut usize
+    font_size: mut f32
     debug_dump_path: mut ref u8
     debug_frame: mut i32
 }
@@ -282,6 +292,9 @@ pub fn new_app() ExoAppBuilder = {
         auto_camera: cfg.auto_camera,
         fixed_dt: cfg.fixed_dt,
         font_path: cfg.font_path,
+        font_data: cfg.font_data,
+        font_len: cfg.font_len,
+        font_size: cfg.font_size,
         debug_dump_path: cfg.debug_dump_path,
         debug_frame: cfg.debug_frame
     }
@@ -297,6 +310,9 @@ pub fn build_app(builder: ExoAppBuilder) ExoApp = {
         auto_camera: builder.auto_camera,
         fixed_dt: builder.fixed_dt,
         font_path: builder.font_path,
+        font_data: builder.font_data,
+        font_len: builder.font_len,
+        font_size: builder.font_size,
         debug_dump_path: builder.debug_dump_path,
         debug_frame: builder.debug_frame
     }
@@ -352,8 +368,36 @@ pub fn with_fixed_timestep(app: mut ExoAppBuilder, dt: f32) void = {
     app.fixed_dt = dt
 }
 
+/// Load a font from a filesystem path (or the engine's embedded defaults).
+/// A `.png` path uses the legacy bitmap atlas; any other valid file is treated
+/// as a TTF/OTF and rasterized by stb_truetype.
 pub fn with_font(app: mut ExoAppBuilder, path: ref u8) void = {
     app.font_path = path
+    app.font_data = none as ref u8
+    app.font_len = 0 as usize
+}
+
+/// Use font bytes embedded by the game, for example with `@embed`.
+///
+/// ```spectre
+/// val my_font = @embed("./assets/MyFont.ttf")
+/// engine.with_font_bytes(builder, my_font, @embedlen("./assets/MyFont.ttf"))
+/// ```
+pub fn with_font_bytes(app: mut ExoAppBuilder, data: ref u8, len: usize) void = {
+    app.font_data = data
+    app.font_len = len
+    app.font_path = none as ref u8
+}
+
+/// Set the pixel size of the base UI font. `UiText.scale` multiplies this value,
+/// so the default of 8.0 keeps the existing scale semantics. Use
+/// `ecs.ui_text_sized` when you want an absolute pixel size instead.
+pub fn with_font_size(app: mut ExoAppBuilder, size: f32) void = {
+    app.font_size = size
+}
+
+pub fn default_font_size() f32 = {
+    return 8.0 as f32
 }
 
 pub fn with_debug_dump(app: mut ExoAppBuilder, path: ref u8, frame: i32) void = {
@@ -579,7 +623,10 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
         app.config.width,
         app.config.height,
         app.config.shaders,
-        app.config.font_path
+        app.config.font_path,
+        app.config.font_data,
+        app.config.font_len,
+        app.config.font_size
     )
     if runtime == none {
         exoerr.print("SDL3 runtime init failed")

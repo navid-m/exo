@@ -278,6 +278,7 @@ pub type Renderer = {
     font_data: mut ref u8
     font_len: mut usize
     font_is_ttf: mut bool
+    font_base_size: mut f32
     font_atlases: mut list[FontAtlasGPU]
     linear_sampler: mut ref void
     repeat_sampler: mut ref void
@@ -1656,8 +1657,7 @@ pub fn create_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) ref vo
     )
 }
 
-fn font_pixel_size(scale: f32) i32 = {
-    val size: f32 = scale * (8.0 as f32)
+fn clamp_font_pixel_size(size: f32) i32 = {
     if size < (5.0 as f32) {
         return 5 as i32
     }
@@ -1665,6 +1665,27 @@ fn font_pixel_size(scale: f32) i32 = {
         return 160 as i32
     }
     return (size + (0.5 as f32)) as i32
+}
+
+fn font_pixel_size(text: ecs.UiText, base_size: f32) i32 = {
+    if text.pixel_size > (0.0 as f32) {
+        return clamp_font_pixel_size(text.pixel_size)
+    }
+    if base_size <= (0.0 as f32) {
+        return clamp_font_pixel_size(text.scale * (8.0 as f32))
+    }
+    return clamp_font_pixel_size(text.scale * base_size)
+}
+
+/// Map the requested size onto the legacy 8px bitmap atlas.
+fn bitmap_text_scale(text: ecs.UiText, base_size: f32) f32 = {
+    if text.pixel_size > (0.0 as f32) {
+        return text.pixel_size / (8.0 as f32)
+    }
+    if base_size <= (0.0 as f32) {
+        return text.scale
+    }
+    return text.scale * base_size / (8.0 as f32)
 }
 
 fn find_font_atlas(runtime: ref Renderer, pixel_size: i32) i32 = {
@@ -1725,7 +1746,7 @@ pub fn prepare_fonts(runtime_raw: ref void, scene: ecs.Scene3D) void = trust {
         return
     }
     for text in scene.ui.texts {
-        val pixel_size: i32 = font_pixel_size(text.scale)
+        val pixel_size: i32 = font_pixel_size(text, runtime.font_base_size)
         if find_font_atlas(runtime, pixel_size) < (0 as i32) {
             create_font_atlas(runtime, pixel_size)
         }
@@ -1797,7 +1818,10 @@ pub fn create(
     width: i32,
     height: i32,
     shader_cfg: shaders.ExoShaderConfig,
-    font_path: ref u8
+    font_path: ref u8,
+    font_bytes: ref u8,
+    font_bytes_len: usize,
+    font_size: f32
 ) ref void = trust {
     exoerr.clear()
     if !sdl.SDL_Init(sdl.SDL_INIT_VIDEO | sdl.SDL_INIT_AUDIO | sdl.SDL_INIT_GAMEPAD | sdl.SDL_INIT_EVENTS) {
@@ -1814,6 +1838,11 @@ pub fn create(
     runtime.ambient = 0.30 as f32
     runtime.lights = mem.persistent[ecs.PointLight]()
     runtime.font_atlases = mem.persistent[FontAtlasGPU]()
+    if font_size > (0.0 as f32) {
+        runtime.font_base_size = font_size
+    } else {
+        runtime.font_base_size = 8.0 as f32
+    }
     runtime.window = sdl.SDL_CreateWindow(title, width, height, 0 as u64)
     if runtime.window == none {
         destroy(runtime)
@@ -1888,7 +1917,20 @@ pub fn create(
         return none as ref void
     }
     runtime.normal_map_texture = load_png_texture(runtime, "./assets/normal_map.png")
-    if font_path != none && string.len_raw(font_path) > (0 as usize) {
+    if font_bytes != none && font_bytes_len > (0 as usize) {
+        val copy: mut ref u8 = @alloc(font_bytes_len) as ref u8
+        if copy != none {
+            @memcpy(copy as ref void, font_bytes as ref void, font_bytes_len)
+            if font.valid(copy, font_bytes_len) {
+                runtime.font_data = copy
+                runtime.font_len = font_bytes_len
+                runtime.font_is_ttf = true
+            } else {
+                @free(copy as ref void)
+            }
+        }
+    }
+    if !runtime.font_is_ttf && font_path != none && string.len_raw(font_path) > (0 as usize) {
         if !path_has_extension(font_path, ".png") {
             if io.load_binary_file(font_path) is some blob {
                 if font.valid(blob.data, blob.len) {
@@ -3748,7 +3790,7 @@ pub fn render_ui(
     }
     if rt.font_is_ttf {
         for text in scene.ui.texts {
-            val pixel_size: i32 = font_pixel_size(text.scale)
+            val pixel_size: i32 = font_pixel_size(text, rt.font_base_size)
             val atlas_index: i32 = find_font_atlas(rt, pixel_size)
             if atlas_index >= (0 as i32) {
                 if @get(rt.font_atlases, atlas_index as usize) is some atlas {
@@ -3759,8 +3801,9 @@ pub fn render_ui(
         return
     }
     for text in scene.ui.texts {
-        val line_height: f32 = 8.0 as f32 * text.scale
-        val advance: f32 = 6.0 as f32 * text.scale
+        val text_scale: f32 = bitmap_text_scale(text, rt.font_base_size)
+        val line_height: f32 = 8.0 as f32 * text_scale
+        val advance: f32 = 6.0 as f32 * text_scale
         val pen_x: mut f32 = text.x
         val pen_y: mut f32 = text.y
         val i: mut usize = 0 as usize
@@ -3771,7 +3814,7 @@ pub fn render_ui(
             }
             if ch == (10 as u8) {
                 pen_x = text.x
-                pen_y = pen_y + line_height + (2.0 as f32) * text.scale
+                pen_y = pen_y + line_height + (2.0 as f32) * text_scale
             } elif ch != (32 as u8) {
                 val glyph: i32 = ch as i32 - (32 as i32)
                 if glyph >= (0 as i32) && glyph < (96 as i32) {

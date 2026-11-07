@@ -280,6 +280,7 @@ pub type UiText = {
     x: f32
     y: f32
     scale: f32
+    pixel_size: f32
     color: math.Vec3
     alpha: f32
 }
@@ -480,6 +481,29 @@ pub fn ui_text(
             x: x,
             y: y,
             scale: scale,
+            pixel_size: 0.0 as f32,
+            color: color,
+            alpha: alpha
+        })
+}
+
+/// Add UI text at an absolute pixel size, independent of the app's base font
+/// size and the `scale` multiplier.
+pub fn ui_text_sized(
+    ui: mut Ui,
+    text: ref u8,
+    x: f32,
+    y: f32,
+    pixel_size: f32,
+    color: math.Vec3,
+    alpha: f32
+) void = {
+    @append(ui.texts, {
+            text: text,
+            x: x,
+            y: y,
+            scale: 1.0 as f32,
+            pixel_size: pixel_size,
             color: color,
             alpha: alpha
         })
