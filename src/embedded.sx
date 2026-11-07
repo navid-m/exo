@@ -36,6 +36,7 @@ val (
     godrays_frag_msl         = @embed("../assets/shaders/godrays.frag.msl")
     composite_frag_msl       = @embed("../assets/shaders/composite.frag.msl")
     default_font             = @embed("../assets/fonts/default.png")
+    default_ttf              = @embed("../assets/fonts/default.ttf")
     normal_map               = @embed("../assets/normal_map.jpg")
     example_sound            = @embed("../assets/example_sound.wav")
 )
@@ -279,6 +280,10 @@ pub fn find(key: ref u8) option[EmbeddedAsset] = trust {
     @append(
         assets,
         asset("./assets/fonts/default.png", default_font, @embedlen("../assets/fonts/default.png"))
+    )
+    @append(
+        assets,
+        asset("./assets/fonts/default.ttf", default_ttf, @embedlen("../assets/fonts/default.ttf"))
     )
     @append(
         assets,

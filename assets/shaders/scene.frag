@@ -26,7 +26,7 @@ vec3 sky_color(vec3 direction_value) {
 void main() {
     if (uAlphaPad.z > 0.5) {
         vec4 ui_tex = texture(uAlbedo, vTexCoord);
-        vec3 ui_color = mix(uColorReflective.xyz, ui_tex.rgb, uAlphaPad.y);
+        vec3 ui_color = mix(uColorReflective.xyz, uColorReflective.xyz * ui_tex.rgb, uAlphaPad.y);
         FragColor = vec4(ui_color, ui_tex.a * uAlphaPad.x);
         return;
     }

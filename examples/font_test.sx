@@ -1,0 +1,92 @@
+val ecs    = use("../src/ecs.sx")
+val engine = use("../src/engine.sx")
+val sdl    = use("../src/engine/sdl.sx")
+
+type (engine.AppEvents) FontTest = {
+    frames: mut i32
+}
+
+pub fn (FontTest) on_start(_: mut self, _: mut engine.ExoApp) void = {}
+
+pub fn (FontTest) on_update(game: mut self, app: mut engine.ExoApp, _: f32, _: f32) void = {
+    ecs.ui_clear(app.scene.ui)
+    ecs.ui_rect(
+        app.scene.ui,
+        16.0 as f32,
+        16.0 as f32,
+        640.0 as f32,
+        160.0 as f32,
+        ecs.make_vec3(0.02 as f32, 0.04 as f32, 0.10 as f32),
+        0.8 as f32
+    )
+    ecs.ui_text(
+        app.scene.ui,
+        "SCORE 1234   LIVES 3   DOTS 87",
+        26.0 as f32,
+        26.0 as f32,
+        3.0 as f32,
+        ecs.make_vec3(1.00 as f32, 0.86 as f32, 0.18 as f32),
+        1.0 as f32
+    )
+    ecs.ui_text(
+        app.scene.ui,
+        "WORDS and stuff like that",
+        26.0 as f32,
+        60.0 as f32,
+        2.0 as f32,
+        ecs.make_vec3(0.62 as f32, 0.82 as f32, 1.00 as f32),
+        1.0 as f32
+    )
+    ecs.ui_text(
+        app.scene.ui,
+        "abcdefghijklmnopqrstuvwxyz 0123456789 <>=+-*/",
+        26.0 as f32,
+        96.0 as f32,
+        1.0 as f32,
+        ecs.make_vec3(0.85 as f32, 0.92 as f32, 1.00 as f32),
+        1.0 as f32
+    )
+    ecs.ui_text(
+        app.scene.ui,
+        "POWER MODE",
+        26.0 as f32,
+        130.0 as f32,
+        2.2 as f32,
+        ecs.make_vec3(0.45 as f32, 0.72 as f32, 1.00 as f32),
+        1.0 as f32
+    )
+    game.frames = game.frames + (1 as i32)
+    if game.frames >= (600 as i32) {
+        engine.request_quit(app)
+    }
+}
+
+pub fn (FontTest) on_fixed_update(_: mut self, _: mut engine.ExoApp, _: f32) void = {}
+pub fn (FontTest) on_key_down(_: mut self, _: mut engine.ExoApp, _: i32, _: bool, _: u16) void = {}
+pub fn (FontTest) on_key_up(_: mut self, _: mut engine.ExoApp, _: i32, _: u16) void = {}
+pub fn (FontTest) on_mouse_move(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+pub fn (FontTest) on_mouse_button(_: mut self, _: mut engine.ExoApp, _: u8, _: bool, _: u8, _: f32, _: f32) void = {}
+pub fn (FontTest) on_mouse_wheel(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+pub fn (FontTest) on_text_input(_: mut self, _: mut engine.ExoApp, _: ref u8) void = {}
+pub fn (FontTest) on_window_resize(_: mut self, _: mut engine.ExoApp, _: i32, _: i32) void = {}
+pub fn (FontTest) on_focus_changed(_: mut self, _: mut engine.ExoApp, _: bool) void = {}
+pub fn (FontTest) on_gamepad_button(_: mut self, _: mut engine.ExoApp, _: i32, _: bool) void = {}
+pub fn (FontTest) on_gamepad_axis(_: mut self, _: mut engine.ExoApp, _: i32, _: f32) void = {}
+pub fn (FontTest) on_shutdown(_: mut self, _: mut engine.ExoApp) void = {}
+
+pub fn main() i32 = {
+    val scene: mut ecs.Scene3D = ecs.new_scene()
+    scene.render.clear_top = ecs.make_vec3(0.02 as f32, 0.03 as f32, 0.05 as f32)
+    scene.render.clear_bottom = ecs.make_vec3(0.03 as f32, 0.05 as f32, 0.10 as f32)
+
+    val builder: mut engine.ExoAppBuilder = engine.new_app()
+    engine.with_title(builder, "font test")
+    engine.with_resolution(builder, 1280 as i32, 720 as i32)
+    engine.with_scene(builder, scene)
+    engine.with_default_camera(builder)
+    engine.with_quit_key(builder, sdl.SDL_SCANCODE_ESCAPE)
+
+    val app: engine.ExoApp = engine.build_app(builder)
+    val game: FontTest = { frames: 0 as i32 }
+    return trust engine.run_app_with_events[FontTest](app, game)
+}

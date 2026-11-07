@@ -206,7 +206,7 @@ pub fn default_config() ExoConfig = {
         quit_key: 0 as i32,
         auto_camera: false,
         fixed_dt: 0.0 as f32,
-        font_path: "./assets/fonts/default.png",
+        font_path: "./assets/fonts/default.ttf",
         debug_dump_path: "",
         debug_frame: -1 as i32
     }
@@ -787,6 +787,7 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
         )
         mem.begin_render()
         renderer.prepare_models(runtime, meshes, app.scene, app.time)
+        renderer.prepare_fonts(runtime, app.scene)
         renderer.configure_scene_style(
             runtime,
             app.scene.render.clear_top,

@@ -1,0 +1,342 @@
+/// TrueType font loading and glyph-atlas creation.
+///
+/// Font bytes (TTF/OTF) are parsed and rasterized by stb_truetype through its
+/// public C API. The atlas packing wrappers, RGBA expansion, glyph metrics, and
+/// size-specific caching are implemented here in Spectre.
+///
+/// SPDX-License-Identifier: GPL-3.0-only
+/// (C) Navid Momtahen - 2026
+
+val mem = use("../mem.sx")
+
+extern "./src/stb_truetype_impl.h"
+
+pub extern type StbttPackedChar = {
+    x0: u16
+    y0: u16
+    x1: u16
+    y1: u16
+    xoff: f32
+    yoff: f32
+    xadvance: f32
+    xoff2: f32
+    yoff2: f32
+}
+
+pub extern type StbttPackContext = {
+    user_allocator_context: ref void
+    pack_info: ref void
+    width: i32
+    height: i32
+    stride_in_bytes: i32
+    padding: i32
+    skip_missing: i32
+    h_oversample: u32
+    v_oversample: u32
+    pixels: ref u8
+    nodes: ref void
+}
+
+pub extern (C, header) fn stbtt_GetFontOffsetForIndex(data: ref u8, index: i32) i32 = "stbtt_GetFontOffsetForIndex"
+
+pub extern (C, header) fn stbtt_PackBegin(
+    spc: ref StbttPackContext,
+    pixels: ref u8,
+    width: i32,
+    height: i32,
+    stride_in_bytes: i32,
+    padding: i32,
+    alloc_context: ref void
+) i32 = "stbtt_PackBegin"
+
+pub extern (C, header) fn stbtt_PackFontRange(
+    spc: ref StbttPackContext,
+    data: ref u8,
+    font_index: i32,
+    font_size: f32,
+    first_codepoint: i32,
+    glyph_count: i32,
+    glyphs: ref StbttPackedChar
+) i32 = "stbtt_PackFontRange"
+
+pub extern (C, header) fn stbtt_PackEnd(spc: ref StbttPackContext) void = "stbtt_PackEnd"
+
+pub extern (C, header) fn stbtt_GetScaledFontVMetrics(
+    data: ref u8,
+    font_index: i32,
+    size: f32,
+    ascent: ref f32,
+    descent: ref f32,
+    line_gap: ref f32
+) void = "stbtt_GetScaledFontVMetrics"
+
+/// One rasterized glyph in atlas UV space plus pixel-space metrics.
+pub type Glyph = {
+    u0: f32
+    v0: f32
+    u1: f32
+    v1: f32
+    xoff: f32
+    yoff: f32
+    width: f32
+    height: f32
+    advance: f32
+}
+
+/// A CPU-side font atlas. `pixels` is tightly packed RGBA8 and is released
+/// after the renderer uploads it to the GPU.
+pub type Atlas = {
+    pixels: mut ref u8
+    width: i32
+    height: i32
+    pixel_size: f32
+    ascent: f32
+    descent: f32
+    line_gap: f32
+    first_codepoint: i32
+    glyph_count: i32
+    glyphs: list[Glyph]
+}
+
+pub fn valid(data: ref u8, data_len: usize) bool = trust {
+    if data == none || data_len == (0 as usize) {
+        return false
+    }
+    return stbtt_GetFontOffsetForIndex(data, 0 as i32) >= (0 as i32)
+}
+
+fn empty_pack_context() StbttPackContext = {
+    return {
+        user_allocator_context: none as ref void,
+        pack_info: none as ref void,
+        width: 0 as i32,
+        height: 0 as i32,
+        stride_in_bytes: 0 as i32,
+        padding: 0 as i32,
+        skip_missing: 0 as i32,
+        h_oversample: 1 as u32,
+        v_oversample: 1 as u32,
+        pixels: none as ref u8,
+        nodes: none as ref void
+    }
+}
+
+fn next_atlas_size(width: mut i32, height: mut i32) void = {
+    if width <= height {
+        width = width * (2 as i32)
+    } else {
+        height = height * (2 as i32)
+    }
+}
+
+fn packed_char_at(packed: ref StbttPackedChar, index: i32) ref StbttPackedChar = trust {
+    val base: ref u8 = packed as ref u8
+    return @ptradd(base, (index as usize) * @sizeof(StbttPackedChar)) as ref StbttPackedChar
+}
+
+fn build_glyph_list(
+    packed: ref StbttPackedChar,
+    glyph_count: i32,
+    atlas_width: i32,
+    atlas_height: i32
+) list[Glyph] = trust {
+    val glyphs: mut list[Glyph] = mem.persistent[Glyph]()
+    val i: mut i32 = 0 as i32
+    val width_f: f32 = atlas_width as f32
+    val height_f: f32 = atlas_height as f32
+    for i < glyph_count {
+        val packed_char: ref StbttPackedChar = packed_char_at(packed, i)
+        val x0: f32 = packed_char.x0 as f32
+        val y0: f32 = packed_char.y0 as f32
+        val x1: f32 = packed_char.x1 as f32
+        val y1: f32 = packed_char.y1 as f32
+        @append(glyphs, {
+            u0: x0 / width_f,
+            v0: y0 / height_f,
+            u1: x1 / width_f,
+            v1: y1 / height_f,
+            xoff: packed_char.xoff,
+            yoff: packed_char.yoff,
+            width: x1 - x0,
+            height: y1 - y0,
+            advance: packed_char.xadvance
+        })
+        i = i + (1 as i32)
+    }
+    return glyphs
+}
+
+fn expand_to_rgba(
+    alpha: ref u8,
+    packed: ref StbttPackedChar,
+    glyph_count: i32,
+    atlas_width: i32,
+    atlas_height: i32
+) ref u8 = trust {
+    val pixel_count: usize = (atlas_width as usize) * (atlas_height as usize)
+    val pixels: mut ref u8 = @alloc(pixel_count * (4 as usize)) as ref u8
+    if pixels == none {
+        return none as ref u8
+    }
+    @memset(pixels as ref void, 0, pixel_count * (4 as usize))
+
+    val i: mut i32 = 0 as i32
+    for i < glyph_count {
+        val packed_char: ref StbttPackedChar = packed_char_at(packed, i)
+        val x0: i32 = packed_char.x0 as i32
+        val y0: i32 = packed_char.y0 as i32
+        val x1: i32 = packed_char.x1 as i32
+        val y1: i32 = packed_char.y1 as i32
+        val gy: mut i32 = y0
+        for gy < y1 {
+            val gx: mut i32 = x0
+            for gx < x1 {
+                val pixel_index: i32 = gy * atlas_width + gx
+                val coverage: u8 = @load8(@ptradd(alpha, pixel_index as usize))
+                if coverage != (0 as u8) {
+                    val out_index: usize = (pixel_index as usize) * (4 as usize)
+                    @store8(@ptradd(pixels, out_index) as ref u8, 255 as u8)
+                    @store8(@ptradd(pixels, out_index + (1 as usize)) as ref u8, 255 as u8)
+                    @store8(@ptradd(pixels, out_index + (2 as usize)) as ref u8, 255 as u8)
+                    @store8(@ptradd(pixels, out_index + (3 as usize)) as ref u8, coverage)
+                }
+                gx = gx + (1 as i32)
+            }
+            gy = gy + (1 as i32)
+        }
+        i = i + (1 as i32)
+    }
+    return pixels
+}
+
+/// Rasterize `glyph_count` codepoints starting at `first_codepoint` into an
+/// RGBA8 atlas at `pixel_size` pixels high.
+pub fn create_atlas(
+    data: ref u8,
+    data_len: usize,
+    pixel_size: f32,
+    first_codepoint: i32,
+    glyph_count: i32
+) option[Atlas] = trust {
+    if data == none || data_len == (0 as usize) || pixel_size <= (0.0 as f32) || glyph_count <= (0 as i32) {
+        return none
+    }
+    if stbtt_GetFontOffsetForIndex(data, 0 as i32) < (0 as i32) {
+        return none
+    }
+
+    val packed_size: usize = @sizeof(StbttPackedChar) * (glyph_count as usize)
+    val packed: mut ref StbttPackedChar = @alloc(packed_size) as ref StbttPackedChar
+    if packed == none {
+        return none
+    }
+    @memset(packed as ref void, 0, packed_size)
+
+    val atlas_width: mut i32 = 256 as i32
+    val atlas_height: mut i32 = 256 as i32
+    val alpha: mut ref u8 = none as ref u8
+    val packed_ok: mut bool = false
+    val attempts: mut i32 = 0 as i32
+    for !packed_ok && attempts < (8 as i32) {
+        val pixel_count: usize = (atlas_width as usize) * (atlas_height as usize)
+        alpha = @alloc(pixel_count) as ref u8
+        if alpha == none {
+            @free(packed as ref void)
+            return none
+        }
+        val context: mut StbttPackContext = empty_pack_context()
+        if stbtt_PackBegin(
+            @addr(context),
+            alpha,
+            atlas_width,
+            atlas_height,
+            0 as i32,
+            1 as i32,
+            none as ref void
+        ) != (0 as i32) {
+            if stbtt_PackFontRange(
+                @addr(context),
+                data,
+                0 as i32,
+                pixel_size,
+                first_codepoint,
+                glyph_count,
+                packed
+            ) != (0 as i32) {
+                packed_ok = true
+            }
+            stbtt_PackEnd(@addr(context))
+        }
+        if !packed_ok {
+            @free(alpha as ref void)
+            alpha = none
+            next_atlas_size(atlas_width, atlas_height)
+        }
+        attempts = attempts + (1 as i32)
+    }
+
+    if !packed_ok || alpha == none {
+        if alpha != none {
+            @free(alpha as ref void)
+        }
+        @free(packed as ref void)
+        return none
+    }
+
+    val rgba: ref u8 = expand_to_rgba(alpha, packed, glyph_count, atlas_width, atlas_height)
+    @free(alpha as ref void)
+    if rgba == none {
+        @free(packed as ref void)
+        return none
+    }
+
+    val ascent: mut f32 = 0.0 as f32
+    val descent: mut f32 = 0.0 as f32
+    val line_gap: mut f32 = 0.0 as f32
+    stbtt_GetScaledFontVMetrics(
+        data,
+        0 as i32,
+        pixel_size,
+        @addr(ascent),
+        @addr(descent),
+        @addr(line_gap)
+    )
+
+    val glyphs: list[Glyph] = build_glyph_list(
+        packed,
+        glyph_count,
+        atlas_width,
+        atlas_height
+    )
+    @free(packed as ref void)
+
+    return some {
+        pixels: rgba,
+        width: atlas_width,
+        height: atlas_height,
+        pixel_size: pixel_size,
+        ascent: ascent,
+        descent: descent,
+        line_gap: line_gap,
+        first_codepoint: first_codepoint,
+        glyph_count: glyph_count,
+        glyphs: glyphs
+    }
+}
+
+pub fn destroy_atlas(atlas: Atlas) void = trust {
+    val pixels: mut ref u8 = atlas.pixels
+    if pixels != none {
+        @free(pixels as ref void)
+    }
+    val glyphs: list[Glyph] = atlas.glyphs
+    @listfree(glyphs)
+}
+
+pub fn glyph(atlas: Atlas, index: i32) option[Glyph] = {
+    return @get(atlas.glyphs, index as usize)
+}
+
+pub fn line_height(atlas: Atlas) f32 = {
+    return atlas.ascent - atlas.descent + atlas.line_gap
+}

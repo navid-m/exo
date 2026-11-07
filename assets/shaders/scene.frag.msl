@@ -43,7 +43,7 @@ fragment main0_out main0(main0_in in [[stage_in]], constant SceneFragmentUniform
     if (_31.uAlphaPad.z > 0.5)
     {
         float4 ui_tex = uAlbedo.sample(uAlbedoSmplr, in.vTexCoord);
-        float3 ui_color = mix(_31.uColorReflective.xyz, ui_tex.xyz, float3(_31.uAlphaPad.y));
+        float3 ui_color = mix(_31.uColorReflective.xyz, _31.uColorReflective.xyz * ui_tex.xyz, float3(_31.uAlphaPad.y));
         out.FragColor = float4(ui_color, ui_tex.w * _31.uAlphaPad.x);
         return out;
     }

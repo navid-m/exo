@@ -1,4 +1,5 @@
 val sdl         = use("sdl.sx")
+val font        = use("font.sx")
 val math        = use("math.sx")
 val ecs         = use("../ecs.sx")
 val cam         = use("camera.sx")
@@ -40,6 +41,13 @@ pub type SceneMeshes = {
     model_textures: list[ref void]
     model_draws: list[ModelGPU]
     custom: list[MeshGPU]
+}
+
+/// A size-specific TTF atlas and its GPU texture.
+pub type FontAtlasGPU = {
+    cpu: font.Atlas
+    texture: mut ref void
+    pixel_size: i32
 }
 
 pub type SceneVertexUniforms = {
@@ -267,6 +275,10 @@ pub type Renderer = {
     normal_map_texture: mut ref void
     glb_texture: mut ref void
     font_texture: mut ref void
+    font_data: mut ref u8
+    font_len: mut usize
+    font_is_ttf: mut bool
+    font_atlases: mut list[FontAtlasGPU]
     linear_sampler: mut ref void
     repeat_sampler: mut ref void
     reflection_color: mut ref void
@@ -361,6 +373,78 @@ pub fn create_texture(
     info.num_levels = 1 as u32
     info.sample_count = sdl.SDL_GPU_SAMPLECOUNT_1
     return trust sdl.SDL_CreateGPUTexture(runtime.device, @addr(info))
+}
+
+/// Upload raw, tightly packed RGBA8 pixels into a sampled GPU texture.
+pub fn create_rgba_texture(
+    runtime: ref Renderer,
+    pixels: ref u8,
+    width: i32,
+    height: i32
+) ref void = trust {
+    if pixels == none || width <= (0 as i32) || height <= (0 as i32) {
+        return none as ref void
+    }
+    val w: u32 = width as u32
+    val h: u32 = height as u32
+    val texture: ref void = create_texture(
+        runtime,
+        sdl.SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM,
+        sdl.SDL_GPU_TEXTUREUSAGE_SAMPLER,
+        w,
+        h
+    )
+    if texture == none {
+        return none as ref void
+    }
+    val byte_size: u32 = w * h * (4 as u32)
+    val tbuf_info: mut sdl.SDLGPUTransferBufferCreateInfo = {
+        usage: 0 as i32, size: 0 as u32, props: 0 as u32
+    }
+    tbuf_info.usage = sdl.SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD
+    tbuf_info.size = byte_size
+    val tbuf: ref void = sdl.SDL_CreateGPUTransferBuffer(runtime.device, @addr(tbuf_info))
+    if tbuf == none {
+        sdl.SDL_ReleaseGPUTexture(runtime.device, texture)
+        return none as ref void
+    }
+    val mapped: ref void = sdl.SDL_MapGPUTransferBuffer(runtime.device, tbuf, false)
+    if mapped == none {
+        sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
+        sdl.SDL_ReleaseGPUTexture(runtime.device, texture)
+        return none as ref void
+    }
+    @memcpy(mapped, pixels as ref void, byte_size as usize)
+    sdl.SDL_UnmapGPUTransferBuffer(runtime.device, tbuf)
+    val cmd: ref void = sdl.SDL_AcquireGPUCommandBuffer(runtime.device)
+    if cmd == none {
+        sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
+        sdl.SDL_ReleaseGPUTexture(runtime.device, texture)
+        return none as ref void
+    }
+    val copy_pass: ref void = sdl.SDL_BeginGPUCopyPass(cmd)
+    val src: mut sdl.SDLGPUTextureTransferInfo = {
+        transfer_buffer: tbuf,
+        offset: 0 as u32,
+        pixels_per_row: w,
+        rows_per_layer: h
+    }
+    val dst: mut sdl.SDLGPUTextureRegion = {
+        texture: texture,
+        mip_level: 0 as u32,
+        layer: 0 as u32,
+        x: 0 as u32,
+        y: 0 as u32,
+        z: 0 as u32,
+        w: w,
+        h: h,
+        d: 1 as u32
+    }
+    sdl.SDL_UploadToGPUTexture(copy_pass, @addr(src), @addr(dst), false)
+    sdl.SDL_EndGPUCopyPass(copy_pass)
+    sdl.SDL_SubmitGPUCommandBuffer(cmd)
+    sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
+    return texture
 }
 
 fn half_extent(value: u32) u32 = {
@@ -1445,6 +1529,18 @@ pub fn destroy_runtime_resources(runtime: mut ref Renderer) void = trust {
         sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.font_texture)
         runtime.font_texture = none
     }
+    for atlas in runtime.font_atlases {
+        if atlas.texture != none {
+            sdl.SDL_ReleaseGPUTexture(runtime.device, atlas.texture)
+        }
+        font.destroy_atlas(atlas.cpu)
+    }
+    if runtime.font_data != none {
+        @free(runtime.font_data as ref void)
+        runtime.font_data = none
+    }
+    runtime.font_is_ttf = false
+    runtime.font_len = 0 as usize
     if runtime.normal_map_texture != none {
         sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.normal_map_texture)
         runtime.normal_map_texture = none
@@ -1560,12 +1656,112 @@ pub fn create_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) ref vo
     )
 }
 
+fn font_pixel_size(scale: f32) i32 = {
+    val size: f32 = scale * (8.0 as f32)
+    if size < (5.0 as f32) {
+        return 5 as i32
+    }
+    if size > (160.0 as f32) {
+        return 160 as i32
+    }
+    return (size + (0.5 as f32)) as i32
+}
+
+fn find_font_atlas(runtime: ref Renderer, pixel_size: i32) i32 = {
+    val i: mut usize = 0 as usize
+    for i < @len(runtime.font_atlases) {
+        if @get(runtime.font_atlases, i) is some atlas {
+            if atlas.pixel_size == pixel_size {
+                return i as i32
+            }
+        }
+        i = i + (1 as usize)
+    }
+    return -1 as i32
+}
+
+fn create_font_atlas(runtime: mut ref Renderer, pixel_size: i32) bool = trust {
+    if !runtime.font_is_ttf || runtime.font_data == none {
+        return false
+    }
+    if font.create_atlas(
+        runtime.font_data,
+        runtime.font_len,
+        pixel_size as f32,
+        32 as i32,
+        95 as i32
+    ) is some atlas {
+        val cpu: mut font.Atlas = atlas
+        val texture: ref void = create_rgba_texture(
+            runtime,
+            cpu.pixels,
+            cpu.width,
+            cpu.height
+        )
+        if texture == none {
+            font.destroy_atlas(cpu)
+            return false
+        }
+        @free(cpu.pixels as ref void)
+        cpu.pixels = none as ref u8
+        @append(runtime.font_atlases, {
+            cpu: cpu,
+            texture: texture,
+            pixel_size: pixel_size
+        })
+        return true
+    }
+    return false
+}
+
+/// Create any TTF atlases the current UI needs. This must run before the
+/// frame's render passes begin because it uploads GPU textures.
+pub fn prepare_fonts(runtime_raw: ref void, scene: ecs.Scene3D) void = trust {
+    if runtime_raw == none {
+        return
+    }
+    val runtime: mut ref Renderer = runtime_raw as mut ref Renderer
+    if !runtime.font_is_ttf {
+        return
+    }
+    for text in scene.ui.texts {
+        val pixel_size: i32 = font_pixel_size(text.scale)
+        if find_font_atlas(runtime, pixel_size) < (0 as i32) {
+            create_font_atlas(runtime, pixel_size)
+        }
+    }
+}
+
 pub fn upload_glb_texture(runtime: mut ref Renderer, model: ecs.GlbModel) void = trust {
     if runtime.glb_texture != none {
         sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.glb_texture)
         runtime.glb_texture = none
     }
     runtime.glb_texture = create_glb_texture(runtime, model)
+}
+
+fn lower_byte(value: u8) u8 = {
+    if value >= (65 as u8) && value <= (90 as u8) {
+        return value + (32 as u8)
+    }
+    return value
+}
+
+fn path_has_extension(path: ref u8, extension: ref u8) bool = trust {
+    val path_len: usize = string.len_raw(path)
+    val ext_len: usize = string.len_raw(extension)
+    if path_len < ext_len {
+        return false
+    }
+    val base: ref u8 = @ptradd(path, path_len - ext_len) as ref u8
+    val i: mut usize = 0 as usize
+    for i < ext_len {
+        if lower_byte(@load8(@ptradd(base, i))) != lower_byte(@load8(@ptradd(extension, i))) {
+            return false
+        }
+        i = i + (1 as usize)
+    }
+    return true
 }
 
 fn create_gpu_device(debug: bool) ref void = trust {
@@ -1617,6 +1813,7 @@ pub fn create(
     runtime.sky_horizon = math.vec3(0.05 as f32, 0.08 as f32, 0.14 as f32)
     runtime.ambient = 0.30 as f32
     runtime.lights = mem.persistent[ecs.PointLight]()
+    runtime.font_atlases = mem.persistent[FontAtlasGPU]()
     runtime.window = sdl.SDL_CreateWindow(title, width, height, 0 as u64)
     if runtime.window == none {
         destroy(runtime)
@@ -1692,7 +1889,20 @@ pub fn create(
     }
     runtime.normal_map_texture = load_png_texture(runtime, "./assets/normal_map.png")
     if font_path != none && string.len_raw(font_path) > (0 as usize) {
-        runtime.font_texture = load_png_texture(runtime, font_path)
+        if !path_has_extension(font_path, ".png") {
+            if io.load_binary_file(font_path) is some blob {
+                if font.valid(blob.data, blob.len) {
+                    runtime.font_data = blob.data
+                    runtime.font_len = blob.len
+                    runtime.font_is_ttf = true
+                } else {
+                    @free(blob.data as ref void)
+                }
+            }
+        }
+        if !runtime.font_is_ttf {
+            runtime.font_texture = load_png_texture(runtime, font_path)
+        }
     }
     return runtime
 }
@@ -3387,7 +3597,8 @@ pub fn draw_ui_quad(
     u0: f32, v0: f32, u1: f32, v1: f32,
     color: math.Vec3, alpha: f32,
     screen_w: f32, screen_h: f32,
-    textured: bool
+    textured: bool,
+    texture: ref void
 ) void = trust {
     if runtime_raw == none || !mesh_valid(quad_mesh) {
         return
@@ -3411,6 +3622,9 @@ pub fn draw_ui_quad(
     fu.color_reflective = { x: color.x, y: color.y, z: color.z, w: 0.0 as f32 }
     fu.alpha_pad = { x: alpha, y: has_tex, z: 1.0 as f32, w: 0.0 as f32 }
     val tex: mut ref void = runtime.font_texture
+    if textured && texture != none {
+        tex = texture
+    }
     if !textured {
         tex = runtime.reflection_color
     }
@@ -3443,6 +3657,62 @@ pub fn draw_ui_quad(
     )
 }
 
+fn draw_ttf_text(
+    runtime: ref void,
+    quad: MeshGPU,
+    text: ecs.UiText,
+    atlas: FontAtlasGPU,
+    screen_w: f32,
+    screen_h: f32
+) void = trust {
+    if text.text == none {
+        return
+    }
+    val line_height: f32 = font.line_height(atlas.cpu)
+    val pen_x: mut f32 = text.x
+    val pen_y: mut f32 = text.y
+    val i: mut usize = 0 as usize
+    for {
+        val ch: u8 = @load8(@ptradd(text.text, i))
+        if ch == (0 as u8) {
+            break
+        }
+        if ch == (10 as u8) {
+            pen_x = text.x
+            pen_y = pen_y + line_height
+        } elif ch != (13 as u8) {
+            val glyph_index: mut i32 = (ch as i32) - atlas.cpu.first_codepoint
+            if glyph_index < (0 as i32) || glyph_index >= atlas.cpu.glyph_count {
+                glyph_index = (63 as i32) - atlas.cpu.first_codepoint
+            }
+            if font.glyph(atlas.cpu, glyph_index) is some glyph {
+                if glyph.width > (0.0 as f32) && glyph.height > (0.0 as f32) {
+                    draw_ui_quad(
+                        runtime,
+                        quad,
+                        pen_x + glyph.xoff,
+                        pen_y + atlas.cpu.ascent + glyph.yoff,
+                        glyph.width,
+                        glyph.height,
+                        glyph.u0,
+                        glyph.v0,
+                        glyph.u1,
+                        glyph.v1,
+                        text.color,
+                        text.alpha,
+                        screen_w,
+                        screen_h,
+                        true,
+                        atlas.texture
+                    )
+                }
+                pen_x = pen_x + glyph.advance
+            }
+        }
+        i = i + (1 as usize)
+    }
+}
+
 pub fn render_ui(
     runtime: ref void,
     resources: SceneMeshes,
@@ -3453,6 +3723,7 @@ pub fn render_ui(
     if runtime == none {
         return
     }
+    val rt: ref Renderer = runtime as ref Renderer
     val sw: f32 = screen_w as f32
     val sh: f32 = screen_h as f32
     for rect in scene.ui.rects {
@@ -3471,8 +3742,21 @@ pub fn render_ui(
             rect.alpha,
             sw,
             sh,
-            false
+            false,
+            none as ref void
         )
+    }
+    if rt.font_is_ttf {
+        for text in scene.ui.texts {
+            val pixel_size: i32 = font_pixel_size(text.scale)
+            val atlas_index: i32 = find_font_atlas(rt, pixel_size)
+            if atlas_index >= (0 as i32) {
+                if @get(rt.font_atlases, atlas_index as usize) is some atlas {
+                    draw_ttf_text(runtime, resources.quad, text, atlas, sw, sh)
+                }
+            }
+        }
+        return
     }
     for text in scene.ui.texts {
         val line_height: f32 = 8.0 as f32 * text.scale
@@ -3512,7 +3796,8 @@ pub fn render_ui(
                         text.alpha,
                         sw,
                         sh,
-                        true
+                        true,
+                        none as ref void
                     )
                 }
                 pen_x = pen_x + advance
