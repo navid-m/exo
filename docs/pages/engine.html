@@ -1,0 +1,416 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>engine — Docs</title><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><style>:root{
+  --bg:#f0f4fa;--bg2:#e4ecf7;--surface:#ffffff;--surface2:#f7f9fd;
+  --border:#c8d8ee;--border2:#dde8f5;
+  --text:#0f1f3d;--text2:#3a5275;--text3:#6b87a8;
+  --accent:#1d6cf0;--accent2:#4a90f7;--accent3:#0a4fc4;
+  --code-bg:#eaf0fb;--code-text:#1a3560;
+  --kw:#1d6cf0;--ty:#0e7490;--lit:#0f5c2e;--op:#475569;--cm:#7a94b0;--fn-col:#7c3aed;
+  --sb-w:272px;--radius:10px;--font:'IBM Plex Sans',system-ui,sans-serif;--mono:'IBM Plex Mono',monospace;
+  --shadow:0 1px 3px rgba(15,31,61,.06),0 4px 16px rgba(15,31,61,.08);
+  --shadow-lg:0 2px 8px rgba(15,31,61,.08),0 12px 40px rgba(15,31,61,.12);
+}
+html.dark{
+  --bg:#000000;--bg2:#1b1c1c;--surface:#000000;--surface2:#1b1c1c;
+  --border:#171717;--border2:#171717;
+  --text:#d8e8ff;--text2:#8badd4;--text3:#4a6d96;
+  --accent:#dde8f5;--accent2:#dde8f5;--accent3:#2e6fe0;
+  --code-bg:#171717;--code-text:#dde8f5;
+  --kw:#60a5fa;--ty:#22d3ee;--lit:#4ade80;--op:#94a3b8;--cm:#4a6d96;--fn-col:#a78bfa;
+  --shadow:0 1px 3px rgba(0,0,0,.3),0 4px 16px rgba(0,0,0,.4);
+  --shadow-lg:0 2px 8px rgba(0,0,0,.4),0 12px 40px rgba(0,0,0,.5);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:15px;line-height:1.65;overflow-x:hidden;transition:background .2s,color .2s}
+a{color:var(--accent);text-decoration:none;transition:color .15s}
+a:hover{color:var(--accent2)}
+.page{display:flex;min-height:100vh}
+
+.sidebar{
+  position:fixed;top:0;left:0;bottom:0;width:var(--sb-w);
+  background:var(--bg2);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  transition:transform .28s cubic-bezier(.4,0,.2,1);
+  z-index:100;overflow:hidden;
+}
+.sidebar.collapsed{transform:translateX(calc(-1 * var(--sb-w)))}
+.sb-head{
+  padding:20px 18px 16px;border-bottom:1px solid var(--border);
+  flex-shrink:0;display:flex;align-items:center;gap:10px;
+}
+.sb-logo{
+  width:26px;height:26px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent3),var(--accent2));
+  border-radius:7px;display:flex;align-items:center;justify-content:center;
+}
+.sb-logo svg{width:14px;height:14px;fill:none;stroke:#fff;stroke-width:2.2;stroke-linecap:round}
+.sb-title{font-size:13px;font-weight:700;color:var(--text);letter-spacing:.01em;font-family:var(--mono)}
+.sb-search{padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0;position:relative}
+.sb-search-icon{position:absolute;left:24px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none;width:14px;height:14px}
+.sb-input{
+  width:100%;padding:7px 8px 7px 32px;
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:7px;color:var(--text);font-size:13px;font-family:var(--font);
+  outline:none;transition:border-color .15s,box-shadow .15s;
+}
+.sb-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 15%,transparent)}
+.sb-input::placeholder{color:var(--text3)}
+.sb-nav{overflow-y:auto;flex:1;padding:10px 10px 24px}
+.sb-nav::-webkit-scrollbar{width:4px}
+.sb-nav::-webkit-scrollbar-track{background:transparent}
+.sb-nav::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.nav-section{margin-bottom:20px}
+.nav-label{
+  display:block;font-size:10px;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;
+  color:var(--text3);padding:6px 10px 5px;
+}
+.nav-item{
+  display:block;padding:5px 10px;border-radius:6px;
+  color:var(--text2);font-size:13px;font-family:var(--mono);
+  transition:background .12s,color .12s;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.nav-item:hover{background:var(--surface);color:var(--text);text-decoration:none}
+.nav-item.active{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);font-weight:600}
+.nav-item.hidden{display:none}
+
+.toggle{
+  position:fixed;top:16px;z-index:200;
+  width:34px;height:34px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;color:var(--text2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:left .28s cubic-bezier(.4,0,.2,1),background .15s,color .15s,box-shadow .15s;
+  left:16px;box-shadow:var(--shadow);
+}
+.toggle:hover{background:var(--bg2);color:var(--text);box-shadow:var(--shadow-lg)}
+.toggle.sb-open{left:calc(var(--sb-w) + 12px)}
+.toggle svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+
+.control-btn{
+  position:fixed;top:16px;right:16px;z-index:200;
+  width:34px;height:34px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;color:var(--text2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:var(--shadow);transition:background .15s,color .15s,box-shadow .15s;
+}
+.control-btn:hover{background:var(--bg2);color:var(--text);box-shadow:var(--shadow-lg)}
+.control-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.control-btn[aria-pressed="true"]{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,var(--border))}
+.theme-btn{right:16px}
+.private-toggle-btn{right:58px}
+
+.content{
+  margin-left:var(--sb-w);padding:64px 60px 80px;
+  flex:1;max-width:calc(var(--sb-w) + 820px);
+  transition:margin-left .28s cubic-bezier(.4,0,.2,1);
+}
+.content.sb-closed{margin-left:0}
+
+.hero{margin-bottom:40px;padding-bottom:28px;border-bottom:1px solid var(--border)}
+.hero h1{font-size:26px;font-weight:700;color:var(--text);margin-bottom:6px;letter-spacing:-.02em}
+.hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.hero-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hero-meta .label{font-size:12px;color:var(--text3)}
+.hero-meta code{font-family:var(--mono);font-size:12px;background:var(--code-bg);color:var(--accent);padding:2px 8px;border-radius:5px;border:1px solid var(--border2)}
+
+.entry{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:24px 28px;margin-bottom:12px;
+  transition:border-color .2s,box-shadow .2s;
+  scroll-margin-top:24px;
+}
+.entry:hover{border-color:var(--accent3);box-shadow:var(--shadow)}
+.entry.s-hide{display:none}
+.entry-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.entry-header h3{font-size:15px;font-weight:600;color:var(--text);font-family:var(--mono);letter-spacing:-.01em}
+.badge{
+  display:inline-flex;align-items:center;
+  padding:2px 9px;border-radius:999px;
+  background:color-mix(in srgb,var(--accent) 10%,transparent);
+  color:var(--accent);font-size:11px;font-weight:600;
+  letter-spacing:.03em;border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);
+  font-family:var(--mono);
+}
+.badge-private{
+  background:color-mix(in srgb,#0ea5e9 12%,transparent);
+  color:#0369a1;border-color:color-mix(in srgb,#000000 24%,transparent);
+}
+html.dark .badge-private{
+  background:color-mix(in srgb,#0ea5e9 15%,transparent);
+  color:#0369a1;border-color:color-mix(in srgb,#000000 28%,transparent);
+}
+
+pre{
+  overflow:auto;background:var(--code-bg);
+  border-radius:8px;padding:16px 18px;
+  border:1px solid var(--border2);margin:0 0 16px;
+  font-size:13px;line-height:1.7;
+}
+pre::-webkit-scrollbar{height:4px}
+pre::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+code{font-family:var(--mono);font-size:13px;color:var(--code-text)}
+.hljs-keyword{color:var(--kw);font-weight:600}
+.hljs-type{color:var(--ty)}
+.hljs-built_in{color:var(--ty)}
+.hljs-number{color:var(--lit)}
+.hljs-string{color:var(--lit)}
+.hljs-comment{color:var(--cm);font-style:italic}
+.hljs-operator{color:var(--op)}
+.hljs-punctuation{color:var(--op)}
+.hljs-title{color:var(--fn-col);font-weight:600}
+.hljs-params{color:var(--text2)}
+.hljs-variable{color:var(--text)}
+
+.docs{margin-top:2px}
+.docs p{line-height:1.8;color:var(--text2);margin-bottom:8px;font-size:14px}
+
+.doc-article{color:var(--text2)}
+.doc-article>:last-child{margin-bottom:0}
+.doc-article h1,.doc-article h2,.doc-article h3,.doc-article h4,.doc-article h5,.doc-article h6{
+  color:var(--text);letter-spacing:-.02em;line-height:1.25;text-transform:none;
+}
+.doc-article h1{font-size:28px;margin:0 0 18px}
+.doc-article h2{font-size:22px;margin:30px 0 14px}
+.doc-article h3{font-size:18px;margin:24px 0 12px}
+.doc-article h4,.doc-article h5,.doc-article h6{font-size:15px;margin:18px 0 10px}
+.doc-article p{line-height:1.85;color:var(--text2);margin:0 0 12px;font-size:14px}
+.doc-article ul{margin:0 0 14px 20px;color:var(--text2)}
+.doc-article li{margin:0 0 6px}
+.doc-article a{color:var(--accent)}
+.doc-article img{max-width:100%;height:auto;border-radius:8px;vertical-align:middle}
+.doc-article code{
+  font-family:var(--mono);font-size:12.5px;
+  background:var(--code-bg);padding:3px 8px;
+  border-radius:5px;color:var(--code-text);
+  border:1px solid var(--border2);
+}
+.doc-article pre{margin:0 0 16px}
+.module-list{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.module-list li{margin:0}
+.module-list a{
+  display:block;padding:10px 12px;border-radius:8px;
+  border:1px solid var(--border2);background:var(--surface2);
+  color:var(--text);font-family:var(--mono);font-size:13px;
+  transition:border-color .15s,background .15s,color .15s;
+}
+.module-list a:hover{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--surface2));text-decoration:none}
+
+h4{
+  font-size:10px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--text3);margin:18px 0 8px;
+}
+.details-table-wrap{overflow-x:auto}
+.details-table{
+  width:100%;border-collapse:collapse;border:1px solid var(--border2);
+  border-radius:8px;overflow:hidden;background:var(--surface2);font-size:13px;
+}
+.details-table th,.details-table td{
+  text-align:left;padding:10px 12px;border-bottom:1px solid var(--border2);vertical-align:top;
+}
+.details-table th{
+  color:var(--text3);font-size:11px;letter-spacing:.06em;text-transform:uppercase;background:var(--bg2);
+}
+.details-table tbody tr:last-child td{border-bottom:none}
+.details-table code{
+  font-family:var(--mono);font-size:12.5px;
+  background:var(--code-bg);padding:3px 8px;
+  border-radius:5px;color:var(--code-text);
+  border:1px solid var(--border2);display:inline-block;
+}
+.details{list-style:none;padding:0;display:flex;flex-direction:column;gap:4px}
+.details li code{
+  font-family:var(--mono);font-size:12.5px;
+  background:var(--code-bg);padding:3px 8px;
+  border-radius:5px;color:var(--code-text);
+  border:1px solid var(--border2);display:inline-block;
+}
+
+.empty{
+  background:var(--surface);border:1px dashed var(--border);
+  border-radius:var(--radius);padding:40px 28px;
+  color:var(--text3);text-align:center;font-size:14px;
+}
+
+@media(max-width:860px){
+  .sidebar{transform:translateX(calc(-1 * var(--sb-w)))}
+  .sidebar.sb-open-m{transform:translateX(0)}
+  .content{margin-left:0!important;padding:28px 20px 60px}
+  .hero-top{flex-direction:column;align-items:flex-start}
+  .toggle{left:14px}
+  .toggle.sb-open{left:calc(var(--sb-w) + 10px)}
+}</style></head><body><button class="toggle" id="toggle" aria-label="Toggle sidebar"><svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button><button class="control-btn private-toggle-btn" id="private-toggle" type="button" aria-pressed="false" aria-label="Show private functions" title="Show private functions"><svg id="private-toggle-icon" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="3"/></svg></button><button class="control-btn theme-btn" id="theme-btn" aria-label="Toggle theme"><svg id="theme-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button><div class="page"><aside class="sidebar" id="sidebar"><div class="sb-search"><svg class="sb-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="sb-input" id="search" type="search" placeholder="Search... (/)" autocomplete="off" spellcheck="false"/></div><nav class="sb-nav" id="sb-nav"><div class="nav-section"><div class="nav-label">Modules</div><a class="nav-item" href="../pages/ecs.html" data-name="ecs" data-private="0">ecs</a><a class="nav-item" href="../pages/embedded.html" data-name="embedded" data-private="0">embedded</a><a class="nav-item active" href="../pages/engine.html" data-name="engine" data-private="0">engine</a><a class="nav-item" href="../pages/engine/animation.html" data-name="engine/animation" data-private="0">engine/animation</a><a class="nav-item" href="../pages/engine/audio.html" data-name="engine/audio" data-private="0">engine/audio</a><a class="nav-item" href="../pages/engine/camera.html" data-name="engine/camera" data-private="0">engine/camera</a><a class="nav-item" href="../pages/engine/error.html" data-name="engine/error" data-private="0">engine/error</a><a class="nav-item" href="../pages/engine/glb.html" data-name="engine/glb" data-private="0">engine/glb</a><a class="nav-item" href="../pages/engine/input.html" data-name="engine/input" data-private="0">engine/input</a><a class="nav-item" href="../pages/engine/io.html" data-name="engine/io" data-private="0">engine/io</a><a class="nav-item" href="../pages/engine/math.html" data-name="engine/math" data-private="0">engine/math</a><a class="nav-item" href="../pages/engine/mesh.html" data-name="engine/mesh" data-private="0">engine/mesh</a><a class="nav-item" href="../pages/engine/model.html" data-name="engine/model" data-private="0">engine/model</a><a class="nav-item" href="../pages/engine/postprocess.html" data-name="engine/postprocess" data-private="0">engine/postprocess</a><a class="nav-item" href="../pages/engine/renderer.html" data-name="engine/renderer" data-private="0">engine/renderer</a><a class="nav-item" href="../pages/engine/sdl.html" data-name="engine/sdl" data-private="0">engine/sdl</a><a class="nav-item" href="../pages/engine/shaders.html" data-name="engine/shaders" data-private="0">engine/shaders</a><a class="nav-item" href="../pages/mem.html" data-name="mem" data-private="0">mem</a><a class="nav-item" href="../pages/physics.html" data-name="physics" data-private="0">physics</a><a class="nav-item" href="../pages/rendering.html" data-name="rendering" data-private="0">rendering</a></div><div class="nav-section"><div class="nav-label">On this page</div><a class="nav-item" href="#spec-appevents-55" data-name="AppEvents" data-private="0">AppEvents</a><a class="nav-item" href="#type-exoapp-34" data-name="ExoApp" data-private="0">ExoApp</a><a class="nav-item" href="#type-exoappbuilder-253" data-name="ExoAppBuilder" data-private="0">ExoAppBuilder</a><a class="nav-item" href="#type-exoconfig-21" data-name="ExoConfig" data-private="0">ExoConfig</a><a class="nav-item" href="#type-noappevents-80" data-name="NoAppEvents" data-private="0">NoAppEvents</a><a class="nav-item" href="#function-on-fixed-update-88" data-name="NoAppEvents.on_fixed_update" data-private="0">NoAppEvents.on_fixed_update</a><a class="nav-item" href="#function-on-focus-changed-126" data-name="NoAppEvents.on_focus_changed" data-private="0">NoAppEvents.on_focus_changed</a><a class="nav-item" href="#function-on-gamepad-axis-130" data-name="NoAppEvents.on_gamepad_axis" data-private="0">NoAppEvents.on_gamepad_axis</a><a class="nav-item" href="#function-on-gamepad-button-128" data-name="NoAppEvents.on_gamepad_button" data-private="0">NoAppEvents.on_gamepad_button</a><a class="nav-item" href="#function-on-key-down-90" data-name="NoAppEvents.on_key_down" data-private="0">NoAppEvents.on_key_down</a><a class="nav-item" href="#function-on-key-up-92" data-name="NoAppEvents.on_key_up" data-private="0">NoAppEvents.on_key_up</a><a class="nav-item" href="#function-on-mouse-button-103" data-name="NoAppEvents.on_mouse_button" data-private="0">NoAppEvents.on_mouse_button</a><a class="nav-item" href="#function-on-mouse-move-94" data-name="NoAppEvents.on_mouse_move" data-private="0">NoAppEvents.on_mouse_move</a><a class="nav-item" href="#function-on-mouse-wheel-113" data-name="NoAppEvents.on_mouse_wheel" data-private="0">NoAppEvents.on_mouse_wheel</a><a class="nav-item" href="#function-on-shutdown-132" data-name="NoAppEvents.on_shutdown" data-private="0">NoAppEvents.on_shutdown</a><a class="nav-item" href="#function-on-start-84" data-name="NoAppEvents.on_start" data-private="0">NoAppEvents.on_start</a><a class="nav-item" href="#function-on-text-input-122" data-name="NoAppEvents.on_text_input" data-private="0">NoAppEvents.on_text_input</a><a class="nav-item" href="#function-on-update-86" data-name="NoAppEvents.on_update" data-private="0">NoAppEvents.on_update</a><a class="nav-item" href="#function-on-window-resize-124" data-name="NoAppEvents.on_window_resize" data-private="0">NoAppEvents.on_window_resize</a><a class="nav-item" href="#type-sceneresources-134" data-name="SceneResources" data-private="0">SceneResources</a><a class="nav-item" href="#function-apply-default-camera-418" data-name="apply_default_camera" data-private="0">apply_default_camera</a><a class="nav-item" href="#function-build-app-290" data-name="build_app" data-private="0">build_app</a><a class="nav-item" href="#function-build-test-glb-fixture-188" data-name="build_test_glb_fixture" data-private="0">build_test_glb_fixture</a><a class="nav-item" href="#function-compute-glb-bounds-192" data-name="compute_glb_bounds" data-private="0">compute_glb_bounds</a><a class="nav-item" href="#function-create-app-215" data-name="create_app" data-private="0">create_app</a><a class="nav-item" href="#function-create-basic-app-244" data-name="create_basic_app" data-private="0">create_basic_app</a><a class="nav-item" href="#function-default-audio-mixer-159" data-name="default_audio_mixer" data-private="0">default_audio_mixer</a><a class="nav-item" href="#function-default-camera-143" data-name="default_camera" data-private="0">default_camera</a><a class="nav-item" href="#function-default-config-200" data-name="default_config" data-private="0">default_config</a><a class="nav-item" href="#function-default-input-config-155" data-name="default_input_config" data-private="0">default_input_config</a><a class="nav-item" href="#function-default-key-bindings-147" data-name="default_key_bindings" data-private="0">default_key_bindings</a><a class="nav-item" href="#function-default-mouse-config-151" data-name="default_mouse_config" data-private="0">default_mouse_config</a><a class="nav-item" href="#function-default-shader-config-163" data-name="default_shader_config" data-private="0">default_shader_config</a><a class="nav-item hidden" href="#function-dispatch-gamepad-515" data-name="dispatch_gamepad" data-private="1">dispatch_gamepad</a><a class="nav-item hidden" href="#function-empty-scene-resources-434" data-name="empty_scene_resources" data-private="1">empty_scene_resources</a><a class="nav-item" href="#function-gamepad-axis-399" data-name="gamepad_axis" data-private="0">gamepad_axis</a><a class="nav-item" href="#function-gamepad-button-395" data-name="gamepad_button" data-private="0">gamepad_button</a><a class="nav-item" href="#function-key-held-387" data-name="key_held" data-private="0">key_held</a><a class="nav-item" href="#function-load-embedded-fixture-model-196" data-name="load_embedded_fixture_model" data-private="0">load_embedded_fixture_model</a><a class="nav-item" href="#function-load-glb-167" data-name="load_glb" data-private="0">load_glb</a><a class="nav-item" href="#function-load-model-176" data-name="load_model" data-private="0">load_model</a><a class="nav-item hidden" href="#function-load-scene-resources-475" data-name="load_scene_resources" data-private="1">load_scene_resources</a><a class="nav-item" href="#function-model-animation-index-184" data-name="model_animation_index" data-private="0">model_animation_index</a><a class="nav-item" href="#function-mouse-button-391" data-name="mouse_button" data-private="0">mouse_button</a><a class="nav-item" href="#function-new-app-270" data-name="new_app" data-private="0">new_app</a><a class="nav-item" href="#function-parse-glb-bytes-171" data-name="parse_glb_bytes" data-private="0">parse_glb_bytes</a><a class="nav-item" href="#function-parse-model-bytes-180" data-name="parse_model_bytes" data-private="0">parse_model_bytes</a><a class="nav-item" href="#function-play-clip-422" data-name="play_clip" data-private="0">play_clip</a><a class="nav-item" href="#function-play-sound-426" data-name="play_sound" data-private="0">play_sound</a><a class="nav-item hidden" href="#function-release-scene-resources-445" data-name="release_scene_resources" data-private="1">release_scene_resources</a><a class="nav-item" href="#function-reload-scene-resources-373" data-name="reload_scene_resources" data-private="0">reload_scene_resources</a><a class="nav-item" href="#function-request-quit-377" data-name="request_quit" data-private="0">request_quit</a><a class="nav-item" href="#function-request-screenshot-382" data-name="request_screenshot" data-private="0">request_screenshot</a><a class="nav-item" href="#function-run-app-908" data-name="run_app" data-private="0">run_app</a><a class="nav-item hidden" href="#function-run-app-internal-572" data-name="run_app_internal" data-private="1">run_app_internal</a><a class="nav-item" href="#function-run-app-with-events-904" data-name="run_app_with_events" data-private="0">run_app_with_events</a><a class="nav-item hidden" href="#function-scene-meshes-498" data-name="scene_meshes" data-private="1">scene_meshes</a><a class="nav-item" href="#function-set-scene-368" data-name="set_scene" data-private="0">set_scene</a><a class="nav-item" href="#function-stop-all-sounds-430" data-name="stop_all_sounds" data-private="0">stop_all_sounds</a><a class="nav-item" href="#function-with-audio-364" data-name="with_audio" data-private="0">with_audio</a><a class="nav-item" href="#function-with-auto-camera-347" data-name="with_auto_camera" data-private="0">with_auto_camera</a><a class="nav-item" href="#function-with-camera-323" data-name="with_camera" data-private="0">with_camera</a><a class="nav-item" href="#function-with-debug-dump-359" data-name="with_debug_dump" data-private="0">with_debug_dump</a><a class="nav-item" href="#function-with-default-camera-327" data-name="with_default_camera" data-private="0">with_default_camera</a><a class="nav-item" href="#function-with-fixed-timestep-351" data-name="with_fixed_timestep" data-private="0">with_fixed_timestep</a><a class="nav-item" href="#function-with-font-355" data-name="with_font" data-private="0">with_font</a><a class="nav-item" href="#function-with-input-331" data-name="with_input" data-private="0">with_input</a><a class="nav-item" href="#function-with-key-bindings-335" data-name="with_key_bindings" data-private="0">with_key_bindings</a><a class="nav-item" href="#function-with-mouse-config-339" data-name="with_mouse_config" data-private="0">with_mouse_config</a><a class="nav-item" href="#function-with-quit-key-343" data-name="with_quit_key" data-private="0">with_quit_key</a><a class="nav-item" href="#function-with-resolution-310" data-name="with_resolution" data-private="0">with_resolution</a><a class="nav-item" href="#function-with-scene-319" data-name="with_scene" data-private="0">with_scene</a><a class="nav-item" href="#function-with-shaders-315" data-name="with_shaders" data-private="0">with_shaders</a><a class="nav-item" href="#function-with-title-306" data-name="with_title" data-private="0">with_title</a></div></nav></aside><main class="content" id="content"><div class="hero"><div class="hero-top"><div><h1>engine</h1><div class="hero-meta"><span class="label">source</span><code>engine.sx</code></div></div></div></div><section class="entry" id="type-exoconfig-21" data-name="ExoConfig" data-private="0"><div class="entry-header"><h3>ExoConfig</h3></div><pre><code class="language-spectre">pub type ExoConfig = { title: ref u8, width: i32, height: i32, shaders: shaders.ExoShaderConfig, quit_key: i32, auto_camera: bool, fixed_dt: f32, font_path: ref u8, debug_dump_path: ref u8, debug_frame: i32 }</code></pre><h4>Fields</h4><div class="details-table-wrap"><table class="details-table"><thead><tr><th>Name</th><th>Type</th></tr></thead><tbody><tr><td><code>title</code></td><td><code>ref u8</code></td></tr><tr><td><code>width</code></td><td><code>i32</code></td></tr><tr><td><code>height</code></td><td><code>i32</code></td></tr><tr><td><code>shaders</code></td><td><code>shaders.ExoShaderConfig</code></td></tr><tr><td><code>quit_key</code></td><td><code>i32</code></td></tr><tr><td><code>auto_camera</code></td><td><code>bool</code></td></tr><tr><td><code>fixed_dt</code></td><td><code>f32</code></td></tr><tr><td><code>font_path</code></td><td><code>ref u8</code></td></tr><tr><td><code>debug_dump_path</code></td><td><code>ref u8</code></td></tr><tr><td><code>debug_frame</code></td><td><code>i32</code></td></tr></tbody></table></div></section><section class="entry" id="type-exoapp-34" data-name="ExoApp" data-private="0"><div class="entry-header"><h3>ExoApp</h3></div><pre><code class="language-spectre">pub type ExoApp = { config: ExoConfig, scene: mut ecs.Scene3D, camera: mut cam.Camera, input: input.InputConfig, input_state: mut input.InputState, audio: audio.AudioBankConfig, audio_runtime: mut audio.RuntimeAudioBank, should_quit: mut bool, paused: mut bool, time: mut f32, dt: mut f32, frame: mut u64, scene_revision: mut u64, screenshot_requested: mut bool, screenshot_path: mut ref u8 }</code></pre><h4>Fields</h4><div class="details-table-wrap"><table class="details-table"><thead><tr><th>Name</th><th>Type</th></tr></thead><tbody><tr><td><code>config</code></td><td><code>ExoConfig</code></td></tr><tr><td><code>scene</code></td><td><code>mut ecs.Scene3D</code></td></tr><tr><td><code>camera</code></td><td><code>mut cam.Camera</code></td></tr><tr><td><code>input</code></td><td><code>input.InputConfig</code></td></tr><tr><td><code>input_state</code></td><td><code>mut input.InputState</code></td></tr><tr><td><code>audio</code></td><td><code>audio.AudioBankConfig</code></td></tr><tr><td><code>audio_runtime</code></td><td><code>mut audio.RuntimeAudioBank</code></td></tr><tr><td><code>should_quit</code></td><td><code>mut bool</code></td></tr><tr><td><code>paused</code></td><td><code>mut bool</code></td></tr><tr><td><code>time</code></td><td><code>mut f32</code></td></tr><tr><td><code>dt</code></td><td><code>mut f32</code></td></tr><tr><td><code>frame</code></td><td><code>mut u64</code></td></tr><tr><td><code>scene_revision</code></td><td><code>mut u64</code></td></tr><tr><td><code>screenshot_requested</code></td><td><code>mut bool</code></td></tr><tr><td><code>screenshot_path</code></td><td><code>mut ref u8</code></td></tr></tbody></table></div></section><section class="entry" id="spec-appevents-55" data-name="AppEvents" data-private="0"><div class="entry-header"><h3>AppEvents</h3></div><pre><code class="language-spectre">pub spec AppEvents = {
+    pub fn on_start(e: mut self, app: mut ExoApp) void
+    pub fn on_update(e: mut self, app: mut ExoApp, dt: f32, time: f32) void
+    pub fn on_fixed_update(e: mut self, app: mut ExoApp, dt: f32) void
+    pub fn on_key_down(e: mut self, app: mut ExoApp, key: i32, repeat: bool, mods: u16) void
+    pub fn on_key_up(e: mut self, app: mut ExoApp, key: i32, mods: u16) void
+    pub fn on_mouse_move(e: mut self, app: mut ExoApp, dx: f32, dy: f32, x: f32, y: f32) void
+    pub fn on_mouse_button(e: mut self, app: mut ExoApp, button: u8, down: bool, clicks: u8, x: f32, y: f32) void
+    pub fn on_mouse_wheel(e: mut self, app: mut ExoApp, dx: f32, dy: f32, x: f32, y: f32) void
+    pub fn on_text_input(e: mut self, app: mut ExoApp, text: ref u8) void
+    pub fn on_window_resize(e: mut self, app: mut ExoApp, width: i32, height: i32) void
+    pub fn on_focus_changed(e: mut self, app: mut ExoApp, focused: bool) void
+    pub fn on_gamepad_button(e: mut self, app: mut ExoApp, button: i32, down: bool) void
+    pub fn on_gamepad_axis(e: mut self, app: mut ExoApp, axis: i32, value: f32) void
+    pub fn on_shutdown(e: mut self, app: mut ExoApp) void
+}</code></pre><div class="docs"><p>Application lifecycle and input hooks. The engine assigns no gameplay meaning to input; every callback is driven by a raw SDL event or by the gamepad state snapshot.</p></div><h4>Functions</h4><ul class="details"><li><code>pub fn on_start(e: mut self, app: mut ExoApp) void</code></li><li><code>pub fn on_update(e: mut self, app: mut ExoApp, dt: f32, time: f32) void</code></li><li><code>pub fn on_fixed_update(e: mut self, app: mut ExoApp, dt: f32) void</code></li><li><code>pub fn on_key_down(e: mut self, app: mut ExoApp, key: i32, repeat: bool, mods: u16) void</code></li><li><code>pub fn on_key_up(e: mut self, app: mut ExoApp, key: i32, mods: u16) void</code></li><li><code>pub fn on_mouse_move(e: mut self, app: mut ExoApp, dx: f32, dy: f32, x: f32, y: f32) void</code></li><li><code>pub fn on_mouse_button(e: mut self, app: mut ExoApp, button: u8, down: bool, clicks: u8, x: f32, y: f32) void</code></li><li><code>pub fn on_mouse_wheel(e: mut self, app: mut ExoApp, dx: f32, dy: f32, x: f32, y: f32) void</code></li><li><code>pub fn on_text_input(e: mut self, app: mut ExoApp, text: ref u8) void</code></li><li><code>pub fn on_window_resize(e: mut self, app: mut ExoApp, width: i32, height: i32) void</code></li><li><code>pub fn on_focus_changed(e: mut self, app: mut ExoApp, focused: bool) void</code></li><li><code>pub fn on_gamepad_button(e: mut self, app: mut ExoApp, button: i32, down: bool) void</code></li><li><code>pub fn on_gamepad_axis(e: mut self, app: mut ExoApp, axis: i32, value: f32) void</code></li><li><code>pub fn on_shutdown(e: mut self, app: mut ExoApp) void</code></li></ul></section><section class="entry" id="type-noappevents-80" data-name="NoAppEvents" data-private="0"><div class="entry-header"><h3>NoAppEvents</h3></div><pre><code class="language-spectre">type NoAppEvents = { _unused: u8 }</code></pre><h4>Fields</h4><div class="details-table-wrap"><table class="details-table"><thead><tr><th>Name</th><th>Type</th></tr></thead><tbody><tr><td><code>_unused</code></td><td><code>u8</code></td></tr></tbody></table></div></section><section class="entry" id="function-on-start-84" data-name="NoAppEvents.on_start" data-private="0"><div class="entry-header"><h3>on_start</h3></div><pre><code class="language-spectre">pub fn (NoAppEvents) on_start(_: mut NoAppEvents, _: mut ExoApp) void</code></pre></section><section class="entry" id="function-on-update-86" data-name="NoAppEvents.on_update" data-private="0"><div class="entry-header"><h3>on_update</h3></div><pre><code class="language-spectre">pub fn (NoAppEvents) on_update(_: mut NoAppEvents, _: mut ExoApp, _: f32, _: f32) void</code></pre></section><section class="entry" id="function-on-fixed-update-88" data-name="NoAppEvents.on_fixed_update" data-private="0"><div class="entry-header"><h3>on_fixed_update</h3></div><pre><code class="language-spectre">pub fn (NoAppEvents) on_fixed_update(_: mut NoAppEvents, _: mut ExoApp, _: f32) void</code></pre></section><section class="entry" id="function-on-key-down-90" data-name="NoAppEvents.on_key_down" data-private="0"><div class="entry-header"><h3>on_key_down</h3></div><pre><code class="language-spectre">pub fn (NoAppEvents) on_key_down(_: mut NoAppEvents, _: mut ExoApp, _: i32, _: bool, _: u16) void</code></pre></section><section class="entry" id="function-on-key-up-92" data-name="NoAppEvents.on_key_up" data-private="0"><div class="entry-header"><h3>on_key_up</h3></div><pre><code class="language-spectre">pub fn (NoAppEvents) on_key_up(_: mut NoAppEvents, _: mut ExoApp, _: i32, _: u16) void</code></pre></section><section class="entry" id="function-on-mouse-move-94" data-name="NoAppEvents.on_mouse_move" data-private="0"><div class="entry-header"><h3>on_mouse_move</h3></div><pre><code class="language-spectre">pub fn (NoAppEvents) on_mouse_move(_: mut NoAppEvents, _: mut ExoApp, _: f32, _: f32, _: f32, _: f32) void</code></pre></section><section class="entry" id="function-on-mouse-button-103" data-name="NoAppEvents.on_mouse_button" data-private="0"><div class="entry-header"><h3>on_mouse_button</h3></div><pre><code class="language-spectre">pub fn (NoAppEvents) on_mouse_button(_: mut NoAppEvents, _: mut ExoApp, _: u8, _: bool, _: u8, _: f32, _: f32) void</code></pre></section><section class="entry" id="function-on-mouse-wheel-113" data-name="NoAppEvents.on_mouse_wheel" data-private="0"><div class="entry-header"><h3>on_mouse_wheel</h3></div><pre><code class="language-spectre">pub fn (NoAppEvents) on_mouse_wheel(_: mut NoAppEvents, _: mut ExoApp, _: f32, _: f32, _: f32, _: f32) void</code></pre></section><section class="entry" id="function-on-text-input-122" data-name="NoAppEvents.on_text_input" data-private="0"><div class="entry-header"><h3>on_text_input</h3></div><pre><code class="language-spectre">pub fn (NoAppEvents) on_text_input(_: mut NoAppEvents, _: mut ExoApp, _: ref u8) void</code></pre></section><section class="entry" id="function-on-window-resize-124" data-name="NoAppEvents.on_window_resize" data-private="0"><div class="entry-header"><h3>on_window_resize</h3></div><pre><code class="language-spectre">pub fn (NoAppEvents) on_window_resize(_: mut NoAppEvents, _: mut ExoApp, _: i32, _: i32) void</code></pre></section><section class="entry" id="function-on-focus-changed-126" data-name="NoAppEvents.on_focus_changed" data-private="0"><div class="entry-header"><h3>on_focus_changed</h3></div><pre><code class="language-spectre">pub fn (NoAppEvents) on_focus_changed(_: mut NoAppEvents, _: mut ExoApp, _: bool) void</code></pre></section><section class="entry" id="function-on-gamepad-button-128" data-name="NoAppEvents.on_gamepad_button" data-private="0"><div class="entry-header"><h3>on_gamepad_button</h3></div><pre><code class="language-spectre">pub fn (NoAppEvents) on_gamepad_button(_: mut NoAppEvents, _: mut ExoApp, _: i32, _: bool) void</code></pre></section><section class="entry" id="function-on-gamepad-axis-130" data-name="NoAppEvents.on_gamepad_axis" data-private="0"><div class="entry-header"><h3>on_gamepad_axis</h3></div><pre><code class="language-spectre">pub fn (NoAppEvents) on_gamepad_axis(_: mut NoAppEvents, _: mut ExoApp, _: i32, _: f32) void</code></pre></section><section class="entry" id="function-on-shutdown-132" data-name="NoAppEvents.on_shutdown" data-private="0"><div class="entry-header"><h3>on_shutdown</h3></div><pre><code class="language-spectre">pub fn (NoAppEvents) on_shutdown(_: mut NoAppEvents, _: mut ExoApp) void</code></pre></section><section class="entry" id="type-sceneresources-134" data-name="SceneResources" data-private="0"><div class="entry-header"><h3>SceneResources</h3></div><pre><code class="language-spectre">type SceneResources = { models: mut list[renderer.MeshGPU], model_textures: mut list[ref void], model_draws: mut list[renderer.ModelGPU], custom: mut list[renderer.MeshGPU], revision: mut u64, loaded: mut bool }</code></pre><h4>Fields</h4><div class="details-table-wrap"><table class="details-table"><thead><tr><th>Name</th><th>Type</th></tr></thead><tbody><tr><td><code>models</code></td><td><code>mut list[renderer.MeshGPU]</code></td></tr><tr><td><code>model_textures</code></td><td><code>mut list[ref void]</code></td></tr><tr><td><code>model_draws</code></td><td><code>mut list[renderer.ModelGPU]</code></td></tr><tr><td><code>custom</code></td><td><code>mut list[renderer.MeshGPU]</code></td></tr><tr><td><code>revision</code></td><td><code>mut u64</code></td></tr><tr><td><code>loaded</code></td><td><code>mut bool</code></td></tr></tbody></table></div></section><section class="entry" id="function-default-camera-143" data-name="default_camera" data-private="0"><div class="entry-header"><h3>default_camera</h3></div><pre><code class="language-spectre">pub fn default_camera() cam.Camera</code></pre></section><section class="entry" id="function-default-key-bindings-147" data-name="default_key_bindings" data-private="0"><div class="entry-header"><h3>default_key_bindings</h3></div><pre><code class="language-spectre">pub fn default_key_bindings() input.KeyBindings</code></pre></section><section class="entry" id="function-default-mouse-config-151" data-name="default_mouse_config" data-private="0"><div class="entry-header"><h3>default_mouse_config</h3></div><pre><code class="language-spectre">pub fn default_mouse_config() input.MouseConfig</code></pre></section><section class="entry" id="function-default-input-config-155" data-name="default_input_config" data-private="0"><div class="entry-header"><h3>default_input_config</h3></div><pre><code class="language-spectre">pub fn default_input_config() input.InputConfig</code></pre></section><section class="entry" id="function-default-audio-mixer-159" data-name="default_audio_mixer" data-private="0"><div class="entry-header"><h3>default_audio_mixer</h3></div><pre><code class="language-spectre">pub fn default_audio_mixer() audio.AudioBankConfig</code></pre></section><section class="entry" id="function-default-shader-config-163" data-name="default_shader_config" data-private="0"><div class="entry-header"><h3>default_shader_config</h3></div><pre><code class="language-spectre">pub fn default_shader_config() shaders.ExoShaderConfig</code></pre></section><section class="entry" id="function-load-glb-167" data-name="load_glb" data-private="0"><div class="entry-header"><h3>load_glb</h3></div><pre><code class="language-spectre">pub fn load_glb(path: ref u8) option[ecs.GlbModel] = trust { ... }</code></pre></section><section class="entry" id="function-parse-glb-bytes-171" data-name="parse_glb_bytes" data-private="0"><div class="entry-header"><h3>parse_glb_bytes</h3></div><pre><code class="language-spectre">pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust { ... }</code></pre></section><section class="entry" id="function-load-model-176" data-name="load_model" data-private="0"><div class="entry-header"><h3>load_model</h3></div><pre><code class="language-spectre">pub fn load_model(path: ref u8) option[ecs.ModelAsset] = trust { ... }</code></pre><div class="docs"><p>Load a complete GLB scene with all meshes, materials, skins and animations.</p></div></section><section class="entry" id="function-parse-model-bytes-180" data-name="parse_model_bytes" data-private="0"><div class="entry-header"><h3>parse_model_bytes</h3></div><pre><code class="language-spectre">pub fn parse_model_bytes(data: ref u8, len: usize) option[ecs.ModelAsset] = trust { ... }</code></pre></section><section class="entry" id="function-model-animation-index-184" data-name="model_animation_index" data-private="0"><div class="entry-header"><h3>model_animation_index</h3></div><pre><code class="language-spectre">pub fn model_animation_index(asset: ecs.ModelAsset, name: ref u8) i32 = trust { ... }</code></pre></section><section class="entry" id="function-build-test-glb-fixture-188" data-name="build_test_glb_fixture" data-private="0"><div class="entry-header"><h3>build_test_glb_fixture</h3></div><pre><code class="language-spectre">pub fn build_test_glb_fixture() glb.GlbFixture = trust { ... }</code></pre></section><section class="entry" id="function-compute-glb-bounds-192" data-name="compute_glb_bounds" data-private="0"><div class="entry-header"><h3>compute_glb_bounds</h3></div><pre><code class="language-spectre">pub fn compute_glb_bounds(model: mut ref ecs.GlbModel) void = trust { ... }</code></pre></section><section class="entry" id="function-load-embedded-fixture-model-196" data-name="load_embedded_fixture_model" data-private="0"><div class="entry-header"><h3>load_embedded_fixture_model</h3></div><pre><code class="language-spectre">pub fn load_embedded_fixture_model() ecs.GlbModel = trust { ... }</code></pre></section><section class="entry" id="function-default-config-200" data-name="default_config" data-private="0"><div class="entry-header"><h3>default_config</h3></div><pre><code class="language-spectre">pub fn default_config() ExoConfig</code></pre></section><section class="entry" id="function-create-app-215" data-name="create_app" data-private="0"><div class="entry-header"><h3>create_app</h3></div><pre><code class="language-spectre">pub fn create_app(config: ExoConfig, scene: ecs.Scene3D, camera: cam.Camera, input_cfg: input.InputConfig, audio_cfg: audio.AudioBankConfig) ExoApp</code></pre></section><section class="entry" id="function-create-basic-app-244" data-name="create_basic_app" data-private="0"><div class="entry-header"><h3>create_basic_app</h3></div><pre><code class="language-spectre">pub fn create_basic_app(config: ExoConfig, scene: ecs.Scene3D, camera: cam.Camera, input_cfg: input.InputConfig) ExoApp</code></pre></section><section class="entry" id="type-exoappbuilder-253" data-name="ExoAppBuilder" data-private="0"><div class="entry-header"><h3>ExoAppBuilder</h3></div><pre><code class="language-spectre">pub type ExoAppBuilder = { title: mut ref u8, width: mut i32, height: mut i32, shaders: mut shaders.ExoShaderConfig, scene: mut ecs.Scene3D, camera: mut cam.Camera, input: mut input.InputConfig, audio: mut audio.AudioBankConfig, quit_key: mut i32, auto_camera: mut bool, fixed_dt: mut f32, font_path: mut ref u8, debug_dump_path: mut ref u8, debug_frame: mut i32 }</code></pre><h4>Fields</h4><div class="details-table-wrap"><table class="details-table"><thead><tr><th>Name</th><th>Type</th></tr></thead><tbody><tr><td><code>title</code></td><td><code>mut ref u8</code></td></tr><tr><td><code>width</code></td><td><code>mut i32</code></td></tr><tr><td><code>height</code></td><td><code>mut i32</code></td></tr><tr><td><code>shaders</code></td><td><code>mut shaders.ExoShaderConfig</code></td></tr><tr><td><code>scene</code></td><td><code>mut ecs.Scene3D</code></td></tr><tr><td><code>camera</code></td><td><code>mut cam.Camera</code></td></tr><tr><td><code>input</code></td><td><code>mut input.InputConfig</code></td></tr><tr><td><code>audio</code></td><td><code>mut audio.AudioBankConfig</code></td></tr><tr><td><code>quit_key</code></td><td><code>mut i32</code></td></tr><tr><td><code>auto_camera</code></td><td><code>mut bool</code></td></tr><tr><td><code>fixed_dt</code></td><td><code>mut f32</code></td></tr><tr><td><code>font_path</code></td><td><code>mut ref u8</code></td></tr><tr><td><code>debug_dump_path</code></td><td><code>mut ref u8</code></td></tr><tr><td><code>debug_frame</code></td><td><code>mut i32</code></td></tr></tbody></table></div></section><section class="entry" id="function-new-app-270" data-name="new_app" data-private="0"><div class="entry-header"><h3>new_app</h3></div><pre><code class="language-spectre">pub fn new_app() ExoAppBuilder</code></pre></section><section class="entry" id="function-build-app-290" data-name="build_app" data-private="0"><div class="entry-header"><h3>build_app</h3></div><pre><code class="language-spectre">pub fn build_app(builder: ExoAppBuilder) ExoApp</code></pre></section><section class="entry" id="function-with-title-306" data-name="with_title" data-private="0"><div class="entry-header"><h3>with_title</h3></div><pre><code class="language-spectre">pub fn with_title(app: mut ExoAppBuilder, title: ref u8) void</code></pre></section><section class="entry" id="function-with-resolution-310" data-name="with_resolution" data-private="0"><div class="entry-header"><h3>with_resolution</h3></div><pre><code class="language-spectre">pub fn with_resolution(app: mut ExoAppBuilder, width: i32, height: i32) void</code></pre></section><section class="entry" id="function-with-shaders-315" data-name="with_shaders" data-private="0"><div class="entry-header"><h3>with_shaders</h3></div><pre><code class="language-spectre">pub fn with_shaders(app: mut ExoAppBuilder, shader_cfg: shaders.ExoShaderConfig) void</code></pre></section><section class="entry" id="function-with-scene-319" data-name="with_scene" data-private="0"><div class="entry-header"><h3>with_scene</h3></div><pre><code class="language-spectre">pub fn with_scene(app: mut ExoAppBuilder, scene: ecs.Scene3D) void</code></pre></section><section class="entry" id="function-with-camera-323" data-name="with_camera" data-private="0"><div class="entry-header"><h3>with_camera</h3></div><pre><code class="language-spectre">pub fn with_camera(app: mut ExoAppBuilder, camera: cam.Camera) void</code></pre></section><section class="entry" id="function-with-default-camera-327" data-name="with_default_camera" data-private="0"><div class="entry-header"><h3>with_default_camera</h3></div><pre><code class="language-spectre">pub fn with_default_camera(app: mut ExoAppBuilder) void</code></pre></section><section class="entry" id="function-with-input-331" data-name="with_input" data-private="0"><div class="entry-header"><h3>with_input</h3></div><pre><code class="language-spectre">pub fn with_input(app: mut ExoAppBuilder, input_cfg: input.InputConfig) void</code></pre></section><section class="entry" id="function-with-key-bindings-335" data-name="with_key_bindings" data-private="0"><div class="entry-header"><h3>with_key_bindings</h3></div><pre><code class="language-spectre">pub fn with_key_bindings(app: mut ExoAppBuilder, keys: input.KeyBindings) void</code></pre></section><section class="entry" id="function-with-mouse-config-339" data-name="with_mouse_config" data-private="0"><div class="entry-header"><h3>with_mouse_config</h3></div><pre><code class="language-spectre">pub fn with_mouse_config(app: mut ExoAppBuilder, mouse: input.MouseConfig) void</code></pre></section><section class="entry" id="function-with-quit-key-343" data-name="with_quit_key" data-private="0"><div class="entry-header"><h3>with_quit_key</h3></div><pre><code class="language-spectre">pub fn with_quit_key(app: mut ExoAppBuilder, key: i32) void</code></pre></section><section class="entry" id="function-with-auto-camera-347" data-name="with_auto_camera" data-private="0"><div class="entry-header"><h3>with_auto_camera</h3></div><pre><code class="language-spectre">pub fn with_auto_camera(app: mut ExoAppBuilder) void</code></pre></section><section class="entry" id="function-with-fixed-timestep-351" data-name="with_fixed_timestep" data-private="0"><div class="entry-header"><h3>with_fixed_timestep</h3></div><pre><code class="language-spectre">pub fn with_fixed_timestep(app: mut ExoAppBuilder, dt: f32) void</code></pre></section><section class="entry" id="function-with-font-355" data-name="with_font" data-private="0"><div class="entry-header"><h3>with_font</h3></div><pre><code class="language-spectre">pub fn with_font(app: mut ExoAppBuilder, path: ref u8) void</code></pre></section><section class="entry" id="function-with-debug-dump-359" data-name="with_debug_dump" data-private="0"><div class="entry-header"><h3>with_debug_dump</h3></div><pre><code class="language-spectre">pub fn with_debug_dump(app: mut ExoAppBuilder, path: ref u8, frame: i32) void</code></pre></section><section class="entry" id="function-with-audio-364" data-name="with_audio" data-private="0"><div class="entry-header"><h3>with_audio</h3></div><pre><code class="language-spectre">pub fn with_audio(app: mut ExoAppBuilder, audio_cfg: audio.AudioBankConfig) void</code></pre></section><section class="entry" id="function-set-scene-368" data-name="set_scene" data-private="0"><div class="entry-header"><h3>set_scene</h3></div><pre><code class="language-spectre">pub fn set_scene(app: mut ExoApp, scene: ecs.Scene3D) void</code></pre></section><section class="entry" id="function-reload-scene-resources-373" data-name="reload_scene_resources" data-private="0"><div class="entry-header"><h3>reload_scene_resources</h3></div><pre><code class="language-spectre">pub fn reload_scene_resources(app: mut ExoApp) void</code></pre></section><section class="entry" id="function-request-quit-377" data-name="request_quit" data-private="0"><div class="entry-header"><h3>request_quit</h3></div><pre><code class="language-spectre">pub fn request_quit(app: mut ExoApp) void</code></pre></section><section class="entry" id="function-request-screenshot-382" data-name="request_screenshot" data-private="0"><div class="entry-header"><h3>request_screenshot</h3></div><pre><code class="language-spectre">pub fn request_screenshot(app: mut ExoApp, path: ref u8) void</code></pre><div class="docs"><p>Ask the engine to save the next rendered frame to a PPM file.</p></div></section><section class="entry" id="function-key-held-387" data-name="key_held" data-private="0"><div class="entry-header"><h3>key_held</h3></div><pre><code class="language-spectre">pub fn key_held(app: ExoApp, key: i32) bool = trust { ... }</code></pre></section><section class="entry" id="function-mouse-button-391" data-name="mouse_button" data-private="0"><div class="entry-header"><h3>mouse_button</h3></div><pre><code class="language-spectre">pub fn mouse_button(app: ExoApp, button: u8) bool</code></pre></section><section class="entry" id="function-gamepad-button-395" data-name="gamepad_button" data-private="0"><div class="entry-header"><h3>gamepad_button</h3></div><pre><code class="language-spectre">pub fn gamepad_button(app: ExoApp, button: i32) bool</code></pre></section><section class="entry" id="function-gamepad-axis-399" data-name="gamepad_axis" data-private="0"><div class="entry-header"><h3>gamepad_axis</h3></div><pre><code class="language-spectre">pub fn gamepad_axis(app: ExoApp, axis: i32) f32</code></pre></section><section class="entry" id="function-apply-default-camera-418" data-name="apply_default_camera" data-private="0"><div class="entry-header"><h3>apply_default_camera</h3></div><pre><code class="language-spectre">pub fn apply_default_camera(app: mut ExoApp, dt: f32, mouse_dx: f32, mouse_dy: f32) void = trust { ... }</code></pre></section><section class="entry" id="function-play-clip-422" data-name="play_clip" data-private="0"><div class="entry-header"><h3>play_clip</h3></div><pre><code class="language-spectre">pub fn play_clip(app: ExoApp, index: usize) bool = trust { ... }</code></pre></section><section class="entry" id="function-play-sound-426" data-name="play_sound" data-private="0"><div class="entry-header"><h3>play_sound</h3></div><pre><code class="language-spectre">pub fn play_sound(app: ExoApp) bool = trust { ... }</code></pre></section><section class="entry" id="function-stop-all-sounds-430" data-name="stop_all_sounds" data-private="0"><div class="entry-header"><h3>stop_all_sounds</h3></div><pre><code class="language-spectre">pub fn stop_all_sounds(app: ExoApp) void = trust { ... }</code></pre></section><section class="entry entry-private-fn s-hide" id="function-empty-scene-resources-434" data-name="empty_scene_resources" data-private="1"><div class="entry-header"><h3>empty_scene_resources</h3><span class="badge badge-private">private</span></div><pre><code class="language-spectre">fn empty_scene_resources() SceneResources</code></pre></section><section class="entry entry-private-fn s-hide" id="function-release-scene-resources-445" data-name="release_scene_resources" data-private="1"><div class="entry-header"><h3>release_scene_resources</h3><span class="badge badge-private">private</span></div><pre><code class="language-spectre">fn release_scene_resources(runtime: ref void, resources: mut SceneResources) void = trust { ... }</code></pre></section><section class="entry entry-private-fn s-hide" id="function-load-scene-resources-475" data-name="load_scene_resources" data-private="1"><div class="entry-header"><h3>load_scene_resources</h3><span class="badge badge-private">private</span></div><pre><code class="language-spectre">fn load_scene_resources(runtime: ref void, scene: ecs.Scene3D) SceneResources = trust { ... }</code></pre></section><section class="entry entry-private-fn s-hide" id="function-scene-meshes-498" data-name="scene_meshes" data-private="1"><div class="entry-header"><h3>scene_meshes</h3><span class="badge badge-private">private</span></div><pre><code class="language-spectre">fn scene_meshes(base_cube: renderer.MeshGPU, base_sphere: renderer.MeshGPU, base_quad: renderer.MeshGPU, resources: SceneResources) renderer.SceneMeshes</code></pre></section><section class="entry entry-private-fn s-hide" id="function-dispatch-gamepad-515" data-name="dispatch_gamepad" data-private="1"><div class="entry-header"><h3>dispatch_gamepad</h3><span class="badge badge-private">private</span></div><pre><code class="language-spectre">fn dispatch_gamepad[E: AppEvents](events: mut E, app: mut ExoApp, before_buttons: u64, before_lx: f32, before_ly: f32, before_rx: f32, before_ry: f32, before_lt: f32, before_rt: f32) void</code></pre></section><section class="entry entry-private-fn s-hide" id="function-run-app-internal-572" data-name="run_app_internal" data-private="1"><div class="entry-header"><h3>run_app_internal</h3><span class="badge badge-private">private</span></div><pre><code class="language-spectre">fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32</code></pre></section><section class="entry" id="function-run-app-with-events-904" data-name="run_app_with_events" data-private="0"><div class="entry-header"><h3>run_app_with_events</h3></div><pre><code class="language-spectre">pub fn run_app_with_events[E: AppEvents](app: ExoApp, events: E) i32</code></pre></section><section class="entry" id="function-run-app-908" data-name="run_app" data-private="0"><div class="entry-header"><h3>run_app</h3></div><pre><code class="language-spectre">pub fn run_app(app0: ExoApp) i32 = trust { ... }</code></pre></section></main></div><script>(function(){
+'use strict';
+
+/* ── Theme ── */
+var html=document.documentElement;
+var stored=localStorage.getItem('theme');
+var prefersDark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+var dark=stored==='dark'||(stored===null&&prefersDark);
+function applyTheme(d){
+  html.classList.toggle('dark',d);
+  dark=d;
+  localStorage.setItem('theme',d?'dark':'light');
+  var icon=document.getElementById('theme-icon');
+  if(d){
+    icon.innerHTML='<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+  } else {
+    icon.innerHTML='<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+  }
+}
+applyTheme(dark);
+document.getElementById('theme-btn').addEventListener('click',function(){applyTheme(!dark);});
+
+/* ── Sidebar ── */
+var sb=document.getElementById('sidebar');
+var btn=document.getElementById('toggle');
+var ct=document.getElementById('content');
+var isOpen=localStorage.getItem('sb-open')!=='0';
+function setSidebar(open,animate){
+  if(!animate){
+    sb.style.transition='none';btn.style.transition='none';ct.style.transition='none';
+  }
+  if(open){
+    sb.classList.remove('collapsed');ct.classList.remove('sb-closed');btn.classList.add('sb-open');
+  } else {
+    sb.classList.add('collapsed');ct.classList.add('sb-closed');btn.classList.remove('sb-open');
+  }
+  if(!animate){
+    void sb.offsetWidth;
+    sb.style.transition='';btn.style.transition='';ct.style.transition='';
+  }
+  isOpen=open;
+  localStorage.setItem('sb-open',open?'1':'0');
+}
+setSidebar(isOpen,false);
+btn.addEventListener('click',function(){setSidebar(!isOpen,true);});
+
+/* ── Search ── */
+var inp=document.getElementById('search');
+var privateBtn=document.getElementById('private-toggle');
+var privateIcon=document.getElementById('private-toggle-icon');
+var showPrivate=localStorage.getItem('docs-show-private')==='1';
+function syncPrivateToggle(){
+  if(!privateBtn)return;
+  privateBtn.setAttribute('aria-pressed',showPrivate?'true':'false');
+  privateBtn.setAttribute('aria-label',showPrivate?'Hide private functions':'Show private functions');
+  privateBtn.setAttribute('title',showPrivate?'Hide private functions':'Show private functions');
+  if(privateIcon){
+    privateIcon.innerHTML=showPrivate
+      ?'<path d="M3 3l18 18"/><path d="M10.58 10.58A3 3 0 0 0 12 15a3 3 0 0 0 2.42-4.42"/><path d="M9.88 5.09A10.94 10.94 0 0 1 12 5c6.5 0 10 7 10 7a17.56 17.56 0 0 1-4.04 4.94"/><path d="M6.61 6.61C4.62 8.06 3 12 3 12a17.32 17.32 0 0 0 5.39 5.39"/>'
+      :'<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="3"/>';
+  }
+}
+function updateEntryVisibility(){
+  var q=inp.value.toLowerCase().trim();
+  var links=sb.querySelectorAll('.nav-item[data-name]');
+  for(var i=0;i<links.length;i++){
+    var l=links[i];
+    var privateHidden=l.dataset.private==='1'&&!showPrivate;
+    var searchHidden=q!==''&&l.dataset.name.toLowerCase().indexOf(q)===-1;
+    l.classList.toggle('hidden',privateHidden||searchHidden);
+  }
+  var cards=ct.querySelectorAll('.entry[data-name]');
+  for(var j=0;j<cards.length;j++){
+    var c=cards[j];
+    var privateHidden=c.dataset.private==='1'&&!showPrivate;
+    var searchHidden=q!==''&&c.dataset.name.toLowerCase().indexOf(q)===-1;
+    c.classList.toggle('s-hide',privateHidden||searchHidden);
+  }
+}
+syncPrivateToggle();
+updateEntryVisibility();
+inp.addEventListener('input',updateEntryVisibility);
+if(privateBtn){
+  privateBtn.addEventListener('click',function(){
+    showPrivate=!showPrivate;
+    localStorage.setItem('docs-show-private',showPrivate?'1':'0');
+    syncPrivateToggle();
+    updateEntryVisibility();
+  });
+}
+document.addEventListener('keydown',function(e){
+  if(e.key==='/'&&document.activeElement!==inp){
+    e.preventDefault();
+    if(!isOpen)setSidebar(true,true);
+    inp.focus();
+  }
+  if(e.key==='Escape'&&document.activeElement===inp){inp.blur();}
+});
+
+/* ── Spectre syntax highlighter ── */
+(function(){
+  var KW=/\b(fn|pub|val|mut|type|enum|union|spec|extern|ref|if|elif|else|for|match|return|break|continue|use|in|as|is|true|false|void|argspack|some|none|ok|err|when|otherwise|guarded|pre|post|assert|test|and|or|not)\b/g;
+  var TY=/\b(i8|i16|i32|i64|u8|u16|u32|u64|f32|f64|bool|u8|usize|isize|list|ref|option|result)\b/g;
+  var NUM=/\b(0x[0-9a-fA-F]+|\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\b/g;
+  var STR=/(\"(?:[^\"\\]|\\.)*\")/g;
+  var CMT=/(\/\/[^\n]*)/g;
+  var OP=/([(){}\[\]@!;,.|&^~<>=+\-*/%:])/g;
+  var FN=/\bfn\s+([A-Za-z_][A-Za-z0-9_]*)/g;
+
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function highlight(raw){
+    var patterns=[
+      {re:/\/\/[^\n]*/g,       cls:'hljs-comment'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'hljs-string'},
+      {re:/\b(fn|pub|val|mut|type|enum|union|spec|extern|ref|if|elif|else|for|match|return|break|continue|use|in|as|is|true|false|void|argspack|some|none|ok|err|when|otherwise|guarded|pre|post|assert|test|and|or|not)\b/g, cls:'hljs-keyword'},
+      {re:/\b(i8|i16|i32|i64|u8|u16|u32|u64|f32|f64|bool|usize|isize)\b/g, cls:'hljs-type'},
+      {re:/\b(list|option|result)\b/g, cls:'hljs-built_in'},
+      {re:/\b0x[0-9a-fA-F]+|\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b/g, cls:'hljs-number'},
+      {re:/[(){}\[\]@!;,.|&^~<>=+\-*\/%:]/g, cls:'hljs-punctuation'},
+    ];
+
+    var tokens=[];
+    for(var pi=0;pi<patterns.length;pi++){
+      var p=patterns[pi];
+      p.re.lastIndex=0;
+      var m;
+      while((m=p.re.exec(raw))!==null){
+        tokens.push({s:m.index,e:m.index+m[0].length,cls:p.cls,text:m[0]});
+      }
+    }
+    tokens.sort(function(a,b){return a.s-b.s||(b.e-b.s)-(a.e-a.s);});
+    var clean=[];var pos=0;
+    for(var ti=0;ti<tokens.length;ti++){
+      var t=tokens[ti];
+      if(t.s<pos)continue;
+      clean.push(t);pos=t.e;
+    }
+    var out='';var cur=0;
+    for(var ci=0;ci<clean.length;ci++){
+      var tk=clean[ci];
+      if(cur<tk.s)out+=esc(raw.slice(cur,tk.s));
+      out+='<span class="'+tk.cls+'">'+esc(tk.text)+'</span>';
+      cur=tk.e;
+    }
+    if(cur<raw.length)out+=esc(raw.slice(cur));
+    return out;
+  }
+
+  document.querySelectorAll('pre code.language-spectre').forEach(function(el){
+    var raw=el.textContent;
+    el.innerHTML=highlight(raw);
+  });
+})();
+
+})();</script></body></html>

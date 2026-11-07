@@ -9,3 +9,7 @@ build dev {
         action "./scripts/notice.cmd"
     }
 }
+
+build docs {
+    action "spectre doc ./src -o ./docs"
+}
