@@ -850,6 +850,7 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             exit_code = 1 as i32
             break
         }
+        renderer.render_shadow_pass(runtime, meshes, app.scene, app.time)
         if !renderer.begin_reflection_pass(
             runtime,
             app.scene.render.clear_bottom.x,

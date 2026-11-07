@@ -11,9 +11,17 @@ val animation   = use("animation.sx")
 val string      = use("std/string")
 val mem         = use("../mem.sx")
 
+pub val SHADOW_RESOLUTION: u32 = 1024 as u32
+val PI_F32: f32 = 3.14159265 as f32
+
 pub type MeshGPU = {
     raw: ref void
     index_count: i32
+}
+
+pub type SamplerPair = {
+    first: mut sdl.SDLGPUTextureSamplerBinding
+    second: mut sdl.SDLGPUTextureSamplerBinding
 }
 
 pub type ModelSubmesh = {
@@ -264,6 +272,7 @@ pub type Renderer = {
     window: mut ref void
     device: mut ref void
     scene_pipeline: mut ref void
+    shadow_pipeline: mut ref void
     floor_pipeline: mut ref void
     glow_pipeline: mut ref void
     bloom_threshold_pipeline: mut ref void
@@ -286,6 +295,10 @@ pub type Renderer = {
     reflection_depth: mut ref void
     scene_color: mut ref void
     scene_depth: mut ref void
+    shadow_cube: mut ref void
+    shadow_light_index: mut i32
+    shadow_near: mut f32
+    shadow_far: mut f32
     bloom_a: mut ref void
     bloom_b: mut ref void
     godray: mut ref void
@@ -374,6 +387,30 @@ pub fn create_texture(
     info.num_levels = 1 as u32
     info.sample_count = sdl.SDL_GPU_SAMPLECOUNT_1
     return trust sdl.SDL_CreateGPUTexture(runtime.device, @addr(info))
+}
+
+/// Six-layer depth cube used by the point-light shadow pass.
+pub fn create_shadow_cube(runtime: ref Renderer, size: u32) ref void = trust {
+    val info: mut sdl.SDLGPUTextureCreateInfo = {
+        typ: 0 as i32,
+        format: 0 as i32,
+        usage: 0 as u32,
+        width: 0 as u32,
+        height: 0 as u32,
+        layer_count_or_depth: 0 as u32,
+        num_levels: 0 as u32,
+        sample_count: 0 as i32,
+        props: 0 as u32
+    }
+    info.typ = sdl.SDL_GPU_TEXTURETYPE_CUBE
+    info.format = sdl.SDL_GPU_TEXTUREFORMAT_D32_FLOAT
+    info.usage = sdl.SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | sdl.SDL_GPU_TEXTUREUSAGE_SAMPLER
+    info.width = size
+    info.height = size
+    info.layer_count_or_depth = 6 as u32
+    info.num_levels = 1 as u32
+    info.sample_count = sdl.SDL_GPU_SAMPLECOUNT_1
+    return sdl.SDL_CreateGPUTexture(runtime.device, @addr(info))
 }
 
 /// Upload raw, tightly packed RGBA8 pixels into a sampled GPU texture.
@@ -741,7 +778,21 @@ pub fn create_pipeline(
     return pipeline
 }
 
-/// Scene pipeline variant: stride=32 (pos+normal+uv), 3 vertex attributes, 1 fragment sampler.
+fn scene_fragment_sampler_count() u32 = {
+    when darwin {
+        return 1 as u32
+    }
+    return 2 as u32
+}
+
+fn shadows_supported() bool = {
+    when darwin {
+        return false
+    }
+    return true
+}
+
+/// Scene pipeline variant: stride=32 (pos+normal+uv), 3 vertex attributes.
 pub fn create_scene_pipeline(
     runtime: ref Renderer,
     vs_path: ref u8,
@@ -762,7 +813,7 @@ pub fn create_scene_pipeline(
         runtime,
         fs_path,
         sdl.SDL_GPU_SHADERSTAGE_FRAGMENT,
-        1 as u32,
+        scene_fragment_sampler_count(),
         1 as u32
     )
     if fs == none {
@@ -859,6 +910,114 @@ pub fn create_scene_pipeline(
     return pipeline
 }
 
+/// Depth-only pipeline used for the dynamic cube shadow pass.
+pub fn create_shadow_pipeline(
+    runtime: ref Renderer,
+    vs_path: ref u8,
+    fs_path: ref u8
+) ref void = trust {
+    val vs: ref void = load_shader(
+        runtime,
+        vs_path,
+        sdl.SDL_GPU_SHADERSTAGE_VERTEX,
+        0 as u32,
+        1 as u32
+    )
+    if vs == none {
+        return none as ref void
+    }
+    val fs: ref void = load_shader(
+        runtime,
+        fs_path,
+        sdl.SDL_GPU_SHADERSTAGE_FRAGMENT,
+        0 as u32,
+        0 as u32
+    )
+    if fs == none {
+        sdl.SDL_ReleaseGPUShader(runtime.device, vs)
+        return none as ref void
+    }
+    val vbd: mut sdl.SDLGPUVertexBufferDescription = {
+        slot: 0 as u32, pitch: 32 as u32,
+        input_rate: sdl.SDL_GPU_VERTEXINPUTRATE_VERTEX, instance_step_rate: 0 as u32
+    }
+    val attrs: mut VertexAttributeTriple = {
+        first: {
+            location: 0 as u32,
+            buffer_slot: 0 as u32,
+            format: sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+            offset: 0 as u32
+        },
+        second: {
+            location: 1 as u32,
+            buffer_slot: 0 as u32,
+            format: sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+            offset: 12 as u32
+        },
+        third: {
+            location: 2 as u32,
+            buffer_slot: 0 as u32,
+            format: sdl.SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
+            offset: 24 as u32
+        }
+    }
+    val info: mut sdl.SDLGPUGraphicsPipelineCreateInfo = {
+        vertex_shader: vs, fragment_shader: fs,
+        vertex_input_state: {
+            vertex_buffer_descriptions: @addr(vbd),
+            num_vertex_buffers: 1 as u32,
+            vertex_attributes: @addr(attrs.first),
+            num_vertex_attributes: 3 as u32
+        },
+        primitive_type: sdl.SDL_GPU_PRIMITIVETYPE_TRIANGLELIST,
+        rasterizer_state: {
+            fill_mode: sdl.SDL_GPU_FILLMODE_FILL, cull_mode: sdl.SDL_GPU_CULLMODE_NONE,
+            front_face: sdl.SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE,
+            depth_bias_constant_factor: 1.0 as f32,
+            depth_bias_clamp: 0.0 as f32,
+            depth_bias_slope_factor: 1.5 as f32,
+            enable_depth_bias: true, enable_depth_clip: true,
+            padding1: 0 as u8, padding2: 0 as u8
+        },
+        multisample_state: {
+            sample_count: sdl.SDL_GPU_SAMPLECOUNT_1, sample_mask: 0 as u32,
+            enable_mask: false, enable_alpha_to_coverage: false,
+            padding2: 0 as u8, padding3: 0 as u8
+        },
+        depth_stencil_state: {
+            compare_op: sdl.SDL_GPU_COMPAREOP_LESS_OR_EQUAL,
+            back_stencil_state: {
+                fail_op: 0 as i32,
+                pass_op: 0 as i32,
+                depth_fail_op: 0 as i32,
+                compare_op: 0 as i32
+            },
+            front_stencil_state: {
+                fail_op: 0 as i32,
+                pass_op: 0 as i32,
+                depth_fail_op: 0 as i32,
+                compare_op: 0 as i32
+            },
+            compare_mask: 0 as u8, write_mask: 0 as u8,
+            enable_depth_test: true, enable_depth_write: true,
+            enable_stencil_test: false,
+            padding1: 0 as u8, padding2: 0 as u8, padding3: 0 as u8
+        },
+        target_info: {
+            color_target_descriptions: none as ref sdl.SDLGPUColorTargetDescription,
+            num_color_targets: 0 as u32,
+            depth_stencil_format: sdl.SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
+            has_depth_stencil_target: true,
+            padding1: 0 as u8, padding2: 0 as u8, padding3: 0 as u8
+        },
+        props: 0 as u32
+    }
+    val pipeline: ref void = sdl.SDL_CreateGPUGraphicsPipeline(runtime.device, @addr(info))
+    sdl.SDL_ReleaseGPUShader(runtime.device, fs)
+    sdl.SDL_ReleaseGPUShader(runtime.device, vs)
+    return pipeline
+}
+
 /// UI pipeline: same vertex layout/shader as the scene pipeline, but no depth
 /// target and alpha blending so HUD quads can be drawn directly to the swapchain.
 pub fn create_ui_pipeline(
@@ -881,7 +1040,7 @@ pub fn create_ui_pipeline(
         runtime,
         fs_path,
         sdl.SDL_GPU_SHADERSTAGE_FRAGMENT,
-        1 as u32,
+        scene_fragment_sampler_count(),
         1 as u32
     )
     if fs == none {
@@ -1202,6 +1361,19 @@ pub fn create_pipelines(
     if runtime.scene_pipeline == none {
         return false
     }
+    if shadows_supported() {
+        runtime.shadow_pipeline = create_shadow_pipeline(
+            runtime,
+            shader_cfg.shadow.vertex_path,
+            shader_cfg.shadow.fragment_path
+        )
+        if runtime.shadow_pipeline == none {
+            exoerr.print("shadow pipeline creation failed")
+            return false
+        }
+    } else {
+        runtime.shadow_pipeline = none as ref void
+    }
     runtime.ui_pipeline = create_ui_pipeline(
         runtime,
         shader_cfg.scene.vertex_path,
@@ -1335,6 +1507,10 @@ pub fn destroy_pipelines(runtime: mut ref Renderer) void = trust {
     if runtime.ui_pipeline != none {
         sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.ui_pipeline)
         runtime.ui_pipeline = none
+    }
+    if runtime.shadow_pipeline != none {
+        sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.shadow_pipeline)
+        runtime.shadow_pipeline = none
     }
     if runtime.scene_pipeline != none {
         sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.scene_pipeline)
@@ -1522,6 +1698,10 @@ pub fn clear_glb_texture(runtime: mut ref Renderer) void = trust {
 
 pub fn destroy_runtime_resources(runtime: mut ref Renderer) void = trust {
     release_render_targets(runtime)
+    if runtime.shadow_cube != none {
+        sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.shadow_cube)
+        runtime.shadow_cube = none
+    }
     if runtime.glb_texture != none {
         sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.glb_texture)
         runtime.glb_texture = none
@@ -1859,6 +2039,7 @@ pub fn create(
     }
     runtime.swapchain_format = sdl.SDL_GetGPUSwapchainTextureFormat(runtime.device, runtime.window)
     if !create_pipelines(runtime, shader_cfg) {
+        exoerr.print("create pipelines failed")
         destroy(runtime)
         return none as ref void
     }
@@ -1915,6 +2096,19 @@ pub fn create(
     if !recreate_render_targets(runtime, width as u32, height as u32) {
         destroy(runtime)
         return none as ref void
+    }
+    runtime.shadow_light_index = -1 as i32
+    runtime.shadow_near = 0.15 as f32
+    runtime.shadow_far = 0.0 as f32
+    if shadows_supported() {
+        runtime.shadow_cube = create_shadow_cube(runtime, SHADOW_RESOLUTION)
+        if runtime.shadow_cube == none {
+            exoerr.print("create shadow cube failed")
+            destroy(runtime)
+            return none as ref void
+        }
+    } else {
+        runtime.shadow_cube = none as ref void
     }
     runtime.normal_map_texture = load_png_texture(runtime, "./assets/normal_map.png")
     if font_bytes != none && font_bytes_len > (0 as usize) {
@@ -2210,6 +2404,63 @@ pub fn begin_scene_pass(runtime_raw: ref void, r: f32, g: f32, b: f32, a: f32) b
     }
     val runtime: mut ref Renderer = runtime_raw as mut ref Renderer
     return begin_pass(runtime, runtime.scene_color, runtime.scene_depth, r, g, b, a)
+}
+
+/// Begin a depth-only pass into one face of the shadow cube.
+pub fn begin_shadow_pass(runtime_raw: ref void, face: i32) bool = trust {
+    exoerr.clear()
+    if runtime_raw == none {
+        return exoerr.set("runtime unavailable")
+    }
+    val runtime: mut ref Renderer = runtime_raw as mut ref Renderer
+    if !runtime.frame_active || runtime.command_buffer == none {
+        return exoerr.set("no active frame")
+    }
+    if runtime.shadow_cube == none {
+        return exoerr.set("shadow map unavailable")
+    }
+    if runtime.current_pass != none {
+        sdl.SDL_EndGPURenderPass(runtime.current_pass)
+        runtime.current_pass = none
+    }
+    val depth_info: mut sdl.SDLGPUDepthStencilTargetInfo = {
+        texture: none as ref void,
+        clear_depth: 0.0 as f32,
+        load_op: 0 as i32,
+        store_op: 0 as i32,
+        stencil_load_op: 0 as i32,
+        stencil_store_op: 0 as i32,
+        cycle: false,
+        clear_stencil: 0 as u8,
+        mip_level: 0 as u8,
+        layer: 0 as u8
+    }
+    depth_info.texture = runtime.shadow_cube
+    depth_info.clear_depth = 1.0 as f32
+    depth_info.load_op = sdl.SDL_GPU_LOADOP_CLEAR
+    depth_info.store_op = sdl.SDL_GPU_STOREOP_STORE
+    depth_info.stencil_load_op = sdl.SDL_GPU_LOADOP_DONT_CARE
+    depth_info.stencil_store_op = sdl.SDL_GPU_STOREOP_DONT_CARE
+    depth_info.layer = face as u8
+    runtime.current_pass = sdl.SDL_BeginGPURenderPass(
+        runtime.command_buffer,
+        none as ref sdl.SDLGPUColorTargetInfo,
+        0 as u32,
+        @addr(depth_info)
+    )
+    if runtime.current_pass == none {
+        return false
+    }
+    val viewport: mut sdl.SDLGPUViewport = {
+        x: 0.0 as f32,
+        y: 0.0 as f32,
+        w: SHADOW_RESOLUTION as f32,
+        h: SHADOW_RESOLUTION as f32,
+        min_depth: 0.0 as f32,
+        max_depth: 1.0 as f32
+    }
+    sdl.SDL_SetGPUViewport(runtime.current_pass, @addr(viewport))
+    return true
 }
 
 pub fn begin_swapchain_scene_pass(
@@ -2760,12 +3011,18 @@ pub fn draw_scene_mesh(
                     1 as usize
                 ), z: math.read_f32(light_color, 2 as usize) },
             intensity: light_intensity,
-            radius: light_radius
+            radius: light_radius,
+            casts_shadow: false
         }
         set_light_uniform(fu, 0 as i32, fallback_light)
         light_count = 1 as i32
     }
-    fu.light_meta = { x: light_count as f32, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
+    fu.light_meta = {
+        x: light_count as f32,
+        y: runtime.shadow_light_index as f32,
+        z: runtime.shadow_near,
+        w: runtime.shadow_far
+    }
     val has_tex: mut f32 = 0.0 as f32
     val tex_to_bind: mut ref void = runtime.reflection_color
     if texture_raw != none {
@@ -2773,9 +3030,15 @@ pub fn draw_scene_mesh(
         has_tex = 1.0 as f32
         fu.alpha_pad.y = has_tex
     }
-    val tex_binding: mut sdl.SDLGPUTextureSamplerBinding = {
-        texture: tex_to_bind,
-        sampler: runtime.linear_sampler
+    val tex_pair: mut SamplerPair = {
+        first: {
+            texture: tex_to_bind,
+            sampler: runtime.linear_sampler
+        },
+        second: {
+            texture: runtime.shadow_cube,
+            sampler: runtime.linear_sampler
+        }
     }
     sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.scene_pipeline)
     sdl.SDL_PushGPUVertexUniformData(
@@ -2790,7 +3053,21 @@ pub fn draw_scene_mesh(
         @addr(fu) as ref void,
         @sizeof(SceneFragmentUniforms) as u32
     )
-    sdl.SDL_BindGPUFragmentSamplers(runtime.current_pass, 0 as u32, @addr(tex_binding), 1 as u32)
+    if scene_fragment_sampler_count() == (2 as u32) {
+        sdl.SDL_BindGPUFragmentSamplers(
+            runtime.current_pass,
+            0 as u32,
+            @addr(tex_pair.first),
+            2 as u32
+        )
+    } else {
+        sdl.SDL_BindGPUFragmentSamplers(
+            runtime.current_pass,
+            0 as u32,
+            @addr(tex_pair.first),
+            1 as u32
+        )
+    }
     bind_mesh(runtime, mesh)
     val draw_count: mut u32 = draw_index_count
     if draw_count == (0 as u32) {
@@ -3506,6 +3783,185 @@ pub fn render_reflection_scene(
     )
 }
 
+fn find_shadow_light(runtime: ref Renderer) i32 = {
+    val index: mut i32 = 0 as i32
+    for light in runtime.lights {
+        if light.casts_shadow {
+            return index
+        }
+        index = index + (1 as i32)
+    }
+    return -1 as i32
+}
+
+fn shadow_face_direction(face: i32) math.Vec3 = {
+    if face == (0 as i32) {
+        return math.vec3(1.0 as f32, 0.0 as f32, 0.0 as f32)
+    }
+    if face == (1 as i32) {
+        return math.vec3(-1.0 as f32, 0.0 as f32, 0.0 as f32)
+    }
+    if face == (2 as i32) {
+        return math.vec3(0.0 as f32, 1.0 as f32, 0.0 as f32)
+    }
+    if face == (3 as i32) {
+        return math.vec3(0.0 as f32, -1.0 as f32, 0.0 as f32)
+    }
+    if face == (4 as i32) {
+        return math.vec3(0.0 as f32, 0.0 as f32, 1.0 as f32)
+    }
+    return math.vec3(0.0 as f32, 0.0 as f32, -1.0 as f32)
+}
+
+fn shadow_face_up(face: i32) math.Vec3 = {
+    if face == (2 as i32) {
+        return math.vec3(0.0 as f32, 0.0 as f32, 1.0 as f32)
+    }
+    if face == (3 as i32) {
+        return math.vec3(0.0 as f32, 0.0 as f32, -1.0 as f32)
+    }
+    return math.vec3(0.0 as f32, -1.0 as f32, 0.0 as f32)
+}
+
+fn draw_shadow_mesh(
+    runtime: ref Renderer,
+    mesh: MeshGPU,
+    model: math.Mat4,
+    light_view_proj: math.Mat4
+) void = trust {
+    if !mesh_valid(mesh) {
+        return
+    }
+    val vu: mut SceneVertexUniforms = {
+        model: math.transpose_mat4_ptr(@addr(model.m00)),
+        view_proj: math.transpose_mat4_ptr(@addr(light_view_proj.m00)),
+        uv_transform: { x: 1.0 as f32, y: 1.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
+    }
+    sdl.SDL_PushGPUVertexUniformData(
+        runtime.command_buffer,
+        0 as u32,
+        @addr(vu) as ref void,
+        @sizeof(SceneVertexUniforms) as u32
+    )
+    bind_mesh(runtime, mesh.raw as ref GpuMesh)
+    sdl.SDL_DrawGPUIndexedPrimitives(
+        runtime.current_pass,
+        mesh.index_count as u32,
+        1 as u32,
+        0 as u32,
+        0 as i32,
+        0 as u32
+    )
+}
+
+fn draw_shadow_entities(
+    runtime: ref Renderer,
+    resources: SceneMeshes,
+    scene: ecs.Scene3D,
+    light_view_proj: math.Mat4
+) void = trust {
+    for cube in scene.cubes {
+        val model: math.Mat4 = math.model_matrix(cube.position, cube.size, 0.0 as f32)
+        draw_shadow_mesh(runtime, resources.cube, model, light_view_proj)
+    }
+
+    val model_index: mut usize = 0 as usize
+    for draw in scene.model_draws {
+        if draw.visible && draw.casts_shadow {
+            if @get(resources.model_draws, model_index) is some gpu {
+                draw_shadow_mesh(runtime, gpu.mesh, draw.transform, light_view_proj)
+            }
+        }
+        model_index = model_index + (1 as usize)
+    }
+
+    val custom_index: mut usize = 0 as usize
+    for instance in scene.mesh_instances {
+        if @get(resources.custom, custom_index) is some mesh {
+            val model: math.Mat4 = math.model_matrix_scaled(
+                instance.position,
+                instance.scale,
+                instance.rotation_y
+            )
+            draw_shadow_mesh(runtime, mesh, model, light_view_proj)
+        }
+        custom_index = custom_index + (1 as usize)
+    }
+
+    val legacy_index: mut usize = 0 as usize
+    for instance in scene.models {
+        if @get(resources.models, legacy_index) is some mesh {
+            val model: math.Mat4 = math.model_matrix(
+                instance.position,
+                instance.scale,
+                instance.rotation_y
+            )
+            draw_shadow_mesh(runtime, mesh, model, light_view_proj)
+        }
+        legacy_index = legacy_index + (1 as usize)
+    }
+}
+
+/// Render the dynamic cube shadow map for the first light flagged with
+/// `casts_shadow`. Called once per frame before the reflection and scene passes.
+pub fn render_shadow_pass(
+    runtime_raw: ref void,
+    resources: SceneMeshes,
+    scene: ecs.Scene3D,
+    _: f32
+) void = trust {
+    if !shadows_supported() {
+        return
+    }
+    if runtime_raw == none {
+        return
+    }
+    val runtime: mut ref Renderer = runtime_raw as mut ref Renderer
+    runtime.shadow_light_index = -1 as i32
+    runtime.shadow_far = 0.0 as f32
+    if !scene.render.enable_shadows || runtime.shadow_pipeline == none || runtime.shadow_cube == none {
+        return
+    }
+    val shadow_index: i32 = find_shadow_light(runtime)
+    if shadow_index < (0 as i32) {
+        return
+    }
+    if @get(runtime.lights, shadow_index as usize) is some light {
+        val near_plane: f32 = 0.15 as f32
+        val far_plane: mut f32 = light.radius + (2.0 as f32)
+        if far_plane < (4.0 as f32) {
+            far_plane = 4.0 as f32
+        }
+        val projection: math.Mat4 = math.mat_perspective(
+            PI_F32 * (0.5 as f32),
+            1.0 as f32,
+            near_plane,
+            far_plane
+        )
+        runtime.shadow_light_index = shadow_index
+        runtime.shadow_near = near_plane
+        runtime.shadow_far = far_plane
+        val face: mut i32 = 0 as i32
+        for face < (6 as i32) {
+            val direction: math.Vec3 = shadow_face_direction(face)
+            val center: math.Vec3 = math.vec3_add(light.position, direction)
+            val view: math.Mat4 = math.mat_look_at(
+                light.position,
+                center,
+                shadow_face_up(face)
+            )
+            val light_vp: math.Mat4 = math.mat_mul(projection, view)
+            if !begin_shadow_pass(runtime, face) {
+                break
+            }
+            sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.shadow_pipeline)
+            draw_shadow_entities(runtime, resources, scene, light_vp)
+            end_pass(runtime)
+            face = face + (1 as i32)
+        }
+    }
+}
+
 pub fn render_scene(
     runtime: ref void,
     resources: SceneMeshes,
@@ -3670,9 +4126,15 @@ pub fn draw_ui_quad(
     if !textured {
         tex = runtime.reflection_color
     }
-    val binding: mut sdl.SDLGPUTextureSamplerBinding = {
-        texture: tex,
-        sampler: runtime.linear_sampler
+    val tex_pair: mut SamplerPair = {
+        first: {
+            texture: tex,
+            sampler: runtime.linear_sampler
+        },
+        second: {
+            texture: runtime.shadow_cube,
+            sampler: runtime.linear_sampler
+        }
     }
     sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.ui_pipeline)
     sdl.SDL_PushGPUVertexUniformData(
@@ -3687,7 +4149,21 @@ pub fn draw_ui_quad(
         @addr(fu) as ref void,
         @sizeof(SceneFragmentUniforms) as u32
     )
-    sdl.SDL_BindGPUFragmentSamplers(runtime.current_pass, 0 as u32, @addr(binding), 1 as u32)
+    if scene_fragment_sampler_count() == (2 as u32) {
+        sdl.SDL_BindGPUFragmentSamplers(
+            runtime.current_pass,
+            0 as u32,
+            @addr(tex_pair.first),
+            2 as u32
+        )
+    } else {
+        sdl.SDL_BindGPUFragmentSamplers(
+            runtime.current_pass,
+            0 as u32,
+            @addr(tex_pair.first),
+            1 as u32
+        )
+    }
     bind_mesh(runtime, quad_mesh.raw as ref GpuMesh)
     sdl.SDL_DrawGPUIndexedPrimitives(
         runtime.current_pass,

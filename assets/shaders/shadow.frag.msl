@@ -1,0 +1,6 @@
+#include <metal_stdlib>
+using namespace metal;
+
+// Depth-only pass: no color attachments are written.
+fragment void main0() {
+}

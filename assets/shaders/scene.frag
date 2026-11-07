@@ -5,6 +5,7 @@ layout(location = 1) in vec3 vWorldNormal;
 layout(location = 2) in vec2 vTexCoord;
 layout(location = 0) out vec4 FragColor;
 layout(set = 2, binding = 0) uniform sampler2D uAlbedo;
+layout(set = 2, binding = 1) uniform samplerCube uShadowMap;
 
 layout(set = 3, binding = 0, std140) uniform SceneFragmentUniforms {
     vec4 uColorReflective;
@@ -21,6 +22,20 @@ layout(set = 3, binding = 0, std140) uniform SceneFragmentUniforms {
 vec3 sky_color(vec3 direction_value) {
     float t = clamp(direction_value.y * 0.5 + 0.5, 0.0, 1.0);
     return mix(uSkyHorizon.rgb, uSkyTop.rgb, t);
+}
+
+float sample_shadow(vec3 world_pos, vec3 normal_value, vec3 light_pos, vec3 light_dir, float near_plane, float far_plane) {
+    vec3 to_light = world_pos - light_pos;
+    float distance_to_light = length(to_light);
+    if (distance_to_light < 0.0001) {
+        return 1.0;
+    }
+    float sampled_depth = texture(uShadowMap, normalize(to_light)).r;
+    float closest_depth = (near_plane * far_plane)
+        / max(far_plane - sampled_depth * (far_plane - near_plane), 0.0001);
+    float ndl = max(dot(normal_value, light_dir), 0.0);
+    float bias = max(0.12 * (1.0 - ndl), 0.015);
+    return (distance_to_light - bias > closest_depth) ? 0.0 : 1.0;
 }
 
 void main() {
@@ -51,6 +66,7 @@ void main() {
     vec3 glow_value = base_color * glow * 0.10;
     vec3 point_contrib = vec3(0.0);
     int light_count = int(uLightMeta.x + 0.5);
+    int shadow_light = int(uLightMeta.y + 0.5);
     for (int i = 0; i < 8; i++) {
         if (i >= light_count) {
             break;
@@ -66,7 +82,18 @@ void main() {
         vec3 phalf = normalize(pl_dir + view_dir);
         float pspec = pow(max(dot(normal_value, phalf), 0.0), 48.0);
         float light_intensity = pos_intensity.w;
-        point_contrib += color_radius.xyz * light_intensity * att
+        float shadow_mult = 1.0;
+        if (i == shadow_light && uLightMeta.w > 0.0) {
+            shadow_mult = sample_shadow(
+                vWorldPos,
+                normal_value,
+                pos_intensity.xyz,
+                pl_dir,
+                uLightMeta.z,
+                uLightMeta.w
+            );
+        }
+        point_contrib += color_radius.xyz * light_intensity * att * shadow_mult
             * (base_color * pdiff * 0.55 + vec3(1.0, 0.98, 0.96) * pspec * (0.08 + reflective * 0.14));
     }
     FragColor = vec4(base + highlight + glow_value + point_contrib, uAlphaPad.x);

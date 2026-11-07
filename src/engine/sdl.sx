@@ -98,6 +98,7 @@ pub val (
     SDL_GPU_SHADERFORMAT_MSL: u32                  = 16
     SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD: i32        = 0
     SDL_GPU_TEXTURETYPE_2D: i32                    = 0
+    SDL_GPU_TEXTURETYPE_CUBE: i32                  = 3
     SDL_GPU_SAMPLECOUNT_1: i32                     = 0
     SDL_GPU_SHADERSTAGE_VERTEX: i32                = 0
     SDL_GPU_SHADERSTAGE_FRAGMENT: i32              = 1

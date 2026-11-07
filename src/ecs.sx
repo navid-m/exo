@@ -81,6 +81,9 @@ pub type PointLight = {
     color: math.Vec3
     intensity: f32
     radius: f32
+    /// Render a dynamic cube shadow map for this light. At most one light per
+    /// scene casts shadows; the first flagged light wins.
+    casts_shadow: bool
 }
 
 pub type GlbModel = {
@@ -222,6 +225,8 @@ pub type ModelDraw = {
     glow: f32
     alpha: f32
     visible: bool
+    /// Whether this instance contributes to the dynamic shadow map.
+    casts_shadow: bool
     animation: i32
     animation_speed: f32
     animation_offset: f32
@@ -269,6 +274,7 @@ pub type RenderSettings = {
     reflection_plane: f32
     enable_reflections: bool
     reflect_models: bool
+    enable_shadows: bool
     enable_fxaa: bool
     enable_light_glow: bool
     ambient: f32
@@ -448,6 +454,7 @@ pub fn default_render_settings() RenderSettings = {
         reflection_plane: -0.18 as f32,
         enable_reflections: true,
         reflect_models: false,
+        enable_shadows: false,
         enable_fxaa: true,
         enable_light_glow: true,
         ambient: 0.30 as f32,
@@ -533,12 +540,36 @@ pub fn default_light() PointLight = {
         position: { x: 0.0 as f32, y: 4.0 as f32, z: 0.0 as f32 },
         color: { x: 1.0 as f32, y: 0.92 as f32, z: 0.78 as f32 },
         intensity: 1.6 as f32,
-        radius: 7.0 as f32
+        radius: 7.0 as f32,
+        casts_shadow: false
     }
 }
 
 pub fn make_light(position: math.Vec3, color: math.Vec3, intensity: f32, radius: f32) PointLight = {
-    return { position: position, color: color, intensity: intensity, radius: radius }
+    return {
+        position: position,
+        color: color,
+        intensity: intensity,
+        radius: radius,
+        casts_shadow: false
+    }
+}
+
+/// Convenience constructor for a point light that renders a dynamic cube
+/// shadow map. Only the first shadow-casting light in a scene is used.
+pub fn make_shadow_light(
+    position: math.Vec3,
+    color: math.Vec3,
+    intensity: f32,
+    radius: f32
+) PointLight = {
+    return {
+        position: position,
+        color: color,
+        intensity: intensity,
+        radius: radius,
+        casts_shadow: true
+    }
 }
 
 pub fn empty_model() GlbModel = {
@@ -592,6 +623,7 @@ pub fn make_model_draw(asset: ModelAsset, transform: math.Mat4) ModelDraw = {
         glow: 0.0 as f32,
         alpha: 1.0 as f32,
         visible: true,
+        casts_shadow: true,
         animation: -1 as i32,
         animation_speed: 1.0 as f32,
         animation_offset: 0.0 as f32,

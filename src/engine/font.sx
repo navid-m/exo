@@ -9,7 +9,7 @@
 
 val mem = use("../mem.sx")
 
-extern "./src/stb_truetype_impl.h"
+link "./src/stb_truetype_impl.c"
 
 pub extern type StbttPackedChar = {
     x0: u16
@@ -37,9 +37,9 @@ pub extern type StbttPackContext = {
     nodes: ref void
 }
 
-pub extern (C, header) fn stbtt_GetFontOffsetForIndex(data: ref u8, index: i32) i32 = "stbtt_GetFontOffsetForIndex"
+pub extern (C) fn stbtt_GetFontOffsetForIndex(data: ref u8, index: i32) i32 = "stbtt_GetFontOffsetForIndex"
 
-pub extern (C, header) fn stbtt_PackBegin(
+pub extern (C) fn stbtt_PackBegin(
     spc: ref StbttPackContext,
     pixels: ref u8,
     width: i32,
@@ -49,7 +49,7 @@ pub extern (C, header) fn stbtt_PackBegin(
     alloc_context: ref void
 ) i32 = "stbtt_PackBegin"
 
-pub extern (C, header) fn stbtt_PackFontRange(
+pub extern (C) fn stbtt_PackFontRange(
     spc: ref StbttPackContext,
     data: ref u8,
     font_index: i32,
@@ -59,9 +59,9 @@ pub extern (C, header) fn stbtt_PackFontRange(
     glyphs: ref StbttPackedChar
 ) i32 = "stbtt_PackFontRange"
 
-pub extern (C, header) fn stbtt_PackEnd(spc: ref StbttPackContext) void = "stbtt_PackEnd"
+pub extern (C) fn stbtt_PackEnd(spc: ref StbttPackContext) void = "stbtt_PackEnd"
 
-pub extern (C, header) fn stbtt_GetScaledFontVMetrics(
+pub extern (C) fn stbtt_GetScaledFontVMetrics(
     data: ref u8,
     font_index: i32,
     size: f32,

@@ -17,6 +17,10 @@ pub type ExoShaderConfig = {
     floor: ShaderProgramConfig
     glow: ShaderProgramConfig
     water: ShaderProgramConfig
+    /// Depth-only shader used for the dynamic cube shadow pass. The vertex
+    /// shader can be the scene vertex shader; the fragment shader only needs
+    /// to exist for the pipeline.
+    shadow: ShaderProgramConfig
     post_process: PostProcessShaderConfig
 }
 
@@ -55,6 +59,10 @@ pub fn default_shader_config() ExoShaderConfig = {
                 vertex_path: "./assets/shaders/water.vert.msl",
                 fragment_path: "./assets/shaders/water.frag.msl"
             },
+            shadow: {
+                vertex_path: "./assets/shaders/scene.vert.msl",
+                fragment_path: "./assets/shaders/shadow.frag.msl"
+            },
             post_process: {
                 threshold: {
                     vertex_path: "./assets/shaders/fullscreen.vert.msl",
@@ -91,6 +99,10 @@ pub fn default_shader_config() ExoShaderConfig = {
         water: {
             vertex_path: "./assets/shaders/water.vert.spv",
             fragment_path: "./assets/shaders/water.frag.spv"
+        },
+        shadow: {
+            vertex_path: "./assets/shaders/scene.vert.spv",
+            fragment_path: "./assets/shaders/shadow.frag.spv"
         },
         post_process: {
             threshold: {
