@@ -513,7 +513,7 @@ fn scene_meshes(
 }
 
 fn dispatch_gamepad[E: AppEvents](
-    events: mut E,
+    events: E,
     app: mut ExoApp,
     before_buttons: u64,
     before_lx: f32,
@@ -570,7 +570,7 @@ fn dispatch_gamepad[E: AppEvents](
 
 fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
     val app: mut ExoApp = app0
-    val events: mut E = events0
+    val events: E = events0
     defer {
         mem.close()
     }
