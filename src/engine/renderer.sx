@@ -1054,7 +1054,7 @@ pub fn load_png_texture(runtime: ref Renderer, path: ref u8) ref void = trust {
         tex_info.sample_count = sdl.SDL_GPU_SAMPLECOUNT_1
         val texture: ref void = sdl.SDL_CreateGPUTexture(runtime.device, @addr(tex_info))
         if texture == none {
-            sdl.stbi_image_free(pixels as ref void)
+            sdl.stbi_image_free(pixels)
             return none as ref void
         }
         val byte_size: u32 = (w as u32) * (h as u32) * (4 as u32)
@@ -1066,19 +1066,19 @@ pub fn load_png_texture(runtime: ref Renderer, path: ref u8) ref void = trust {
         val tbuf: ref void = sdl.SDL_CreateGPUTransferBuffer(runtime.device, @addr(tbuf_info))
         if tbuf == none {
             sdl.SDL_ReleaseGPUTexture(runtime.device, texture)
-            sdl.stbi_image_free(pixels as ref void)
+            sdl.stbi_image_free(pixels)
             return none as ref void
         }
         val mapped: ref void = sdl.SDL_MapGPUTransferBuffer(runtime.device, tbuf, false)
         if mapped == none {
             sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
             sdl.SDL_ReleaseGPUTexture(runtime.device, texture)
-            sdl.stbi_image_free(pixels as ref void)
+            sdl.stbi_image_free(pixels)
             return none as ref void
         }
-        @memcpy(mapped, pixels as ref void, byte_size as usize)
+        @memcpy(mapped, pixels, byte_size as usize)
         sdl.SDL_UnmapGPUTransferBuffer(runtime.device, tbuf)
-        sdl.stbi_image_free(pixels as ref void)
+        sdl.stbi_image_free(pixels)
         val cmd: ref void = sdl.SDL_AcquireGPUCommandBuffer(runtime.device)
         if cmd == none {
             sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
@@ -1498,7 +1498,7 @@ pub fn create_texture_from_memory(
     tex_info.sample_count = sdl.SDL_GPU_SAMPLECOUNT_1
     val texture: ref void = sdl.SDL_CreateGPUTexture(runtime.device, @addr(tex_info))
     if texture == none {
-        sdl.stbi_image_free(pixels as ref void)
+        sdl.stbi_image_free(pixels)
         return none as ref void
     }
     val byte_size: u32 = (w as u32) * (h as u32) * (4 as u32)
@@ -1512,19 +1512,19 @@ pub fn create_texture_from_memory(
     val tbuf: ref void = sdl.SDL_CreateGPUTransferBuffer(runtime.device, @addr(tbuf_info))
     if tbuf == none {
         sdl.SDL_ReleaseGPUTexture(runtime.device, texture)
-        sdl.stbi_image_free(pixels as ref void)
+        sdl.stbi_image_free(pixels)
         return none as ref void
     }
     val mapped: ref void = sdl.SDL_MapGPUTransferBuffer(runtime.device, tbuf, false)
     if mapped == none {
         sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
         sdl.SDL_ReleaseGPUTexture(runtime.device, texture)
-        sdl.stbi_image_free(pixels as ref void)
+        sdl.stbi_image_free(pixels)
         return none as ref void
     }
-    @memcpy(mapped, pixels as ref void, byte_size as usize)
+    @memcpy(mapped, pixels, byte_size as usize)
     sdl.SDL_UnmapGPUTransferBuffer(runtime.device, tbuf)
-    sdl.stbi_image_free(pixels as ref void)
+    sdl.stbi_image_free(pixels)
     val cmd: ref void = sdl.SDL_AcquireGPUCommandBuffer(runtime.device)
     if cmd == none {
         sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, tbuf)
@@ -1612,28 +1612,28 @@ pub fn create(
         sdl.SDL_Quit()
         return exoerr.set_ptr("failed to allocate runtime")
     }
-    @memset(runtime as ref void, 0, @sizeof(Renderer))
+    @memset(runtime, 0, @sizeof(Renderer))
     runtime.sky_top = math.vec3(0.26 as f32, 0.48 as f32, 0.84 as f32)
     runtime.sky_horizon = math.vec3(0.05 as f32, 0.08 as f32, 0.14 as f32)
     runtime.ambient = 0.30 as f32
     runtime.lights = mem.persistent[ecs.PointLight]()
     runtime.window = sdl.SDL_CreateWindow(title, width, height, 0 as u64)
     if runtime.window == none {
-        destroy(runtime as ref void)
+        destroy(runtime)
         return none as ref void
     }
     runtime.device = create_gpu_device(true)
     if runtime.device == none {
-        destroy(runtime as ref void)
+        destroy(runtime)
         return none as ref void
     }
     if !sdl.SDL_ClaimWindowForGPUDevice(runtime.device, runtime.window) {
-        destroy(runtime as ref void)
+        destroy(runtime)
         return none as ref void
     }
     runtime.swapchain_format = sdl.SDL_GetGPUSwapchainTextureFormat(runtime.device, runtime.window)
     if !create_pipelines(runtime, shader_cfg) {
-        destroy(runtime as ref void)
+        destroy(runtime)
         return none as ref void
     }
     val sampler_info: mut sdl.SDLGPUSamplerCreateInfo = {
@@ -1663,7 +1663,7 @@ pub fn create(
     sampler_info.max_lod = 1.0 as f32
     runtime.linear_sampler = sdl.SDL_CreateGPUSampler(runtime.device, @addr(sampler_info))
     if runtime.linear_sampler == none {
-        destroy(runtime as ref void)
+        destroy(runtime)
         return none as ref void
     }
     val repeat_info: mut sdl.SDLGPUSamplerCreateInfo = {
@@ -1683,18 +1683,18 @@ pub fn create(
     repeat_info.max_lod = 1.0 as f32
     runtime.repeat_sampler = sdl.SDL_CreateGPUSampler(runtime.device, @addr(repeat_info))
     if runtime.repeat_sampler == none {
-        destroy(runtime as ref void)
+        destroy(runtime)
         return none as ref void
     }
     if !recreate_render_targets(runtime, width as u32, height as u32) {
-        destroy(runtime as ref void)
+        destroy(runtime)
         return none as ref void
     }
     runtime.normal_map_texture = load_png_texture(runtime, "./assets/normal_map.png")
     if font_path != none && string.len_raw(font_path) > (0 as usize) {
         runtime.font_texture = load_png_texture(runtime, font_path)
     }
-    return runtime as ref void
+    return runtime
 }
 
 pub fn destroy(runtime_raw: ref void) void = trust {
@@ -1777,7 +1777,7 @@ pub fn create_mesh(
     if mesh == none {
         return exoerr.set_ptr("failed to allocate mesh")
     }
-    @memset(mesh as ref void, 0, @sizeof(GpuMesh))
+    @memset(mesh, 0, @sizeof(GpuMesh))
     val vertex_info: mut sdl.SDLGPUBufferCreateInfo = {
         usage: 0 as u32,
         size: 0 as u32,
@@ -1787,7 +1787,7 @@ pub fn create_mesh(
     vertex_info.size = vertex_bytes
     mesh.vertex_buffer = sdl.SDL_CreateGPUBuffer(runtime.device, @addr(vertex_info))
     if mesh.vertex_buffer == none {
-        destroy_mesh_raw(runtime_raw, mesh as ref void)
+        destroy_mesh_raw(runtime_raw, mesh)
         return none as ref void
     }
     val index_info: mut sdl.SDLGPUBufferCreateInfo = {
@@ -1799,7 +1799,7 @@ pub fn create_mesh(
     index_info.size = index_bytes
     mesh.index_buffer = sdl.SDL_CreateGPUBuffer(runtime.device, @addr(index_info))
     if mesh.index_buffer == none {
-        destroy_mesh_raw(runtime_raw, mesh as ref void)
+        destroy_mesh_raw(runtime_raw, mesh)
         return none as ref void
     }
     val transfer_info: mut sdl.SDLGPUTransferBufferCreateInfo = {
@@ -1811,13 +1811,13 @@ pub fn create_mesh(
     transfer_info.size = vertex_bytes + index_bytes
     val transfer: ref void = sdl.SDL_CreateGPUTransferBuffer(runtime.device, @addr(transfer_info))
     if transfer == none {
-        destroy_mesh_raw(runtime_raw, mesh as ref void)
+        destroy_mesh_raw(runtime_raw, mesh)
         return none as ref void
     }
     val mapped: ref void = sdl.SDL_MapGPUTransferBuffer(runtime.device, transfer, false)
     if mapped == none {
         sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, transfer)
-        destroy_mesh_raw(runtime_raw, mesh as ref void)
+        destroy_mesh_raw(runtime_raw, mesh)
         return none as ref void
     }
     @memcpy(mapped, vertices, vertex_bytes as usize)
@@ -1826,14 +1826,14 @@ pub fn create_mesh(
     val command_buffer: ref void = sdl.SDL_AcquireGPUCommandBuffer(runtime.device)
     if command_buffer == none {
         sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, transfer)
-        destroy_mesh_raw(runtime_raw, mesh as ref void)
+        destroy_mesh_raw(runtime_raw, mesh)
         return none as ref void
     }
     val copy_pass: ref void = sdl.SDL_BeginGPUCopyPass(command_buffer)
     if copy_pass == none {
         sdl.SDL_CancelGPUCommandBuffer(command_buffer)
         sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, transfer)
-        destroy_mesh_raw(runtime_raw, mesh as ref void)
+        destroy_mesh_raw(runtime_raw, mesh)
         return none as ref void
     }
     val src_vertex: mut sdl.SDLGPUTransferBufferLocation = {
@@ -1866,13 +1866,13 @@ pub fn create_mesh(
     sdl.SDL_EndGPUCopyPass(copy_pass)
     if !sdl.SDL_SubmitGPUCommandBuffer(command_buffer) {
         sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, transfer)
-        destroy_mesh_raw(runtime_raw, mesh as ref void)
+        destroy_mesh_raw(runtime_raw, mesh)
         return none as ref void
     }
     sdl.SDL_ReleaseGPUTransferBuffer(runtime.device, transfer)
     mesh.index_count = index_count
     mesh.vertex_bytes = vertex_bytes
-    return mesh as ref void
+    return mesh
 }
 
 pub fn destroy_mesh_raw(runtime_raw: ref void, mesh_raw: ref void) void = trust {
@@ -2020,7 +2020,7 @@ fn bloom_blur_pass(
         @sizeof(BloomBlurUniforms) as u32
     )
     sdl.SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
-    end_pass(runtime as ref void)
+    end_pass(runtime)
     return true
 }
 
@@ -2105,7 +2105,7 @@ pub fn apply_post_process_with_light(
             @sizeof(BloomThresholdUniforms) as u32
         )
         sdl.SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
-        end_pass(runtime as ref void)
+        end_pass(runtime)
 
         val iterations_raw: i32 = settings.bloom.iterations
         val iterations: mut i32 = iterations_raw
@@ -2195,7 +2195,7 @@ pub fn apply_post_process_with_light(
             @sizeof(GodrayUniforms) as u32
         )
         sdl.SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
-        end_pass(runtime as ref void)
+        end_pass(runtime)
     }
 
     if !begin_pass_no_depth_sized(
@@ -2331,8 +2331,8 @@ fn write_mapped_ppm(runtime: ref Renderer, tbuf: ref void, path: ref u8) void = 
         if file != none {
             val hdr: ref u8 = @alloc(64 as usize) as ref u8
             @snprintf(hdr, 64 as usize, "P6\n{lld} {lld}\n255\n", {w as i64, h as i64})
-            sdl.fwrite(hdr as ref void, 1 as usize, string.len_raw(hdr), file)
-            sdl.fwrite(rgb as ref void, 1 as usize, (w * h * (3 as u32)) as usize, file)
+            sdl.fwrite(hdr, 1 as usize, string.len_raw(hdr), file)
+            sdl.fwrite(rgb, 1 as usize, (w * h * (3 as u32)) as usize, file)
             sdl.fclose(file)
             @free(hdr)
         }

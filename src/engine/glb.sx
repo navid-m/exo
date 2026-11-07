@@ -28,7 +28,7 @@ pub fn dup_cstr(src: ref u8) ref u8 = trust {
         return none
     }
     if len > 0 {
-        @memcpy(dst as ref void, src as ref void, len)
+        @memcpy(dst, src, len)
     }
     @store8(@ptradd(dst, len), 0)
     return dst
@@ -124,7 +124,7 @@ pub fn compute_glb_bounds(model: mut ref ecs.GlbModel) void = trust {
     if json_buf == none {
         return
     }
-    @memcpy(json_buf as ref void, @ptradd(data, json_offset) as ref void, json_len as usize)
+    @memcpy(json_buf, @ptradd(data, json_offset) as ref void, json_len as usize)
     @store8(@ptradd(json_buf, json_len as usize), 0)
     if json.parse(json_buf) is some doc {
         val root: ref void = json.doc_root(doc)
@@ -174,7 +174,7 @@ pub fn compute_glb_bounds(model: mut ref ecs.GlbModel) void = trust {
         model.bounds_max_z = max_z
         json.doc_free(doc)
     }
-    @free(json_buf as ref void)
+    @free(json_buf)
 }
 
 pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
@@ -208,17 +208,17 @@ pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
     if json_buf == none {
         return none
     }
-    @memcpy(json_buf as ref void, @ptradd(data, json_offset) as ref void, json_len as usize)
+    @memcpy(json_buf, @ptradd(data, json_offset) as ref void, json_len as usize)
     @store8(@ptradd(json_buf, json_len as usize), 0)
     val bin_header_offset: usize = json_end
     if bin_header_offset + (8 as usize) > len {
-        @free(json_buf as ref void)
+        @free(json_buf)
         return none
     }
     val bin_len: u32 = bin.read_u32_le(data, bin_header_offset)
     val bin_type: u32 = bin.read_u32_le(data, bin_header_offset + (4 as usize))
     if bin_type != GLB_BIN_CHUNK {
-        @free(json_buf as ref void)
+        @free(json_buf)
         return none
     }
     if json.parse(json_buf) is some doc {
@@ -264,17 +264,17 @@ pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
             }
         }
         json.doc_free(doc)
-        @free(json_buf as ref void)
+        @free(json_buf)
         val raw_copy: ref u8 = @alloc(len) as ref u8
         if raw_copy != none {
-            @memcpy(raw_copy as ref void, data as ref void, len)
+            @memcpy(raw_copy, data, len)
             model.raw_bytes = raw_copy
             model.raw_bytes_len = len
         }
         val json_buf2: ref u8 = @alloc((json_len as usize) + (1 as usize)) as ref u8
         if json_buf2 != none {
             @memcpy(
-                json_buf2 as ref void,
+                json_buf2,
                 @ptradd(data, json_offset) as ref void,
                 json_len as usize
             )
@@ -306,11 +306,11 @@ pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
                 }
                 json.doc_free(doc2)
             }
-            @free(json_buf2 as ref void)
+            @free(json_buf2)
         }
         return some model
     }
-    @free(json_buf as ref void)
+    @free(json_buf)
     return none
 }
 
@@ -332,11 +332,11 @@ pub fn load_glb(path: ref u8) option[ecs.GlbModel] = trust {
         sdl.fclose(file)
         return none
     }
-    sdl.fread(buf as ref void, 1 as usize, size as usize, file)
+    sdl.fread(buf, 1 as usize, size as usize, file)
     @store8(@ptradd(buf, size as usize), 0)
     sdl.fclose(file)
     val model = parse_glb_bytes(buf, size as usize)
-    @free(buf as ref void)
+    @free(buf)
     return model
 }
 
@@ -347,13 +347,13 @@ pub fn build_test_glb_fixture() GlbFixture = trust {
     val bin_len: usize = 36 as usize
     val total_len: usize = (12 as usize) + (8 as usize) + json_len + (8 as usize) + bin_len
     val ptr: ref u8 = @alloc(total_len + (1 as usize)) as ref u8
-    @memset(ptr as ref void, 0, total_len + (1 as usize))
+    @memset(ptr, 0, total_len + (1 as usize))
     bin.write_u32_le(ptr, 0 as usize, GLB_MAGIC)
     bin.write_u32_le(ptr, 4 as usize, GLB_VERSION)
     bin.write_u32_le(ptr, 8 as usize, total_len as u32)
     bin.write_u32_le(ptr, 12 as usize, json_len as u32)
     bin.write_u32_le(ptr, 16 as usize, GLB_JSON_CHUNK)
-    @memcpy(@ptradd(ptr, 20 as usize) as ref void, json_chunk as ref void, json_len_raw)
+    @memcpy(@ptradd(ptr, 20 as usize) as ref void, json_chunk, json_len_raw)
     val bin_header: usize = (20 as usize) + json_len
     bin.write_u32_le(ptr, bin_header, bin_len as u32)
     bin.write_u32_le(ptr, bin_header + (4 as usize), GLB_BIN_CHUNK)
@@ -367,9 +367,9 @@ pub fn build_test_glb_fixture() GlbFixture = trust {
 pub fn load_embedded_fixture_model() ecs.GlbModel = trust {
     val fixture: mut GlbFixture = build_test_glb_fixture()
     if parse_glb_bytes(fixture.ptr, fixture.len) is some model {
-        @free(fixture.ptr as ref void)
+        @free(fixture.ptr)
         return model
     }
-    @free(fixture.ptr as ref void)
+    @free(fixture.ptr)
     return ecs.empty_model()
 }

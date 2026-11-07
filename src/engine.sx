@@ -456,11 +456,11 @@ fn release_scene_resources(runtime: ref void, resources: mut SceneResources) voi
         }
         if model_gpu.base_vertices != none {
             val base_ptr: mut ref f32 = model_gpu.base_vertices
-            @free(base_ptr as ref void)
+            @free(base_ptr)
         }
         if model_gpu.draw_vertices != none {
             val draw_ptr: mut ref f32 = model_gpu.draw_vertices
-            @free(draw_ptr as ref void)
+            @free(draw_ptr)
         }
     }
     for custom_mesh in resources.custom {
@@ -523,7 +523,6 @@ fn dispatch_gamepad[E: AppEvents](
     before_lt: f32,
     before_rt: f32
 ) void = {
-    events = events
     app.input_state.key_mods = app.input_state.key_mods
     val after_buttons: u64 = app.input_state.gamepad_buttons
     val button: mut i32 = 0 as i32

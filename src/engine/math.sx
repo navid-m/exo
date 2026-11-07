@@ -45,7 +45,7 @@ pub type Vec4f = {
 
 pub fn read_f32(base: ref f32, index: usize) f32 = trust {
     val slot: ref F32Slot = @ptradd(
-        base as ref void,
+        base,
         index * (@sizeof(f32) as usize)
     ) as ref F32Slot
     return slot.value

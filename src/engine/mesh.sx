@@ -94,10 +94,10 @@ pub fn upload_model_asset(runtime: ref void, asset: ecs.ModelAsset) renderer.Mod
     val indices: ref u32 = @alloc(total_indices * (@sizeof(u32) as usize)) as ref u32
     if base_vertices == none || indices == none {
         if base_vertices != none {
-            @free(base_vertices as ref void)
+            @free(base_vertices)
         }
         if indices != none {
-            @free(indices as ref void)
+            @free(indices)
         }
         return result
     }
@@ -109,7 +109,7 @@ pub fn upload_model_asset(runtime: ref void, asset: ecs.ModelAsset) renderer.Mod
         if mesh.vertices != none {
             val source: ref void = mesh.vertices as ref void
             val target: ref void = @ptradd(
-                base_vertices as ref void,
+                base_vertices,
                 vertex_base * (8 as usize) * (@sizeof(f32) as usize)
             ) as ref void
             @memcpy(target, source, float_count * (@sizeof(f32) as usize))
@@ -145,19 +145,19 @@ pub fn upload_model_asset(runtime: ref void, asset: ecs.ModelAsset) renderer.Mod
         if result.draw_vertices != none {
             @memcpy(
                 result.draw_vertices as ref void,
-                base_vertices as ref void,
+                base_vertices,
                 vertex_float_count * (@sizeof(f32) as usize)
             )
         }
     }
     result.mesh = renderer.upload_mesh(
         runtime,
-        base_vertices as ref void,
+        base_vertices,
         vertex_float_count,
-        indices as ref void,
+        indices,
         total_indices as i32
     )
-    @free(indices as ref void)
+    @free(indices)
     return result
 }
 
@@ -172,7 +172,7 @@ pub fn upload_glb_model(runtime: ref void, model: ecs.GlbModel) renderer.MeshGPU
     if json_buf == none {
         return { raw: none as ref void, index_count: 0 as i32 }
     }
-    @memcpy(json_buf as ref void, @ptradd(data, json_offset) as ref void, json_len as usize)
+    @memcpy(json_buf, @ptradd(data, json_offset) as ref void, json_len as usize)
     @store8(@ptradd(json_buf, json_len as usize), 0)
     val result: mut renderer.MeshGPU = { raw: none as ref void, index_count: 0 as i32 }
     if json.parse(json_buf) is some doc {
@@ -330,7 +330,7 @@ pub fn upload_glb_model(runtime: ref void, model: ecs.GlbModel) renderer.MeshGPU
         }
         json.doc_free(doc)
     }
-    @free(json_buf as ref void)
+    @free(json_buf)
     return result
 }
 

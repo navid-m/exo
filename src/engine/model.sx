@@ -564,7 +564,7 @@ fn parse_meshes(asset: ecs.ModelAsset, root: ref void) list[ecs.ModelMesh] = tru
                                                 )
                                                 @store16(
                                                     @ptradd(
-                                                        joints as ref void,
+                                                        joints,
                                                         (joint_vertex * (4 as usize) + influence) * (2 as usize)
                                                     ) as ref u8,
                                                     joint_value as u16
@@ -799,7 +799,7 @@ pub fn parse_model_bytes(data: ref u8, len: usize) option[ecs.ModelAsset] = trus
     if json_buf == none {
         return none
     }
-    @memcpy(json_buf as ref void, @ptradd(data, json_offset) as ref void, json_len as usize)
+    @memcpy(json_buf, @ptradd(data, json_offset) as ref void, json_len as usize)
     @store8(@ptradd(json_buf, json_len as usize), 0)
 
     if json.parse(json_buf) is some doc {
@@ -808,10 +808,10 @@ pub fn parse_model_bytes(data: ref u8, len: usize) option[ecs.ModelAsset] = trus
         val raw_copy: ref u8 = @alloc(len) as ref u8
         if raw_copy == none {
             json.doc_free(doc)
-            @free(json_buf as ref void)
+            @free(json_buf)
             return none
         }
-        @memcpy(raw_copy as ref void, data as ref void, len)
+        @memcpy(raw_copy, data, len)
         asset.raw_bytes = raw_copy
         asset.raw_len = len
 
@@ -843,18 +843,18 @@ pub fn parse_model_bytes(data: ref u8, len: usize) option[ecs.ModelAsset] = trus
         asset.has_skinning = has_skin
 
         json.doc_free(doc)
-        @free(json_buf as ref void)
+        @free(json_buf)
         return some asset
     }
 
-    @free(json_buf as ref void)
+    @free(json_buf)
     return none
 }
 
 pub fn load_model(path: ref u8) option[ecs.ModelAsset] = trust {
     if io.load_binary_file(path) is some blob {
         val parsed = parse_model_bytes(blob.data, blob.len)
-        @free(blob.data as ref void)
+        @free(blob.data)
         return parsed
     }
     return none

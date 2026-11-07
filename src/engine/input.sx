@@ -175,7 +175,7 @@ pub fn open_gamepad() GamepadState = trust {
     if ids != none && count > (0 as i32) {
         state.handle = sdl.SDL_OpenGamepad(@load(ids) as u32)
         state.connected = state.handle != none
-        sdl.SDL_free(ids as ref void)
+        sdl.SDL_free(ids)
     }
     return state
 }

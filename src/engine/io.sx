@@ -52,7 +52,7 @@ pub fn load_binary_file(path: ref u8) option[BinaryBlob] = trust {
         if embedded.find(path) is some asset {
             val buf: ref u8 = @alloc(asset.len) as ref u8
             if buf != none {
-                @memcpy(buf as ref void, asset.data as ref void, asset.len)
+                @memcpy(buf, asset.data as ref void, asset.len)
                 return some {
                     data: buf,
                     len: asset.len
@@ -76,10 +76,10 @@ pub fn load_binary_file(path: ref u8) option[BinaryBlob] = trust {
         exoerr.set("failed to allocate file buffer")
         return none
     }
-    val read_count: usize = sdl.fread(buf as ref void, 1 as usize, size as usize, file)
+    val read_count: usize = sdl.fread(buf, 1 as usize, size as usize, file)
     sdl.fclose(file)
     if read_count != size as usize {
-        @free(buf as ref void)
+        @free(buf)
         exoerr.set("failed to read file")
         return none
     }

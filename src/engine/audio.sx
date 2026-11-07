@@ -44,7 +44,7 @@ pub fn create_audio(wav_path: ref u8, volume: i32) ref void = trust {
     if audio == none {
         return exoerr.set_ptr("failed to allocate audio")
     }
-    @memset(audio as ref void, 0, @sizeof(ExoSDL3Audio))
+    @memset(audio, 0, @sizeof(ExoSDL3Audio))
     val loaded: mut bool = false
     if embedded.find(wav_path) is some asset {
         val stream: ref void = sdl.SDL_IOFromMem(asset.data as ref void, asset.len)
@@ -67,7 +67,7 @@ pub fn create_audio(wav_path: ref u8, volume: i32) ref void = trust {
         )
     }
     if !loaded {
-        destroy_audio(audio as ref void)
+        destroy_audio(audio)
         return none as ref void
     }
     audio.stream = sdl.SDL_OpenAudioDeviceStream(
@@ -77,15 +77,15 @@ pub fn create_audio(wav_path: ref u8, volume: i32) ref void = trust {
         none as ref void
     )
     if audio.stream == none {
-        destroy_audio(audio as ref void)
+        destroy_audio(audio)
         return none as ref void
     }
     sdl.SDL_SetAudioStreamGain(audio.stream, (volume as f32) / (128.0 as f32))
     if !sdl.SDL_ResumeAudioStreamDevice(audio.stream) {
-        destroy_audio(audio as ref void)
+        destroy_audio(audio)
         return none as ref void
     }
-    return audio as ref void
+    return audio
 }
 
 pub fn destroy_audio(audio_raw: ref void) void = trust {
