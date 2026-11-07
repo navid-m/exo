@@ -1196,7 +1196,7 @@ pub fn create_pipelines(
         shader_cfg.post_process.composite.vertex_path,
         shader_cfg.post_process.composite.fragment_path,
         runtime.swapchain_format,
-        2 as u32,
+        3 as u32,
         1 as u32
     )
     if runtime.post_pipeline == none {
