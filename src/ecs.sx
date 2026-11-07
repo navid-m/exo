@@ -275,6 +275,10 @@ pub type RenderSettings = {
     enable_reflections: bool
     reflect_models: bool
     enable_shadows: bool
+    /// 0 = no shadow darkening, 1 = fully lit-to-shadow contrast.
+    shadow_intensity: f32
+    /// Global multiplier for every dynamic point light.
+    light_intensity: f32
     enable_fxaa: bool
     enable_light_glow: bool
     ambient: f32
@@ -455,6 +459,8 @@ pub fn default_render_settings() RenderSettings = {
         enable_reflections: true,
         reflect_models: false,
         enable_shadows: false,
+        shadow_intensity: 0.85 as f32,
+        light_intensity: 1.0 as f32,
         enable_fxaa: true,
         enable_light_glow: true,
         ambient: 0.30 as f32,

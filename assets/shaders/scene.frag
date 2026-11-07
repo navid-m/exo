@@ -67,6 +67,8 @@ void main() {
     vec3 point_contrib = vec3(0.0);
     int light_count = int(uLightMeta.x + 0.5);
     int shadow_light = int(uLightMeta.y + 0.5);
+    float shadow_intensity = clamp(uAmbientPad.y, 0.0, 1.0);
+    float light_intensity_scale = max(uAmbientPad.z, 0.0);
     for (int i = 0; i < 8; i++) {
         if (i >= light_count) {
             break;
@@ -81,10 +83,10 @@ void main() {
         float pdiff = max(dot(normal_value, pl_dir), 0.0);
         vec3 phalf = normalize(pl_dir + view_dir);
         float pspec = pow(max(dot(normal_value, phalf), 0.0), 48.0);
-        float light_intensity = pos_intensity.w;
+        float light_intensity = pos_intensity.w * light_intensity_scale;
         float shadow_mult = 1.0;
         if (i == shadow_light && uLightMeta.w > 0.0) {
-            shadow_mult = sample_shadow(
+            float shadow = sample_shadow(
                 vWorldPos,
                 normal_value,
                 pos_intensity.xyz,
@@ -92,6 +94,7 @@ void main() {
                 uLightMeta.z,
                 uLightMeta.w
             );
+            shadow_mult = mix(1.0, shadow, shadow_intensity);
         }
         point_contrib += color_radius.xyz * light_intensity * att * shadow_mult
             * (base_color * pdiff * 0.55 + vec3(1.0, 0.98, 0.96) * pspec * (0.08 + reflective * 0.14));

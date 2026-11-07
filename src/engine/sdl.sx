@@ -6,33 +6,41 @@ link "./src/stb_image_shim.c"
 link "-lm"
 
 pub val (
-    SDL_SCANCODE_1: i32      = 30
-    SDL_SCANCODE_2: i32      = 31
-    SDL_SCANCODE_3: i32      = 32
-    SDL_SCANCODE_4: i32      = 33
-    SDL_SCANCODE_5: i32      = 34
-    SDL_SCANCODE_6: i32      = 35
-    SDL_SCANCODE_7: i32      = 36
-    SDL_SCANCODE_8: i32      = 37
-    SDL_SCANCODE_9: i32      = 38
-    SDL_SCANCODE_A: i32      = 4
-    SDL_SCANCODE_D: i32      = 7
-    SDL_SCANCODE_E: i32      = 8
-    SDL_SCANCODE_F: i32      = 9
-    SDL_SCANCODE_Q: i32      = 20
-    SDL_SCANCODE_R: i32      = 21
-    SDL_SCANCODE_S: i32      = 22
-    SDL_SCANCODE_W: i32      = 26
-    SDL_SCANCODE_X: i32      = 27
-    SDL_SCANCODE_Y: i32      = 28
-    SDL_SCANCODE_ESCAPE: i32 = 41
-    SDL_SCANCODE_SPACE: i32  = 44
-    SDL_SCANCODE_RIGHT: i32  = 79
-    SDL_SCANCODE_LEFT: i32   = 80
-    SDL_SCANCODE_DOWN: i32   = 81
-    SDL_SCANCODE_UP: i32     = 82
-    SDL_SCANCODE_LSHIFT: i32 = 225
-    SDL_SCANCODE_RSHIFT: i32 = 229
+    SDL_SCANCODE_1: i32            = 30
+    SDL_SCANCODE_2: i32            = 31
+    SDL_SCANCODE_3: i32            = 32
+    SDL_SCANCODE_4: i32            = 33
+    SDL_SCANCODE_5: i32            = 34
+    SDL_SCANCODE_6: i32            = 35
+    SDL_SCANCODE_7: i32            = 36
+    SDL_SCANCODE_8: i32            = 37
+    SDL_SCANCODE_9: i32            = 38
+    SDL_SCANCODE_MINUS: i32        = 45
+    SDL_SCANCODE_EQUALS: i32       = 46
+    SDL_SCANCODE_LEFTBRACKET: i32  = 47
+    SDL_SCANCODE_RIGHTBRACKET: i32 = 48
+    SDL_SCANCODE_SEMICOLON: i32    = 51
+    SDL_SCANCODE_APOSTROPHE: i32   = 52
+    SDL_SCANCODE_COMMA: i32        = 54
+    SDL_SCANCODE_PERIOD: i32       = 55
+    SDL_SCANCODE_A: i32            = 4
+    SDL_SCANCODE_D: i32            = 7
+    SDL_SCANCODE_E: i32            = 8
+    SDL_SCANCODE_F: i32            = 9
+    SDL_SCANCODE_Q: i32            = 20
+    SDL_SCANCODE_R: i32            = 21
+    SDL_SCANCODE_S: i32            = 22
+    SDL_SCANCODE_W: i32            = 26
+    SDL_SCANCODE_X: i32            = 27
+    SDL_SCANCODE_Y: i32            = 28
+    SDL_SCANCODE_ESCAPE: i32       = 41
+    SDL_SCANCODE_SPACE: i32        = 44
+    SDL_SCANCODE_RIGHT: i32        = 79
+    SDL_SCANCODE_LEFT: i32         = 80
+    SDL_SCANCODE_DOWN: i32         = 81
+    SDL_SCANCODE_UP: i32           = 82
+    SDL_SCANCODE_LSHIFT: i32       = 225
+    SDL_SCANCODE_RSHIFT: i32       = 229
 )
 
 pub val (

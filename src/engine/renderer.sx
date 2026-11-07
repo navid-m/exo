@@ -163,6 +163,8 @@ pub fn configure_scene_style(
     sky_top: math.Vec3,
     sky_horizon: math.Vec3,
     ambient: f32,
+    shadow_intensity: f32,
+    light_intensity: f32,
     lights: list[ecs.PointLight]
 ) void = trust {
     if runtime_raw == none {
@@ -172,6 +174,8 @@ pub fn configure_scene_style(
     runtime.sky_top = sky_top
     runtime.sky_horizon = sky_horizon
     runtime.ambient = ambient
+    runtime.shadow_intensity = shadow_intensity
+    runtime.light_intensity = light_intensity
     runtime.lights = lights
 }
 
@@ -299,6 +303,8 @@ pub type Renderer = {
     shadow_light_index: mut i32
     shadow_near: mut f32
     shadow_far: mut f32
+    shadow_intensity: mut f32
+    light_intensity: mut f32
     bloom_a: mut ref void
     bloom_b: mut ref void
     godray: mut ref void
@@ -1906,10 +1912,10 @@ fn create_font_atlas(runtime: mut ref Renderer, pixel_size: i32) bool = trust {
         @free(cpu.pixels as ref void)
         cpu.pixels = none as ref u8
         @append(runtime.font_atlases, {
-            cpu: cpu,
-            texture: texture,
-            pixel_size: pixel_size
-        })
+                cpu: cpu,
+                texture: texture,
+                pixel_size: pixel_size
+            })
         return true
     }
     return false
@@ -2100,6 +2106,8 @@ pub fn create(
     runtime.shadow_light_index = -1 as i32
     runtime.shadow_near = 0.15 as f32
     runtime.shadow_far = 0.0 as f32
+    runtime.shadow_intensity = 0.85 as f32
+    runtime.light_intensity = 1.0 as f32
     if shadows_supported() {
         runtime.shadow_cube = create_shadow_cube(runtime, SHADOW_RESOLUTION)
         if runtime.shadow_cube == none {
@@ -2986,7 +2994,12 @@ pub fn draw_scene_mesh(
         z: runtime.sky_horizon.z,
         w: 0.0 as f32
     }
-    fu.ambient_pad = { x: runtime.ambient, y: 0.0 as f32, z: 0.0 as f32, w: 0.0 as f32 }
+    fu.ambient_pad = {
+        x: runtime.ambient,
+        y: runtime.shadow_intensity,
+        z: runtime.light_intensity,
+        w: 0.0 as f32
+    }
     val light_count: mut i32 = 0 as i32
     for scene_light in runtime.lights {
         if light_count < (8 as i32) {

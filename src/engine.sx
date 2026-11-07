@@ -840,6 +840,8 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             app.scene.render.clear_top,
             app.scene.render.clear_bottom,
             app.scene.render.ambient,
+            app.scene.render.shadow_intensity,
+            app.scene.render.light_intensity,
             app.scene.lights
         )
 

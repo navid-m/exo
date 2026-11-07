@@ -37,7 +37,10 @@ pub extern type StbttPackContext = {
     nodes: ref void
 }
 
-pub extern (C) fn stbtt_GetFontOffsetForIndex(data: ref u8, index: i32) i32 = "stbtt_GetFontOffsetForIndex"
+pub extern (C) fn stbtt_GetFontOffsetForIndex(
+    data: ref u8,
+    index: i32
+) i32 = "stbtt_GetFontOffsetForIndex"
 
 pub extern (C) fn stbtt_PackBegin(
     spc: ref StbttPackContext,
@@ -151,16 +154,16 @@ fn build_glyph_list(
         val x1: f32 = packed_char.x1 as f32
         val y1: f32 = packed_char.y1 as f32
         @append(glyphs, {
-            u0: x0 / width_f,
-            v0: y0 / height_f,
-            u1: x1 / width_f,
-            v1: y1 / height_f,
-            xoff: packed_char.xoff,
-            yoff: packed_char.yoff,
-            width: x1 - x0,
-            height: y1 - y0,
-            advance: packed_char.xadvance
-        })
+                u0: x0 / width_f,
+                v0: y0 / height_f,
+                u1: x1 / width_f,
+                v1: y1 / height_f,
+                xoff: packed_char.xoff,
+                yoff: packed_char.yoff,
+                width: x1 - x0,
+                height: y1 - y0,
+                advance: packed_char.xadvance
+            })
         i = i + (1 as i32)
     }
     return glyphs
