@@ -6,6 +6,7 @@ layout(location = 0) out vec4 FragColor;
 layout(set = 2, binding = 0) uniform sampler2D uSceneTex;
 layout(set = 2, binding = 1) uniform sampler2D uBloomTex;
 layout(set = 2, binding = 2) uniform sampler2D uGodrayTex;
+layout(set = 2, binding = 3) uniform sampler2D uDepthTex;
 
 layout(set = 3, binding = 0, std140) uniform CompositeUniforms {
     vec4 uBloom;         // x = intensity, y = enabled, z = godrays enabled, w = fxaa
@@ -13,6 +14,8 @@ layout(set = 3, binding = 0, std140) uniform CompositeUniforms {
     vec4 uColor;         // x = exposure, y = contrast, z = saturation, w = chromatic aberration
     vec4 uScreen;        // x = 1/width, y = 1/height, z = time, w = grain
     vec4 uVignetteColor;
+    vec4 uAo;            // x = radius, y = intensity, z = enabled, w = near plane
+    vec4 uCameraInfo;    // x = tan(fov/2), y = aspect, z = far plane, w = ao bias
 };
 
 float luma(vec3 color_value) {
@@ -26,6 +29,84 @@ vec3 aces_tonemap(vec3 x) {
     const float d = 0.59;
     const float e = 0.14;
     return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
+}
+
+float hash12(vec2 p) {
+    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+float linear_depth(float depth_value) {
+    float near_plane = uAo.w;
+    float far_plane = uCameraInfo.z;
+    return (near_plane * far_plane)
+        / max(far_plane - depth_value * (far_plane - near_plane), 0.0001);
+}
+
+vec3 view_position(vec2 uv, float distance_value) {
+    vec2 ndc = vec2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
+    return vec3(
+        ndc.x * uCameraInfo.x * uCameraInfo.y,
+        ndc.y * uCameraInfo.x,
+        -1.0
+    ) * distance_value;
+}
+
+// Screen-space ambient occlusion reconstructed only from depth. This darkens
+// creases and contact regions so geometry stops reading as flat cards.
+float compute_ao(vec2 uv) {
+    if (uAo.z < 0.5) {
+        return 1.0;
+    }
+    float raw_depth = texture(uDepthTex, uv).r;
+    if (raw_depth >= 0.99999) {
+        return 1.0;
+    }
+    float center_depth = linear_depth(raw_depth);
+    if (center_depth < 0.35) {
+        return 1.0;
+    }
+    vec3 center = view_position(uv, center_depth);
+    vec3 normal_value = normalize(cross(dFdx(center), dFdy(center)));
+    if (dot(normal_value, center) > 0.0) {
+        normal_value = -normal_value;
+    }
+
+    float radius = max(uAo.x, 0.001);
+    float radius_sq = radius * radius;
+    float bias_sq = max(uCameraInfo.w, 0.0001);
+    bias_sq *= bias_sq;
+    vec2 uv_radius = vec2(
+        radius / (2.0 * center_depth * max(uCameraInfo.x, 0.001) * max(uCameraInfo.y, 0.001)),
+        radius / (2.0 * center_depth * max(uCameraInfo.x, 0.001))
+    );
+    float angle = hash12(gl_FragCoord.xy) * 6.2831853;
+    float occlusion = 0.0;
+    const int SAMPLES = 12;
+    for (int i = 0; i < SAMPLES; i++) {
+        float fi = float(i);
+        float theta = angle + fi * 2.39996323;
+        float r = sqrt((fi + 0.5) / float(SAMPLES));
+        vec2 offset = vec2(cos(theta), sin(theta)) * r * uv_radius;
+        vec2 sample_uv = uv + offset;
+        float sample_raw = texture(uDepthTex, sample_uv).r;
+        if (sample_raw >= 0.99999) {
+            continue;
+        }
+        float sample_depth = linear_depth(sample_raw);
+        vec3 sample_pos = view_position(sample_uv, sample_depth);
+        vec3 delta = sample_pos - center;
+        float dist_sq = dot(delta, delta);
+        if (dist_sq < bias_sq || dist_sq > radius_sq) {
+            continue;
+        }
+        float ndl = max(dot(normal_value, normalize(delta)), 0.0);
+        float range_check = smoothstep(0.0, 1.0, radius_sq / (dist_sq + 0.0001));
+        occlusion += ndl * range_check;
+    }
+    occlusion = (occlusion / float(SAMPLES)) * max(uAo.y, 0.0);
+    return clamp(1.0 - occlusion, 0.0, 1.0);
 }
 
 vec3 sample_scene(vec2 uv) {
@@ -62,18 +143,29 @@ void main() {
         scene_color = sample_scene(uv);
     }
 
+    scene_color *= compute_ao(uv);
+
     vec3 bloom = texture(uBloomTex, uv).rgb * uBloom.x * uBloom.y;
     vec3 godrays = texture(uGodrayTex, uv).rgb * uBloom.z;
     vec3 color_value = (scene_color + bloom + godrays) * uColor.x;
     color_value = aces_tonemap(color_value);
 
     float luminance = luma(color_value);
+    // Lift the deepest blacks slightly so shadowed areas keep some readable
+    // atmosphere instead of clipping to pure black.
+    float shadow_lift = 1.0 - smoothstep(0.0, 0.30, luminance);
+    color_value += vec3(0.012, 0.016, 0.024) * shadow_lift;
+    // Gentle split-tone: cool shadows, warm highlights.
+    color_value = mix(color_value, color_value * vec3(0.93, 0.98, 1.07), (1.0 - luminance) * 0.16);
+    color_value = mix(color_value, color_value * vec3(1.05, 1.0, 0.94), smoothstep(0.45, 1.0, luminance) * 0.10);
+
+    luminance = luma(color_value);
     color_value = mix(vec3(luminance), color_value, uColor.z);
     color_value = (color_value - vec3(0.5)) * uColor.y + vec3(0.5);
     color_value = clamp(color_value, 0.0, 1.0);
 
     float dist = length(from_center * vec2(1.0, 1.25));
-    float vignette = pow(smoothstep(0.25, 0.90, dist), max(uVignette.y, 0.001));
+    float vignette = pow(smoothstep(0.25, 0.94, dist), max(uVignette.y, 0.001));
     if (uVignette.z > 0.5) {
         color_value = mix(color_value, uVignetteColor.rgb, vignette * uVignette.x);
     }
@@ -84,5 +176,7 @@ void main() {
     }
 
     color_value = pow(max(color_value, vec3(0.0)), vec3(1.0 / 2.2));
+    // Ordered-ish dithering hides banding in the sky and dark gradients.
+    color_value += (hash12(gl_FragCoord.xy + uScreen.z * 0.37) - 0.5) * (1.0 / 255.0);
     FragColor = vec4(color_value, 1.0);
 }

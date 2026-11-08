@@ -14,6 +14,8 @@ pub type PostProcessShaderConfig = {
 
 pub type ExoShaderConfig = {
     scene: ShaderProgramConfig
+    /// Procedural sky/atmosphere background. Drawn before scene geometry.
+    sky: ShaderProgramConfig
     floor: ShaderProgramConfig
     glow: ShaderProgramConfig
     water: ShaderProgramConfig
@@ -21,6 +23,8 @@ pub type ExoShaderConfig = {
     /// shader can be the scene vertex shader; the fragment shader only needs
     /// to exist for the pipeline.
     shadow: ShaderProgramConfig
+    /// Fullscreen texture copy used to present the offscreen screenshot frame.
+    blit: ShaderProgramConfig
     post_process: PostProcessShaderConfig
 }
 
@@ -47,6 +51,10 @@ pub fn default_shader_config() ExoShaderConfig = {
                 vertex_path: "./assets/shaders/scene.vert.msl",
                 fragment_path: "./assets/shaders/scene.frag.msl"
             },
+            sky: {
+                vertex_path: "./assets/shaders/fullscreen.vert.msl",
+                fragment_path: "./assets/shaders/sky.frag.msl"
+            },
             floor: {
                 vertex_path: "./assets/shaders/floor.vert.msl",
                 fragment_path: "./assets/shaders/floor.frag.msl"
@@ -62,6 +70,10 @@ pub fn default_shader_config() ExoShaderConfig = {
             shadow: {
                 vertex_path: "./assets/shaders/scene.vert.msl",
                 fragment_path: "./assets/shaders/shadow.frag.msl"
+            },
+            blit: {
+                vertex_path: "./assets/shaders/fullscreen.vert.msl",
+                fragment_path: "./assets/shaders/blit.frag.msl"
             },
             post_process: {
                 threshold: {
@@ -88,6 +100,10 @@ pub fn default_shader_config() ExoShaderConfig = {
             vertex_path: "./assets/shaders/scene.vert.spv",
             fragment_path: "./assets/shaders/scene.frag.spv"
         },
+        sky: {
+            vertex_path: "./assets/shaders/fullscreen.vert.spv",
+            fragment_path: "./assets/shaders/sky.frag.spv"
+        },
         floor: {
             vertex_path: "./assets/shaders/floor.vert.spv",
             fragment_path: "./assets/shaders/floor.frag.spv"
@@ -103,6 +119,10 @@ pub fn default_shader_config() ExoShaderConfig = {
         shadow: {
             vertex_path: "./assets/shaders/scene.vert.spv",
             fragment_path: "./assets/shaders/shadow.frag.spv"
+        },
+        blit: {
+            vertex_path: "./assets/shaders/fullscreen.vert.spv",
+            fragment_path: "./assets/shaders/blit.frag.spv"
         },
         post_process: {
             threshold: {

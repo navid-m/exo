@@ -844,6 +844,7 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             app.scene.render.light_intensity,
             app.scene.lights
         )
+        renderer.configure_atmosphere(runtime, app.scene.render.atmosphere)
 
         val frame_w: mut u32 = app.config.width as u32
         val frame_h: mut u32 = app.config.height as u32
@@ -852,7 +853,12 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             exit_code = 1 as i32
             break
         }
+        renderer.set_capture_active(
+            runtime,
+            app.screenshot_requested && app.screenshot_path != none
+        )
         renderer.render_shadow_pass(runtime, meshes, app.scene, app.time)
+        renderer.render_sun_shadow_pass(runtime, meshes, app.scene, app.camera, app.time)
         if !renderer.begin_reflection_pass(
             runtime,
             app.scene.render.clear_bottom.x,

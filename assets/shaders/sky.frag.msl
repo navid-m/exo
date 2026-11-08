@@ -1,0 +1,103 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct SkyUniforms
+{
+    float4 uForward;
+    float4 uRight;
+    float4 uUp;
+    float4 uSunDir;
+    float4 uSunColor;
+    float4 uZenith;
+    float4 uHorizon;
+    float4 uGround;
+};
+
+struct main0_out
+{
+    float4 FragColor [[color(0)]];
+};
+
+struct main0_in
+{
+    float2 vTexCoord [[user(locn0)]];
+};
+
+static inline float hash21(float2 p)
+{
+    p = fract(p * float2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+}
+
+static inline float value_noise(float2 p)
+{
+    float2 i = floor(p);
+    float2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = hash21(i);
+    float b = hash21(i + float2(1.0, 0.0));
+    float c = hash21(i + float2(0.0, 1.0));
+    float d = hash21(i + float2(1.0, 1.0));
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+static inline float fbm(float2 p)
+{
+    float value = 0.0;
+    float amplitude = 0.52;
+    for (int i = 0; i < 5; i++)
+    {
+        value += amplitude * value_noise(p);
+        p = p * 2.03 + float2(17.1, 9.2);
+        amplitude *= 0.5;
+    }
+    return value;
+}
+
+fragment main0_out main0(main0_in in [[stage_in]], constant SkyUniforms& u [[buffer(0)]])
+{
+    main0_out out = {};
+    float2 uv = in.vTexCoord;
+    float2 ndc = float2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
+
+    float3 dir = normalize(
+        u.uForward.xyz
+        + u.uRight.xyz * (ndc.x * u.uForward.w * u.uRight.w)
+        + u.uUp.xyz * (ndc.y * u.uForward.w)
+    );
+
+    float height = clamp(dir.y, -1.0, 1.0);
+    float up = max(height, 0.0);
+
+    float horizon_mix = powr(1.0 - up, 3.2);
+    float3 color_value = mix(u.uZenith.rgb, u.uHorizon.rgb, float3(horizon_mix));
+
+    float sun_dot = max(dot(dir, normalize(u.uSunDir.xyz)), 0.0);
+    color_value += u.uSunColor.rgb * powr(sun_dot, 5.0) * 0.10 * u.uSunDir.w;
+
+    float cos_size = cos(max(u.uSunColor.w, 0.0001));
+    float disc = smoothstep(cos_size, cos(u.uSunColor.w * 0.55), sun_dot);
+    color_value += u.uSunColor.rgb * disc * (1.4 + u.uSunDir.w * 1.2);
+    color_value += u.uSunColor.rgb * powr(sun_dot, 220.0) * 0.7 * u.uSunDir.w;
+
+    color_value = mix(u.uGround.rgb, color_value, float3(smoothstep(-0.10, 0.03, height)));
+
+    if (u.uZenith.w > 0.001 && height > 0.005)
+    {
+        float2 cloud_uv = dir.xz / max(dir.y + 0.16, 0.06);
+        cloud_uv = cloud_uv * float2(0.72, 0.52) + float2(u.uHorizon.w * 9.0, u.uHorizon.w * 3.5);
+        float cloud = fbm(cloud_uv * 1.65);
+        cloud = smoothstep(0.54, 0.83, cloud);
+        cloud *= smoothstep(0.005, 0.16, height);
+        cloud *= u.uZenith.w;
+        float3 cloud_color = mix(u.uHorizon.rgb, float3(1.02, 1.0, 0.97), 0.55);
+        cloud_color += u.uSunColor.rgb * powr(sun_dot, 8.0) * 0.25;
+        color_value = mix(color_value, cloud_color, float3(clamp(cloud * 0.62, 0.0, 0.68)));
+    }
+
+    out.FragColor = float4(color_value, 1.0);
+    return out;
+}

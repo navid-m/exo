@@ -1,0 +1,15 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct main0_in
+{
+    float2 vTexCoord [[user(locn0)]];
+};
+
+fragment float4 main0(main0_in in [[stage_in]],
+                      texture2d<float> uSource [[texture(0)]],
+                      sampler uSampler [[sampler(0)]]) {
+    return uSource.sample(uSampler, in.vTexCoord);
+}

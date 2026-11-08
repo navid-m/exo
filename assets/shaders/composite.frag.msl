@@ -10,6 +10,8 @@ struct CompositeUniforms
     float4 uColor;
     float4 uScreen;
     float4 uVignetteColor;
+    float4 uAo;
+    float4 uCameraInfo;
 };
 
 struct main0_out
@@ -37,10 +39,110 @@ static inline float3 aces_tonemap(float3 x)
     return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
 }
 
-static inline float3 sample_scene(texture2d<float> tex, sampler smp, float2 uv, float2 texel, float fxaa_enabled)
+static inline float hash12(float2 p)
+{
+    float3 p3 = fract(float3(p.xyx) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+static inline float linear_depth(float depth_value, constant CompositeUniforms& u)
+{
+    float near_plane = u.uAo.w;
+    float far_plane = u.uCameraInfo.z;
+    return (near_plane * far_plane)
+        / max(far_plane - depth_value * (far_plane - near_plane), 0.0001);
+}
+
+static inline float3 view_position(float2 uv, float distance_value, constant CompositeUniforms& u)
+{
+    float2 ndc = float2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
+    return float3(
+        ndc.x * u.uCameraInfo.x * u.uCameraInfo.y,
+        ndc.y * u.uCameraInfo.x,
+        -1.0
+    ) * distance_value;
+}
+
+static inline float compute_ao(
+    float2 uv,
+    texture2d<float> depth_tex,
+    sampler depth_sampler,
+    float4 frag_coord,
+    constant CompositeUniforms& u
+)
+{
+    if (u.uAo.z < 0.5)
+    {
+        return 1.0;
+    }
+    float raw_depth = depth_tex.sample(depth_sampler, uv).r;
+    if (raw_depth >= 0.99999)
+    {
+        return 1.0;
+    }
+    float center_depth = linear_depth(raw_depth, u);
+    if (center_depth < 0.35)
+    {
+        return 1.0;
+    }
+    float3 center = view_position(uv, center_depth, u);
+    float3 normal_value = normalize(cross(dfdx(center), dfdy(center)));
+    if (dot(normal_value, center) > 0.0)
+    {
+        normal_value = -normal_value;
+    }
+
+    float radius = max(u.uAo.x, 0.001);
+    float radius_sq = radius * radius;
+    float bias_sq = max(u.uCameraInfo.w, 0.0001);
+    bias_sq *= bias_sq;
+    float2 uv_radius = float2(
+        radius / (2.0 * center_depth * max(u.uCameraInfo.x, 0.001) * max(u.uCameraInfo.y, 0.001)),
+        radius / (2.0 * center_depth * max(u.uCameraInfo.x, 0.001))
+    );
+    float angle = hash12(frag_coord.xy) * 6.2831853;
+    float occlusion = 0.0;
+    const int SAMPLES = 12;
+    for (int i = 0; i < SAMPLES; i++)
+    {
+        float fi = float(i);
+        float theta = angle + fi * 2.39996323;
+        float r = sqrt((fi + 0.5) / float(SAMPLES));
+        float2 offset = float2(cos(theta), sin(theta)) * r * uv_radius;
+        float2 sample_uv = uv + offset;
+        float sample_raw = depth_tex.sample(depth_sampler, sample_uv).r;
+        if (sample_raw >= 0.99999)
+        {
+            continue;
+        }
+        float sample_depth = linear_depth(sample_raw, u);
+        float3 sample_pos = view_position(sample_uv, sample_depth, u);
+        float3 delta = sample_pos - center;
+        float dist_sq = dot(delta, delta);
+        if (dist_sq < bias_sq || dist_sq > radius_sq)
+        {
+            continue;
+        }
+        float ndl = max(dot(normal_value, normalize(delta)), 0.0);
+        float range_check = smoothstep(0.0, 1.0, radius_sq / (dist_sq + 0.0001));
+        occlusion += ndl * range_check;
+    }
+    occlusion = (occlusion / float(SAMPLES)) * max(u.uAo.y, 0.0);
+    return clamp(1.0 - occlusion, 0.0, 1.0);
+}
+
+static inline float3 sample_scene(
+    texture2d<float> tex,
+    sampler smp,
+    float2 uv,
+    float2 texel,
+    float fxaa_enabled
+)
 {
     float3 center = tex.sample(smp, uv).rgb;
-    if (fxaa_enabled < 0.5) {
+    if (fxaa_enabled < 0.5)
+    {
         return center;
     }
     float3 nw = tex.sample(smp, uv + float2(-texel.x, -texel.y)).rgb;
@@ -51,26 +153,44 @@ static inline float3 sample_scene(texture2d<float> tex, sampler smp, float2 uv, 
     float luma_min = min(luma_center, min(min(luma(nw), luma(ne)), min(luma(sw), luma(se))));
     float luma_max = max(luma_center, max(max(luma(nw), luma(ne)), max(luma(sw), luma(se))));
     float edge = luma_max - luma_min;
-    if (edge > max(0.0312, luma_max * 0.125)) {
+    if (edge > max(0.0312, luma_max * 0.125))
+    {
         float3 blurred = (nw + ne + sw + se) * 0.25;
         return mix(center, blurred, 0.35);
     }
     return center;
 }
 
-fragment main0_out main0(main0_in in [[stage_in]], constant CompositeUniforms& u [[buffer(0)]], texture2d<float> uSceneTex [[texture(0)]], sampler uSceneTexSmplr [[sampler(0)]], texture2d<float> uBloomTex [[texture(1)]], sampler uBloomTexSmplr [[sampler(1)]], texture2d<float> uGodrayTex [[texture(2)]], sampler uGodrayTexSmplr [[sampler(2)]])
+fragment main0_out main0(
+    main0_in in [[stage_in]],
+    constant CompositeUniforms& u [[buffer(0)]],
+    texture2d<float> uSceneTex [[texture(0)]],
+    sampler uSceneTexSmplr [[sampler(0)]],
+    texture2d<float> uBloomTex [[texture(1)]],
+    sampler uBloomTexSmplr [[sampler(1)]],
+    texture2d<float> uGodrayTex [[texture(2)]],
+    sampler uGodrayTexSmplr [[sampler(2)]],
+    texture2d<float> uDepthTex [[texture(3)]],
+    sampler uDepthTexSmplr [[sampler(3)]],
+    float4 gl_FragCoord [[position]]
+)
 {
     main0_out out = {};
     float2 from_center = in.vTexCoord - float2(0.5);
     float aberration = u.uColor.w;
     float3 scene_color;
-    if (aberration > 0.0) {
+    if (aberration > 0.0)
+    {
         scene_color.r = sample_scene(uSceneTex, uSceneTexSmplr, in.vTexCoord - from_center * aberration, u.uScreen.xy, u.uBloom.w).r;
         scene_color.g = sample_scene(uSceneTex, uSceneTexSmplr, in.vTexCoord, u.uScreen.xy, u.uBloom.w).g;
         scene_color.b = sample_scene(uSceneTex, uSceneTexSmplr, in.vTexCoord + from_center * aberration, u.uScreen.xy, u.uBloom.w).b;
-    } else {
+    }
+    else
+    {
         scene_color = sample_scene(uSceneTex, uSceneTexSmplr, in.vTexCoord, u.uScreen.xy, u.uBloom.w);
     }
+
+    scene_color *= compute_ao(in.vTexCoord, uDepthTex, uDepthTexSmplr, gl_FragCoord, u);
 
     float3 bloom = uBloomTex.sample(uBloomTexSmplr, in.vTexCoord).rgb * u.uBloom.x * u.uBloom.y;
     float3 godrays = uGodrayTex.sample(uGodrayTexSmplr, in.vTexCoord).rgb * u.uBloom.z;
@@ -78,22 +198,31 @@ fragment main0_out main0(main0_in in [[stage_in]], constant CompositeUniforms& u
     color_value = aces_tonemap(color_value);
 
     float luminance = luma(color_value);
-    color_value = mix(float3(luminance), color_value, u.uColor.z);
+    float shadow_lift = 1.0 - smoothstep(0.0, 0.30, luminance);
+    color_value += float3(0.012, 0.016, 0.024) * shadow_lift;
+    color_value = mix(color_value, color_value * float3(0.93, 0.98, 1.07), float3((1.0 - luminance) * 0.16));
+    color_value = mix(color_value, color_value * float3(1.05, 1.0, 0.94), float3(smoothstep(0.45, 1.0, luminance) * 0.10));
+
+    luminance = luma(color_value);
+    color_value = mix(float3(luminance), color_value, float3(u.uColor.z));
     color_value = (color_value - float3(0.5)) * u.uColor.y + float3(0.5);
     color_value = clamp(color_value, 0.0, 1.0);
 
     float dist = length(from_center * float2(1.0, 1.25));
-    float vignette = powr(smoothstep(0.25, 0.90, dist), max(u.uVignette.y, 0.001));
-    if (u.uVignette.z > 0.5) {
-        color_value = mix(color_value, u.uVignetteColor.rgb, vignette * u.uVignette.x);
+    float vignette = powr(smoothstep(0.25, 0.94, dist), max(u.uVignette.y, 0.001));
+    if (u.uVignette.z > 0.5)
+    {
+        color_value = mix(color_value, u.uVignetteColor.rgb, float3(vignette * u.uVignette.x));
     }
 
-    if (u.uScreen.w > 0.0) {
+    if (u.uScreen.w > 0.0)
+    {
         float grain = fract(sin(dot(in.vTexCoord * u.uScreen.z, float2(12.9898, 78.233))) * 43758.5453);
         color_value += (grain - 0.5) * u.uScreen.w;
     }
 
     color_value = powr(max(color_value, float3(0.0)), float3(1.0 / 2.2));
+    color_value += (hash12(gl_FragCoord.xy + u.uScreen.z * 0.37) - 0.5) * (1.0 / 255.0);
     out.FragColor = float4(color_value, 1.0);
     return out;
 }

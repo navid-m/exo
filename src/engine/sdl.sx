@@ -14,7 +14,9 @@ pub val (
     SDL_SCANCODE_6: i32            = 35
     SDL_SCANCODE_7: i32            = 36
     SDL_SCANCODE_8: i32            = 37
+    SDL_SCANCODE_0: i32            = 39
     SDL_SCANCODE_9: i32            = 38
+    SDL_SCANCODE_F12: i32          = 69
     SDL_SCANCODE_MINUS: i32        = 45
     SDL_SCANCODE_EQUALS: i32       = 46
     SDL_SCANCODE_LEFTBRACKET: i32  = 47
@@ -124,7 +126,9 @@ pub val (
     SDL_GPU_BLENDFACTOR_SRC_ALPHA: i32             = 7
     SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA: i32   = 8
     SDL_GPU_FILTER_LINEAR: i32                     = 1
+    SDL_GPU_FILTER_NEAREST: i32                    = 0
     SDL_GPU_SAMPLERMIPMAPMODE_LINEAR: i32          = 1
+    SDL_GPU_SAMPLERMIPMAPMODE_NEAREST: i32         = 0
     SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE: i32  = 2
     SDL_GPU_SAMPLERADDRESSMODE_REPEAT: i32         = 0
     SDL_GPU_LOADOP_CLEAR: i32                      = 1
@@ -299,6 +303,15 @@ pub extern (C) fn SDL_UploadToGPUBuffer(
     cycle: bool
 ) void = "SDL_UploadToGPUBuffer"
 pub extern (C) fn SDL_EndGPUCopyPass(copy_pass: ref void) void = "SDL_EndGPUCopyPass"
+pub extern (C) fn SDL_CopyGPUTextureToTexture(
+    copy_pass: ref void,
+    source: ref SDLGPUTextureLocation,
+    destination: ref SDLGPUTextureLocation,
+    w: u32,
+    h: u32,
+    d: u32,
+    cycle: bool
+) void = "SDL_CopyGPUTextureToTexture"
 pub extern (C) fn SDL_WaitAndAcquireGPUSwapchainTexture(
     command_buffer: ref void,
     window: ref void,
@@ -785,4 +798,13 @@ pub extern type SDLGPUTextureRegion = {
     w: mut u32
     h: mut u32
     d: mut u32
+}
+
+pub extern type SDLGPUTextureLocation = {
+    texture: mut ref void
+    mip_level: mut u32
+    layer: mut u32
+    x: mut u32
+    y: mut u32
+    z: mut u32
 }

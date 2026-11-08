@@ -11,7 +11,9 @@ pub type EmbeddedAsset = {
 val (
     scene_vert_spv           = @embed("../assets/shaders/scene.vert.spv")
     scene_frag_spv           = @embed("../assets/shaders/scene.frag.spv")
+    sky_frag_spv             = @embed("../assets/shaders/sky.frag.spv")
     shadow_frag_spv          = @embed("../assets/shaders/shadow.frag.spv")
+    blit_frag_spv            = @embed("../assets/shaders/blit.frag.spv")
     floor_vert_spv           = @embed("../assets/shaders/floor.vert.spv")
     floor_frag_spv           = @embed("../assets/shaders/floor.frag.spv")
     glow_vert_spv            = @embed("../assets/shaders/glow.vert.spv")
@@ -25,7 +27,9 @@ val (
     composite_frag_spv       = @embed("../assets/shaders/composite.frag.spv")
     scene_vert_msl           = @embed("../assets/shaders/scene.vert.msl")
     scene_frag_msl           = @embed("../assets/shaders/scene.frag.msl")
+    sky_frag_msl             = @embed("../assets/shaders/sky.frag.msl")
     shadow_frag_msl          = @embed("../assets/shaders/shadow.frag.msl")
+    blit_frag_msl            = @embed("../assets/shaders/blit.frag.msl")
     floor_vert_msl           = @embed("../assets/shaders/floor.vert.msl")
     floor_frag_msl           = @embed("../assets/shaders/floor.frag.msl")
     glow_vert_msl            = @embed("../assets/shaders/glow.vert.msl")
@@ -88,9 +92,25 @@ pub fn find(key: ref u8) option[EmbeddedAsset] = trust {
     @append(
         assets,
         asset(
+            "./assets/shaders/sky.frag.spv",
+            sky_frag_spv,
+            @embedlen("../assets/shaders/sky.frag.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
             "./assets/shaders/shadow.frag.spv",
             shadow_frag_spv,
             @embedlen("../assets/shaders/shadow.frag.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/blit.frag.spv",
+            blit_frag_spv,
+            @embedlen("../assets/shaders/blit.frag.spv")
         )
     )
     @append(
@@ -201,9 +221,25 @@ pub fn find(key: ref u8) option[EmbeddedAsset] = trust {
     @append(
         assets,
         asset(
+            "./assets/shaders/sky.frag.msl",
+            sky_frag_msl,
+            @embedlen("../assets/shaders/sky.frag.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
             "./assets/shaders/shadow.frag.msl",
             shadow_frag_msl,
             @embedlen("../assets/shaders/shadow.frag.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/blit.frag.msl",
+            blit_frag_msl,
+            @embedlen("../assets/shaders/blit.frag.msl")
         )
     )
     @append(

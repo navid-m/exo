@@ -10,6 +10,13 @@ pub type Camera = {
     turn_speed: f32
 }
 
+pub val CAMERA_NEAR: f32 = 0.1 as f32
+pub val CAMERA_FAR: f32 = 100.0 as f32
+
+pub fn vertical_fov() f32 = {
+    return (60.0 as f32) * ((PI as f32) / (180.0 as f32))
+}
+
 
 pub fn default_camera() Camera = {
     return {
@@ -123,10 +130,10 @@ pub fn mirrored_camera(camera: Camera, plane_y: f32) Camera = {
 pub fn view_projection(camera: Camera, width: i32, height: i32) math.Mat4 = {
     val aspect: f32 = (width as f32) / (height as f32)
     val projection: math.Mat4 = math.mat_perspective(
-        (60.0 as f32) * ((PI as f32) / (180.0 as f32)),
+        vertical_fov(),
         aspect,
-        0.1 as f32,
-        100.0 as f32
+        CAMERA_NEAR,
+        CAMERA_FAR
     )
     val center: math.Vec3 = math.vec3_add(camera.position, camera_forward(camera))
     val view: math.Mat4 = math.mat_look_at(

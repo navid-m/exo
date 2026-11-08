@@ -16,6 +16,11 @@ struct SceneFragmentUniforms
     float4 uSkyHorizon;
     float4 uAmbientPad;
     float4 uLightMeta;
+    float4 uSunDirIntensity;
+    float4 uSunColor;
+    float4 uFogParams;
+    float4x4 uSunViewProj;
+    float4 uSunShadowParams;
 };
 
 struct main0_out
@@ -30,63 +35,151 @@ struct main0_in
     float2 vTexCoord [[user(locn2)]];
 };
 
-static inline __attribute__((always_inline))
-float3 sky_color(thread const float3& direction_value, constant SceneFragmentUniforms& _31)
+static inline float3 sky_color(float3 direction_value, constant SceneFragmentUniforms& u)
 {
-    float t = fast::clamp((direction_value.y * 0.5) + 0.5, 0.0, 1.0);
-    return mix(_31.uSkyHorizon.xyz, _31.uSkyTop.xyz, float3(t));
+    float t = clamp((direction_value.y * 0.5) + 0.5, 0.0, 1.0);
+    return mix(u.uSkyHorizon.rgb, u.uSkyTop.rgb, float3(t));
 }
 
-fragment main0_out main0(main0_in in [[stage_in]], constant SceneFragmentUniforms& _31 [[buffer(0)]], texture2d<float> uAlbedo [[texture(0)]], sampler uAlbedoSmplr [[sampler(0)]])
+static inline float3 srgb_to_linear(float3 color_value)
+{
+    return powr(max(color_value, float3(0.0)), float3(2.2));
+}
+
+static inline float sample_sun_shadow(
+    texture2d<float> sun_shadow_map,
+    sampler sun_shadow_sampler,
+    constant SceneFragmentUniforms& u,
+    float3 world_pos,
+    float3 normal_value,
+    float3 sun_dir
+)
+{
+    float4 clip = u.uSunViewProj * float4(world_pos, 1.0);
+    if (clip.w <= 0.0001)
+    {
+        return 1.0;
+    }
+    float3 ndc = clip.xyz / clip.w;
+    float2 uv = ndc.xy * 0.5 + 0.5;
+    uv.y = 1.0 - uv.y;
+    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 || ndc.z > 1.0)
+    {
+        return 1.0;
+    }
+    float ndl = max(dot(normal_value, sun_dir), 0.0);
+    float bias = max(u.uSunShadowParams.y * (1.6 - ndl), u.uSunShadowParams.y * 0.35);
+    float texel = u.uSunShadowParams.z;
+    float visibility = 0.0;
+    for (int y = -1; y <= 1; y++)
+    {
+        for (int x = -1; x <= 1; x++)
+        {
+            float2 offset = float2(float(x), float(y)) * texel;
+            float sampled = sun_shadow_map.sample(sun_shadow_sampler, uv + offset).r;
+            visibility += (ndc.z - bias > sampled) ? 0.0 : 1.0;
+        }
+    }
+    return visibility / 9.0;
+}
+
+fragment main0_out main0(
+    main0_in in [[stage_in]],
+    constant SceneFragmentUniforms& u [[buffer(0)]],
+    texture2d<float> uAlbedo [[texture(0)]],
+    sampler uAlbedoSmplr [[sampler(0)]],
+    texture2d<float> uSunShadowMap [[texture(1)]],
+    sampler uSunShadowMapSmplr [[sampler(1)]]
+)
 {
     main0_out out = {};
-    if (_31.uAlphaPad.z > 0.5)
+    if (u.uAlphaPad.z > 0.5)
     {
         float4 ui_tex = uAlbedo.sample(uAlbedoSmplr, in.vTexCoord);
-        float3 ui_color = mix(_31.uColorReflective.xyz, _31.uColorReflective.xyz * ui_tex.xyz, float3(_31.uAlphaPad.y));
-        out.FragColor = float4(ui_color, ui_tex.w * _31.uAlphaPad.x);
+        float3 ui_color = mix(u.uColorReflective.xyz, u.uColorReflective.xyz * ui_tex.xyz, float3(u.uAlphaPad.y));
+        out.FragColor = float4(ui_color, ui_tex.w * u.uAlphaPad.x);
         return out;
     }
-    float3 normal_value = fast::normalize(in.vWorldNormal);
-    float3 camera_pos = _31.uCameraGlow.xyz;
-    float3 view_dir = fast::normalize(camera_pos - in.vWorldPos);
-    float3 light_dir = float3(-0.4998001158237457275390625, 0.819672167301177978515625, 0.2798880636692047119140625);
-    float diff = fast::max(dot(normal_value, light_dir), 0.0);
-    float hemi = (normal_value.y * 0.5) + 0.5;
-    float3 half_vec = fast::normalize(light_dir + view_dir);
-    float spec = powr(fast::max(dot(normal_value, half_vec), 0.0), 36.0);
-    float3 param = float3(0.0, (hemi * 2.0) - 1.0, 0.0);
-    float3 ambient = mix(float3(0.070000000298023223876953125, 0.0900000035762786865234375, 0.12999999523162841796875), sky_color(param, _31) * 0.2800000011920928955078125, float3(hemi)) * fast::max(_31.uAmbientPad.x, 0.0);
-    float reflective = _31.uColorReflective.w;
-    float glow = _31.uCameraGlow.w;
-    float has_texture = _31.uAlphaPad.y;
-    float3 tex_color = uAlbedo.sample(uAlbedoSmplr, in.vTexCoord).xyz;
-    float3 base_color = mix(_31.uColorReflective.xyz, tex_color, float3(has_texture));
-    float3 base = (base_color * (0.300000011920928955078125 + (diff * 0.680000007152557373046875))) + (ambient * 0.3499999940395355224609375);
-    float3 highlight = (float3(1.0, 0.980000019073486328125, 0.939999997615814208984375) * spec) * (0.0599999986588954925537109375 + (reflective * 0.119999997317790985107421875));
-    float3 glow_value = (base_color * glow) * 0.100000001490116119384765625;
+
+    float3 normal_value = normalize(in.vWorldNormal);
+    float3 camera_pos = u.uCameraGlow.xyz;
+    float3 view_dir = normalize(camera_pos - in.vWorldPos);
+    float reflective = u.uColorReflective.w;
+    float glow = u.uCameraGlow.w;
+    float has_texture = u.uAlphaPad.y;
+
+    float3 texel = uAlbedo.sample(uAlbedoSmplr, in.vTexCoord).xyz;
+    float3 albedo = srgb_to_linear(texel);
+    float3 base_color = mix(u.uColorReflective.xyz, albedo, float3(has_texture));
+
+    float3 sun_dir = normalize(u.uSunDirIntensity.xyz);
+    float sun_intensity = max(u.uSunDirIntensity.w, 0.0);
+    float3 sun_color = u.uSunColor.rgb;
+
+    float diff = max(dot(normal_value, sun_dir), 0.0);
+    float hemi = normal_value.y * 0.5 + 0.5;
+    float3 half_vec = normalize(sun_dir + view_dir);
+    float spec = powr(max(dot(normal_value, half_vec), 0.0), 42.0);
+    float sun_shadow = 1.0;
+    if (u.uSunShadowParams.x > 0.5)
+    {
+        sun_shadow = sample_sun_shadow(uSunShadowMap, uSunShadowMapSmplr, u, in.vWorldPos, normal_value, sun_dir);
+        sun_shadow = mix(1.0 - clamp(u.uSunShadowParams.w, 0.0, 1.0), 1.0, sun_shadow);
+    }
+
+    float3 sky_ambient = sky_color(float3(0.0, hemi * 2.0 - 1.0, 0.0), u);
+    float3 ambient = mix(float3(0.085, 0.105, 0.150), sky_ambient * 0.66, float3(hemi))
+        * max(u.uAmbientPad.x, 0.0);
+    float3 fill = float3(0.180, 0.190, 0.215);
+
+    float fresnel = powr(1.0 - max(dot(normal_value, view_dir), 0.0), 4.0);
+    float3 sky_reflect = sky_color(reflect(-view_dir, normal_value), u)
+        * (0.035 + fresnel * 0.16) * (0.35 + reflective * 1.4);
+
+    float3 base = base_color * (fill + ambient + sun_color * sun_intensity * diff * 0.78 * sun_shadow);
+    float3 highlight = sun_color * spec * sun_intensity * (0.10 + reflective * 0.28) * mix(0.20, 1.0, sun_shadow);
+    float3 glow_value = base_color * glow * 0.10;
+
     float3 point_contrib = float3(0.0);
-    int light_count = int(_31.uLightMeta.x + 0.5);
+    int light_count = int(u.uLightMeta.x + 0.5);
+    int shadow_light = int(u.uLightMeta.y + 0.5);
+    float shadow_intensity = clamp(u.uAmbientPad.y, 0.0, 1.0);
+    float light_intensity_scale = max(u.uAmbientPad.z, 0.0);
     for (int i = 0; i < 8; i++)
     {
         if (i >= light_count)
         {
             break;
         }
-        float4 pos_intensity = _31.uLightPosIntensity[i];
-        float4 color_radius = _31.uLightColorRadius[i];
+        float4 pos_intensity = u.uLightPosIntensity[i];
+        float4 color_radius = u.uLightColorRadius[i];
         float3 to_light = pos_intensity.xyz - in.vWorldPos;
         float dist = length(to_light);
-        float radius = fast::max(color_radius.w, 0.001000000047497451305389404296875);
-        float att = 1.0 / (1.0 + ((dist * dist) / (radius * radius)));
-        float3 pl_dir = fast::normalize(to_light);
-        float pdiff = fast::max(dot(normal_value, pl_dir), 0.0);
-        float3 phalf = fast::normalize(pl_dir + view_dir);
-        float pspec = powr(fast::max(dot(normal_value, phalf), 0.0), 48.0);
-        float light_intensity = pos_intensity.w;
-        point_contrib += (((color_radius.xyz * light_intensity) * att) * (((base_color * pdiff) * 0.550000011920928955078125) + ((float3(1.0, 0.980000019073486328125, 0.959999978542327880859375) * pspec) * (0.07999999821186065673828125 + (reflective * 0.14000000059604644775390625)))));
+        float radius = max(color_radius.w, 0.001);
+        float att = 1.0 / (1.0 + (dist * dist) / (radius * radius));
+        att *= 1.0 - smoothstep(radius * 0.55, radius, dist) * 0.85;
+        float3 pl_dir = normalize(to_light);
+        float pdiff = max(dot(normal_value, pl_dir), 0.0);
+        float3 phalf = normalize(pl_dir + view_dir);
+        float pspec = powr(max(dot(normal_value, phalf), 0.0), 48.0);
+        float light_intensity = pos_intensity.w * light_intensity_scale;
+        float shadow_mult = 1.0;
+        point_contrib += color_radius.xyz * light_intensity * att * shadow_mult
+            * (base_color * pdiff * 0.58 + float3(1.0, 0.98, 0.96) * pspec * (0.10 + reflective * 0.16));
     }
-    out.FragColor = float4(((base + highlight) + glow_value) + point_contrib, _31.uAlphaPad.x);
+
+    float3 color_value = base + highlight + glow_value + sky_reflect + point_contrib;
+
+    if (u.uFogParams.z > 0.5)
+    {
+        float cam_dist = length(camera_pos - in.vWorldPos);
+        float height_atten = exp(-max(in.vWorldPos.y, 0.0) * u.uFogParams.y);
+        float fog = 1.0 - exp(-cam_dist * u.uFogParams.x * height_atten);
+        float3 fog_dir = normalize(in.vWorldPos - camera_pos);
+        float3 fog_color = sky_color(fog_dir, u);
+        color_value = mix(color_value, fog_color, float3(clamp(fog * u.uFogParams.w, 0.0, 0.88)));
+    }
+
+    out.FragColor = float4(color_value, u.uAlphaPad.x);
     return out;
 }
-

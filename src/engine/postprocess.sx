@@ -30,6 +30,19 @@ pub type GodraySettings = {
     color: math.Vec3
 }
 
+/// Screen-space ambient occlusion. Darkens creases and contact areas using the
+/// scene depth buffer. Purely an image-space effect; the engine attaches no
+/// gameplay meaning to it.
+pub type AmbientOcclusionSettings = {
+    enabled: bool
+    /// World-space sampling radius, in the same units as the scene.
+    radius: f32
+    /// Strength of the darkening (0 = off, 1 = full).
+    intensity: f32
+    /// Distance below which samples are ignored to avoid self-occlusion.
+    bias: f32
+}
+
 /// Engine-owned post-processing settings. Games may tune these, but the
 /// engine does not attach any gameplay meaning to them.
 pub type PostProcessSettings = {
@@ -37,6 +50,7 @@ pub type PostProcessSettings = {
     bloom: BloomSettings
     vignette: VignetteSettings
     godrays: GodraySettings
+    ambient_occlusion: AmbientOcclusionSettings
     exposure: f32
     contrast: f32
     saturation: f32
@@ -71,6 +85,12 @@ pub fn default_settings() PostProcessSettings = {
             weight: 1.0 as f32,
             samples: 32 as i32,
             color: math.vec3(1.0 as f32, 0.95 as f32, 0.82 as f32)
+        },
+        ambient_occlusion: {
+            enabled: true,
+            radius: 0.60 as f32,
+            intensity: 0.70 as f32,
+            bias: 0.025 as f32
         },
         exposure: 1.0 as f32,
         contrast: 1.0 as f32,

@@ -267,6 +267,39 @@ pub type WaterSurface = {
     corner_radius: f32
 }
 
+/// Procedural atmosphere rendered by the engine behind the scene. Values are
+/// generic rendering parameters; the engine assigns no gameplay meaning to
+/// them.
+pub type AtmosphereSettings = {
+    enabled: bool
+    zenith_color: math.Vec3
+    horizon_color: math.Vec3
+    ground_color: math.Vec3
+    /// Direction from the viewer toward the sun (normalized by the renderer).
+    sun_direction: math.Vec3
+    sun_color: math.Vec3
+    sun_intensity: f32
+    /// Angular radius of the sun disc, in radians.
+    sun_size: f32
+    /// 0 = clear sky, 1 = heavy cloud cover.
+    cloud_cover: f32
+    cloud_speed: f32
+    /// Distance fog blended into the sky, per world unit.
+    fog_density: f32
+    /// Exponential height falloff for the fog.
+    fog_height: f32
+    /// Maximum fraction of the scene the fog may cover.
+    fog_max: f32
+    /// Render a directional shadow map aligned with the sun.
+    sun_casts_shadow: bool
+    /// Half-size of the orthographic sun shadow volume, in world units.
+    sun_shadow_extent: f32
+    /// Depth bias for the sun shadow comparison.
+    sun_shadow_bias: f32
+    /// How much direct sun is removed in shadow (0 = none, 1 = fully dark).
+    sun_shadow_strength: f32
+}
+
 /// Rendering options that are owned by the scene, not the engine.
 pub type RenderSettings = {
     clear_top: math.Vec3
@@ -282,6 +315,7 @@ pub type RenderSettings = {
     enable_fxaa: bool
     enable_light_glow: bool
     ambient: f32
+    atmosphere: AtmosphereSettings
     post_process: postprocess.PostProcessSettings
 }
 
@@ -451,6 +485,28 @@ pub fn make_mesh(
     }
 }
 
+pub fn default_atmosphere() AtmosphereSettings = {
+    return {
+        enabled: true,
+        zenith_color: math.vec3(0.055 as f32, 0.155 as f32, 0.420 as f32),
+        horizon_color: math.vec3(0.620 as f32, 0.700 as f32, 0.820 as f32),
+        ground_color: math.vec3(0.085 as f32, 0.090 as f32, 0.105 as f32),
+        sun_direction: math.vec3(0.48 as f32, 0.58 as f32, -0.66 as f32),
+        sun_color: math.vec3(1.000 as f32, 0.860 as f32, 0.640 as f32),
+        sun_intensity: 1.65 as f32,
+        sun_size: 0.032 as f32,
+        cloud_cover: 0.28 as f32,
+        cloud_speed: 0.006 as f32,
+        fog_density: 0.0055 as f32,
+        fog_height: 0.10 as f32,
+        fog_max: 0.62 as f32,
+        sun_casts_shadow: false,
+        sun_shadow_extent: 34.0 as f32,
+        sun_shadow_bias: 0.0015 as f32,
+        sun_shadow_strength: 0.65 as f32
+    }
+}
+
 pub fn default_render_settings() RenderSettings = {
     return {
         clear_top: math.vec3(0.05 as f32, 0.08 as f32, 0.14 as f32),
@@ -464,6 +520,7 @@ pub fn default_render_settings() RenderSettings = {
         enable_fxaa: true,
         enable_light_glow: true,
         ambient: 0.30 as f32,
+        atmosphere: default_atmosphere(),
         post_process: postprocess.default_settings()
     }
 }
