@@ -2308,9 +2308,20 @@ pub fn create(
         destroy(runtime)
         return none as ref void
     }
+    if !sdl.SDL_SetGPUAllowedFramesInFlight(runtime.device, 1 as u32) {
+        exoerr.print("warning: could not set GPU frame pacing")
+    }
     if !sdl.SDL_ClaimWindowForGPUDevice(runtime.device, runtime.window) {
         destroy(runtime)
         return none as ref void
+    }
+    if !sdl.SDL_SetGPUSwapchainParameters(
+        runtime.device,
+        runtime.window,
+        sdl.SDL_GPU_SWAPCHAINCOMPOSITION_SDR,
+        sdl.SDL_GPU_PRESENTMODE_VSYNC
+    ) {
+        exoerr.print("warning: could not enable VSYNC")
     }
     runtime.swapchain_format = sdl.SDL_GetGPUSwapchainTextureFormat(runtime.device, runtime.window)
     if !create_pipelines(runtime, shader_cfg) {

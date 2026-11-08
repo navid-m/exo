@@ -321,6 +321,11 @@ pub val (
     SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD: i32        = 0
     SDL_GPU_TEXTURETYPE_2D: i32                    = 0
     SDL_GPU_TEXTURETYPE_CUBE: i32                  = 3
+    SDL_GPU_PRESENTMODE_VSYNC: i32                 = 0
+    SDL_GPU_PRESENTMODE_IMMEDIATE: i32             = 1
+    SDL_GPU_PRESENTMODE_MAILBOX: i32               = 2
+    SDL_GPU_SWAPCHAINCOMPOSITION_SDR: i32          = 0
+    SDL_GPU_SWAPCHAINCOMPOSITION_SDR_LINEAR: i32   = 1
     SDL_GPU_SAMPLECOUNT_1: i32                     = 0
     SDL_GPU_SHADERSTAGE_VERTEX: i32                = 0
     SDL_GPU_SHADERSTAGE_FRAGMENT: i32              = 1
@@ -377,11 +382,26 @@ pub extern (C) fn SDL_CreateGPUDevice(
     debug_mode: bool,
     name: ref u8
 ) ref void = "SDL_CreateGPUDevice"
+pub extern (C) fn SDL_SetGPUAllowedFramesInFlight(
+    device: ref void,
+    allowed_frames_in_flight: u32
+) bool = "SDL_SetGPUAllowedFramesInFlight"
 pub extern (C) fn SDL_DestroyGPUDevice(device: ref void) void = "SDL_DestroyGPUDevice"
 pub extern (C) fn SDL_ClaimWindowForGPUDevice(
     device: ref void,
     window: ref void
 ) bool = "SDL_ClaimWindowForGPUDevice"
+pub extern (C) fn SDL_SetGPUSwapchainParameters(
+    device: ref void,
+    window: ref void,
+    swapchain_composition: i32,
+    present_mode: i32
+) bool = "SDL_SetGPUSwapchainParameters"
+pub extern (C) fn SDL_WindowSupportsGPUPresentMode(
+    device: ref void,
+    window: ref void,
+    present_mode: i32
+) bool = "SDL_WindowSupportsGPUPresentMode"
 pub extern (C) fn SDL_ReleaseWindowFromGPUDevice(
     device: ref void,
     window: ref void
