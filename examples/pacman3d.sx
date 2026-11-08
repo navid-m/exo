@@ -4,21 +4,30 @@ val engine    = use("../src/engine.sx")
 val rendering = use("../src/rendering.sx")
 val sdl       = use("../src/engine/sdl.sx")
 val input     = use("../src/engine/input.sx")
+val audio     = use("../src/engine/audio.sx")
 val mem       = use("../src/mem.sx")
 
 val (
-    MAZE_ROWS: i32        = 21
-    MAZE_COLS: i32        = 19
-    CELL_SIZE: f32        = 1.0 as f32
-    PAC_SPEED: f32        = 5.8 as f32
-    GHOST_BASE_SPEED: f32 = 3.9 as f32
-    FRIGHT_TIME: f32      = 8.0 as f32
-    START_LIVES: i32      = 3
-    PAC_START_X: i32      = 9
-    PAC_START_Z: i32      = 15
-    PI: f32               = 3.14159265 as f32
-    KEY_0: i32            = 39
-    KEY_F12: i32          = 69
+    MAZE_ROWS: i32         = 21
+    MAZE_COLS: i32         = 19
+    CELL_SIZE: f32         = 1.0 as f32
+    PAC_SPEED: f32         = 5.8 as f32
+    GHOST_BASE_SPEED: f32  = 3.9 as f32
+    FRIGHT_TIME: f32       = 8.0 as f32
+    START_LIVES: i32       = 3
+    PAC_START_X: i32       = 9
+    PAC_START_Z: i32       = 15
+    PI: f32                = 3.14159265 as f32
+    KEY_0: i32             = 39
+    KEY_F12: i32           = 69
+    SFX_CHOMP_A: usize     = 0
+    SFX_CHOMP_B: usize     = 1
+    SFX_POWER: usize       = 2
+    SFX_GHOST_EATEN: usize = 3
+    SFX_HURT: usize        = 4
+    SFX_DEATH: usize       = 5
+    SFX_WIN: usize         = 6
+    SFX_START: usize       = 7
 )
 
 type Pellet = {
@@ -68,6 +77,7 @@ type (engine.AppEvents) PacmanGame = {
     pac_dir_z: mut i32
     pac_want_x: mut i32
     pac_want_z: mut i32
+    chomp_alt: mut bool
     shots: mut i32
     hud: mut ref u8
     shot_path: mut ref u8
@@ -197,6 +207,7 @@ fn reset_positions(game: mut PacmanGame) void = {
     game.pac_dir_z = 0 as i32
     game.pac_want_x = 0 as i32
     game.pac_want_z = 0 as i32
+    game.chomp_alt = false
     game.power_timer = 0.0 as f32
     game.invuln = 1.2 as f32
     val i: mut usize = 0 as usize
@@ -251,6 +262,7 @@ fn make_game(rows: list[ref u8]) PacmanGame = {
         pac_dir_z: 0 as i32,
         pac_want_x: 0 as i32,
         pac_want_z: 0 as i32,
+        chomp_alt: false,
         shots: 0 as i32,
         hud: none as ref u8,
         shot_path: none as ref u8
@@ -275,7 +287,12 @@ fn ghost_render_z(g: Ghost) f32 = {
     return g.from_z + ((g.to_z as f32) - g.from_z) * g.progress
 }
 
-fn consume_at(game: mut PacmanGame, cx: i32, cz: i32) void = {
+fn consume_at(
+    game: mut PacmanGame,
+    app: engine.ExoApp,
+    cx: i32,
+    cz: i32
+) void = {
     val i: mut usize = 0 as usize
     for i < @len(game.pellets) {
         if @get(game.pellets, i) is some pellet {
@@ -291,11 +308,19 @@ fn consume_at(game: mut PacmanGame, cx: i32, cz: i32) void = {
                 if pellet.power {
                     game.score = game.score + 50
                     game.power_timer = FRIGHT_TIME
+                    trust engine.play_clip(app, SFX_POWER)
                 } else {
                     game.score = game.score + 10
+                    if game.chomp_alt {
+                        trust engine.play_clip(app, SFX_CHOMP_B)
+                    } else {
+                        trust engine.play_clip(app, SFX_CHOMP_A)
+                    }
+                    game.chomp_alt = !game.chomp_alt
                 }
                 if game.pellets_left <= (0 as i32) {
                     game.state = 1 as i32
+                    trust engine.play_clip(app, SFX_WIN)
                 }
             }
         }
@@ -303,7 +328,7 @@ fn consume_at(game: mut PacmanGame, cx: i32, cz: i32) void = {
     }
 }
 
-fn update_pacman(game: mut PacmanGame, dt: f32) void = {
+fn update_pacman(game: mut PacmanGame, app: engine.ExoApp, dt: f32) void = {
     if game.pac_moving {
         game.pac_progress = game.pac_progress + PAC_SPEED * dt
         if game.pac_progress >= (1.0 as f32) {
@@ -315,7 +340,7 @@ fn update_pacman(game: mut PacmanGame, dt: f32) void = {
             game.pac_to_z = game.pac_cell_z
             game.pac_progress = 0.0 as f32
             game.pac_moving = false
-            consume_at(game, game.pac_cell_x, game.pac_cell_z)
+            consume_at(game, app, game.pac_cell_x, game.pac_cell_z)
         }
     }
     if !game.pac_moving && game.state == (0 as i32) {
@@ -499,7 +524,7 @@ fn update_ghosts(game: mut PacmanGame, dt: f32) void = {
     }
 }
 
-fn check_ghost_hits(game: mut PacmanGame) void = {
+fn check_ghost_hits(game: mut PacmanGame, app: engine.ExoApp) void = {
     if game.invuln > (0.0 as f32) || game.state != (0 as i32) {
         return
     }
@@ -516,13 +541,17 @@ fn check_ghost_hits(game: mut PacmanGame) void = {
                     ghost_send_home(g)
                     @set(game.ghosts, i, g)
                     game.score = game.score + 200
+                    trust engine.play_clip(app, SFX_GHOST_EATEN)
                 } else {
                     game.lives = game.lives - (1 as i32)
                     if game.lives <= (0 as i32) {
                         game.state = 2 as i32
                         game.lives = 0 as i32
+                        trust engine.play_clip(app, SFX_DEATH)
                     } else {
+                        game.invuln = 1.2 as f32
                         reset_positions(game)
+                        trust engine.play_clip(app, SFX_HURT)
                     }
                     return
                 }
@@ -772,6 +801,7 @@ pub fn (PacmanGame) on_start(game: mut self, app: mut engine.ExoApp) void = {
     game.shot_path = @alloc(128 as usize) as ref u8
     game.shots = 0 as i32
     reset_game(game)
+    trust engine.play_clip(app, SFX_START)
     sync_scene(game, app, 0.0 as f32)
     follow_camera(game, app)
     refresh_hud(game, app)
@@ -822,9 +852,9 @@ pub fn (PacmanGame) on_update(game: mut self, app: mut engine.ExoApp, dt: f32, t
                 game.invuln = 0.0 as f32
             }
         }
-        update_pacman(game, dt)
+        update_pacman(game, app, dt)
         update_ghosts(game, dt)
-        check_ghost_hits(game)
+        check_ghost_hits(game, app)
     }
     sync_scene(game, app, time)
     follow_camera(game, app)
@@ -842,6 +872,7 @@ pub fn (PacmanGame) on_key_down(
 ) void = {
     if key == sdl.SDL_SCANCODE_R {
         reset_game(game)
+        trust engine.play_clip(app, SFX_START)
     }
     if key == KEY_0 || key == KEY_F12 {
         game.shots = game.shots + (1 as i32)
@@ -913,6 +944,52 @@ pub fn main() i32 = {
         gamepad: true
     }
 
+    val clips: mut list[audio.AudioClip] = mem.persistent[audio.AudioClip]()
+    @append(clips, {
+            path: "./assets/pacman/chomp_a.mp3",
+            loops: 0 as i32,
+            volume: 52 as i32
+        })
+    @append(clips, {
+            path: "./assets/pacman/chomp_b.mp3",
+            loops: 0 as i32,
+            volume: 52 as i32
+        })
+    @append(clips, {
+            path: "./assets/pacman/power.mp3",
+            loops: 0 as i32,
+            volume: 90 as i32
+        })
+    @append(clips, {
+            path: "./assets/pacman/ghost_eaten.mp3",
+            loops: 0 as i32,
+            volume: 96 as i32
+        })
+    @append(clips, {
+            path: "./assets/pacman/hurt.mp3",
+            loops: 0 as i32,
+            volume: 96 as i32
+        })
+    @append(clips, {
+            path: "./assets/pacman/death.mp3",
+            loops: 0 as i32,
+            volume: 100 as i32
+        })
+    @append(clips, {
+            path: "./assets/pacman/win.mp3",
+            loops: 0 as i32,
+            volume: 94 as i32
+        })
+    @append(clips, {
+            path: "./assets/pacman/start.mp3",
+            loops: 0 as i32,
+            volume: 86 as i32
+        })
+    val audio_cfg: audio.AudioBankConfig = {
+        master_volume: 96 as i32,
+        clips: clips
+    }
+
     val builder: mut engine.ExoAppBuilder = engine.new_app()
     engine.with_title(builder, "exo | pacman 3d")
     engine.with_resolution(builder, 1280 as i32, 720 as i32)
@@ -921,6 +998,7 @@ pub fn main() i32 = {
     engine.with_camera(builder, engine.default_camera())
     engine.with_input(builder, input_cfg)
     engine.with_quit_key(builder, sdl.SDL_SCANCODE_ESCAPE)
+    engine.with_audio(builder, audio_cfg)
 
     val app: engine.ExoApp = engine.build_app(builder)
     val game: PacmanGame = make_game(rows)
