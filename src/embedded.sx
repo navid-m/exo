@@ -24,6 +24,7 @@ val (
     bloom_threshold_frag_spv = @embed("../assets/shaders/bloom_threshold.frag.spv")
     bloom_blur_frag_spv      = @embed("../assets/shaders/bloom_blur.frag.spv")
     godrays_frag_spv         = @embed("../assets/shaders/godrays.frag.spv")
+    motion_blur_frag_spv     = @embed("../assets/shaders/motion_blur.frag.spv")
     composite_frag_spv       = @embed("../assets/shaders/composite.frag.spv")
     scene_vert_msl           = @embed("../assets/shaders/scene.vert.msl")
     scene_frag_msl           = @embed("../assets/shaders/scene.frag.msl")
@@ -40,6 +41,7 @@ val (
     bloom_threshold_frag_msl = @embed("../assets/shaders/bloom_threshold.frag.msl")
     bloom_blur_frag_msl      = @embed("../assets/shaders/bloom_blur.frag.msl")
     godrays_frag_msl         = @embed("../assets/shaders/godrays.frag.msl")
+    motion_blur_frag_msl     = @embed("../assets/shaders/motion_blur.frag.msl")
     composite_frag_msl       = @embed("../assets/shaders/composite.frag.msl")
     default_font             = @embed("../assets/fonts/default.png")
     default_ttf              = @embed("../assets/fonts/default.ttf")
@@ -196,6 +198,14 @@ pub fn find(key: ref u8) option[EmbeddedAsset] = trust {
     @append(
         assets,
         asset(
+            "./assets/shaders/motion_blur.frag.spv",
+            motion_blur_frag_spv,
+            @embedlen("../assets/shaders/motion_blur.frag.spv")
+        )
+    )
+    @append(
+        assets,
+        asset(
             "./assets/shaders/composite.frag.spv",
             composite_frag_spv,
             @embedlen("../assets/shaders/composite.frag.spv")
@@ -320,6 +330,14 @@ pub fn find(key: ref u8) option[EmbeddedAsset] = trust {
             "./assets/shaders/godrays.frag.msl",
             godrays_frag_msl,
             @embedlen("../assets/shaders/godrays.frag.msl")
+        )
+    )
+    @append(
+        assets,
+        asset(
+            "./assets/shaders/motion_blur.frag.msl",
+            motion_blur_frag_msl,
+            @embedlen("../assets/shaders/motion_blur.frag.msl")
         )
     )
     @append(
