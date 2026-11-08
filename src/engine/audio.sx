@@ -33,25 +33,8 @@ pub type ExoSDL3Audio = {
     speci: mut sdl.SDLAudioSpec
     buffer: mut ref u8
     length: mut u32
-    pcm_owned: mut bool
-}
-
-val (
-    MPG123_OK: i32            = 0
-    MPG123_ERR: i32           = -1
-    MPG123_DONE: i32          = -12
-    MPG123_NEW_FORMAT: i32    = -11
-    MPG123_NEED_MORE: i32     = -10
-    MPG123_MONO: i32          = 1
-    MPG123_STEREO: i32        = 2
-    MPG123_ENC_SIGNED_16: i32 = 0xD0
-)
-
-type DecodedPcm = {
-    buffer: ref u8
-    length: usize
-    sample_rate: i32
-    channels: i32
+    /// Non-null when the PCM buffer is owned by the MP3 decoder shim.
+    mp3: mut ref void
 }
 
 fn lower_ascii(value: u8) u8 = {
@@ -73,121 +56,18 @@ fn is_mp3_path(path: ref u8) bool = trust {
     && lower_ascii(@load8(@ptradd(suffix, 3 as usize))) == (51 as u8)
 }
 
-/// Decode an MP3 blob into interleaved signed-16-bit PCM using libmpg123.
-/// The returned buffer is allocated with `@alloc` and must be freed by the
-/// caller.
-fn decode_mp3(data: ref u8, length: usize) option[DecodedPcm] = trust {
-    if data == none || length == (0 as usize) {
-        return none
-    }
-    sdl.mpg123_init()
-    val error: mut i32 = 0 as i32
-    val handle: ref void = sdl.mpg123_new(none as ref u8, @addr(error))
-    if handle == none {
-        return none
-    }
-    sdl.mpg123_format_none(handle)
-    sdl.mpg123_format2(
-        handle,
-        0 as i64,
-        MPG123_STEREO | MPG123_MONO,
-        MPG123_ENC_SIGNED_16
-    )
-    if sdl.mpg123_open_feed(handle) != MPG123_OK {
-        sdl.mpg123_delete(handle)
-        return none
-    }
-
-    val guess: usize = length * (16 as usize) + (131072 as usize)
-    val capacity: mut usize = guess
-    if capacity > (4194304 as usize) {
-        capacity = 4194304 as usize
-    }
-    val buffer: mut ref u8 = @alloc(capacity) as ref u8
-    if buffer == none {
-        sdl.mpg123_delete(handle)
-        return none
-    }
-    val used: mut usize = 0 as usize
-    val done: mut usize = 0 as usize
-    val rate: mut i64 = 0 as i64
-    val channels: mut i32 = 0 as i32
-    val encoding: mut i32 = 0 as i32
-    val result: mut i32 = sdl.mpg123_decode(
-        handle,
-        data,
-        length,
-        buffer as ref void,
-        capacity,
-        @addr(done)
-    )
-    val finished: mut bool = false
-    for !finished {
-        if result == MPG123_NEW_FORMAT {
-            sdl.mpg123_getformat(
-                handle,
-                @addr(rate),
-                @addr(channels),
-                @addr(encoding)
-            )
-        } elif result == MPG123_ERR {
-            @free(buffer as ref void)
-            sdl.mpg123_delete(handle)
-            return none
-        }
-        used = used + done
-        if result == MPG123_DONE || result == MPG123_NEED_MORE {
-            finished = true
-        } else {
-            if used >= capacity {
-                val next_capacity: usize = capacity * (2 as usize)
-                val next_buffer: ref u8 = @alloc(next_capacity) as ref u8
-                if next_buffer == none {
-                    @free(buffer as ref void)
-                    sdl.mpg123_delete(handle)
-                    return none
-                }
-                @memcpy(next_buffer as ref void, buffer as ref void, used)
-                @free(buffer as ref void)
-                buffer = next_buffer
-                capacity = next_capacity
-            }
-            result = sdl.mpg123_decode(
-                handle,
-                none as ref u8,
-                0 as usize,
-                @ptradd(buffer, used) as ref void,
-                capacity - used,
-                @addr(done)
-            )
-        }
-    }
-    sdl.mpg123_delete(handle)
-
-    if used == (0 as usize) || rate <= (0 as i64) || channels <= (0 as i32) || encoding != MPG123_ENC_SIGNED_16 {
-        @free(buffer as ref void)
-        return none
-    }
-    return some {
-        buffer: buffer,
-        length: used,
-        sample_rate: rate as i32,
-        channels: channels
-    }
-}
-
 fn load_mp3(audio: mut ref ExoSDL3Audio, path: ref u8) bool = trust {
     if io.load_binary_file(path) is some blob {
-        val decoded: option[DecodedPcm] = decode_mp3(blob.data, blob.len)
+        val handle: ref void = sdl.exo_mp3_load(blob.data as ref void, blob.len)
         @free(blob.data as ref void)
-        if decoded is some pcm {
-            audio.buffer = pcm.buffer
-            audio.length = pcm.length as u32
+        if handle != none {
+            audio.mp3 = handle
+            audio.buffer = sdl.exo_mp3_pcm(handle) as ref u8
+            audio.length = sdl.exo_mp3_pcm_len(handle) as u32
             audio.speci.format = sdl.SDL_AUDIO_S16
-            audio.speci.channels = pcm.channels
-            audio.speci.freq = pcm.sample_rate
-            audio.pcm_owned = true
-            return true
+            audio.speci.channels = sdl.exo_mp3_channels(handle)
+            audio.speci.freq = sdl.exo_mp3_sample_rate(handle)
+            return audio.buffer != none && audio.length > (0 as u32)
         }
     }
     return false
@@ -261,12 +141,10 @@ pub fn destroy_audio(audio_raw: ref void) void = trust {
     if audio.stream != none {
         sdl.SDL_DestroyAudioStream(audio.stream)
     }
-    if audio.buffer != none {
-        if audio.pcm_owned {
-            @free(audio.buffer as ref void)
-        } else {
-            sdl.SDL_free(audio.buffer as ref void)
-        }
+    if audio.mp3 != none {
+        sdl.exo_mp3_destroy(audio.mp3)
+    } elif audio.buffer != none {
+        sdl.SDL_free(audio.buffer as ref void)
     }
     @free(audio_raw)
 }

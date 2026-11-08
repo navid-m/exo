@@ -3,7 +3,7 @@ link "-lSDL3"
 link "-L/usr/local/lib"
 link "-Wl,-rpath,/usr/local/lib"
 link "./src/stb_image_shim.c"
-link "-lmpg123"
+link "./src/mp3_shim.c"
 link "-lm"
 
 pub val (
@@ -561,31 +561,12 @@ pub extern (C) fn SDL_LoadWAV(
     audio_buf: ref ref u8,
     audio_len: ref u32
 ) bool = "SDL_LoadWAV"
-pub extern (C) fn mpg123_init() i32 = "mpg123_init"
-pub extern (C) fn mpg123_new(decoder: ref u8, error: ref i32) ref void = "mpg123_new"
-pub extern (C) fn mpg123_delete(handle: ref void) void = "mpg123_delete"
-pub extern (C) fn mpg123_open_feed(handle: ref void) i32 = "mpg123_open_feed"
-pub extern (C) fn mpg123_format_none(handle: ref void) i32 = "mpg123_format_none"
-pub extern (C) fn mpg123_format2(
-    handle: ref void,
-    rate: i64,
-    channels: i32,
-    encodings: i32
-) i32 = "mpg123_format2"
-pub extern (C) fn mpg123_getformat(
-    handle: ref void,
-    rate: ref i64,
-    channels: ref i32,
-    encoding: ref i32
-) i32 = "mpg123_getformat"
-pub extern (C) fn mpg123_decode(
-    handle: ref void,
-    inmemory: ref u8,
-    inmemsize: usize,
-    outmemory: ref void,
-    outmemsize: usize,
-    done: ref usize
-) i32 = "mpg123_decode"
+pub extern (C) fn exo_mp3_load(data: ref void, len: usize) ref void = "exo_mp3_load"
+pub extern (C) fn exo_mp3_destroy(handle: ref void) void = "exo_mp3_destroy"
+pub extern (C) fn exo_mp3_pcm(handle: ref void) ref void = "exo_mp3_pcm"
+pub extern (C) fn exo_mp3_pcm_len(handle: ref void) usize = "exo_mp3_pcm_len"
+pub extern (C) fn exo_mp3_sample_rate(handle: ref void) i32 = "exo_mp3_sample_rate"
+pub extern (C) fn exo_mp3_channels(handle: ref void) i32 = "exo_mp3_channels"
 pub extern (C) fn SDL_IOFromMem(mem: ref void, size: usize) ref void = "SDL_IOFromMem"
 pub extern (C) fn SDL_LoadWAV_IO(
     src: ref void,

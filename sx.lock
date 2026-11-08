@@ -1,1 +1,2 @@
 version "1"
+dep "https://github.com/mackron/dr_libs.git" "35b5c392cc15456736c440a68dbe073178bbffe0"
