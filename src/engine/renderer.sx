@@ -293,6 +293,17 @@ pub type CompositeUniforms = {
     camera_info: mut math.Vec4f
 }
 
+/// Uniform block for the depth-reprojected camera motion blur pass.
+pub type MotionBlurUniforms = {
+    prev_view_proj: mut math.Mat4
+    camera_right: mut math.Vec4f
+    camera_up: mut math.Vec4f
+    camera_forward: mut math.Vec4f
+    camera_pos: mut math.Vec4f
+    params: mut math.Vec4f
+    extra: mut math.Vec4f
+}
+
 /// Fragment uniforms for the procedural sky pass.
 pub type SkyUniforms = {
     forward: mut math.Vec4f
@@ -338,6 +349,7 @@ pub type Renderer = {
     bloom_threshold_pipeline: mut ref void
     bloom_blur_pipeline: mut ref void
     godray_pipeline: mut ref void
+    motion_blur_pipeline: mut ref void
     post_pipeline: mut ref void
     water_pipeline: mut ref void
     ui_pipeline: mut ref void
@@ -370,6 +382,7 @@ pub type Renderer = {
     bloom_a: mut ref void
     bloom_b: mut ref void
     godray: mut ref void
+    motion_blur_color: mut ref void
     swapchain_texture: mut ref void
     command_buffer: mut ref void
     current_pass: mut ref void
@@ -382,6 +395,14 @@ pub type Renderer = {
     ambient: mut f32
     atmosphere: mut ecs.AtmosphereSettings
     lights: mut list[ecs.PointLight]
+    motion_camera_pos: mut math.Vec3
+    motion_camera_right: mut math.Vec3
+    motion_camera_up: mut math.Vec3
+    motion_camera_forward: mut math.Vec3
+    motion_view_proj: mut math.Mat4
+    prev_view_proj: mut math.Mat4
+    motion_valid: mut bool
+    prev_view_proj_valid: mut bool
 }
 
 pub type VertexAttributePair = {
@@ -595,6 +616,10 @@ pub fn release_render_targets(runtime: mut ref Renderer) void = trust {
         sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.godray)
         runtime.godray = none
     }
+    if runtime.motion_blur_color != none {
+        sdl.SDL_ReleaseGPUTexture(runtime.device, runtime.motion_blur_color)
+        runtime.motion_blur_color = none
+    }
 }
 
 pub fn recreate_render_targets(runtime: mut ref Renderer, width: u32, height: u32) bool = trust {
@@ -680,7 +705,17 @@ pub fn recreate_render_targets(runtime: mut ref Renderer, width: u32, height: u3
         bloom_width,
         bloom_height
     )
-    return runtime.godray != none
+    if runtime.godray == none {
+        return false
+    }
+    runtime.motion_blur_color = create_texture(
+        runtime,
+        runtime.swapchain_format,
+        sdl.SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | sdl.SDL_GPU_TEXTUREUSAGE_SAMPLER,
+        width,
+        height
+    )
+    return runtime.motion_blur_color != none
 }
 
 pub fn create_pipeline(
@@ -1647,6 +1682,18 @@ pub fn create_pipelines(
     if runtime.godray_pipeline == none {
         return false
     }
+    runtime.motion_blur_pipeline = create_postprocess_pipeline(
+        runtime,
+        shader_cfg.post_process.motion_blur.vertex_path,
+        shader_cfg.post_process.motion_blur.fragment_path,
+        runtime.swapchain_format,
+        2 as u32,
+        1 as u32
+    )
+    if runtime.motion_blur_pipeline == none {
+        exoerr.print("motion blur pipeline creation failed")
+        return false
+    }
     runtime.post_pipeline = create_postprocess_pipeline(
         runtime,
         shader_cfg.post_process.composite.vertex_path,
@@ -1686,6 +1733,10 @@ pub fn destroy_pipelines(runtime: mut ref Renderer) void = trust {
     if runtime.godray_pipeline != none {
         sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.godray_pipeline)
         runtime.godray_pipeline = none
+    }
+    if runtime.motion_blur_pipeline != none {
+        sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.motion_blur_pipeline)
+        runtime.motion_blur_pipeline = none
     }
     if runtime.bloom_threshold_pipeline != none {
         sdl.SDL_ReleaseGPUGraphicsPipeline(runtime.device, runtime.bloom_threshold_pipeline)
@@ -2233,6 +2284,14 @@ pub fn create(
     runtime.ambient = 0.30 as f32
     runtime.atmosphere = ecs.default_atmosphere()
     runtime.lights = mem.persistent[ecs.PointLight]()
+    runtime.prev_view_proj = math.mat4_identity()
+    runtime.motion_view_proj = math.mat4_identity()
+    runtime.motion_camera_pos = math.vec3(0.0 as f32, 0.0 as f32, 0.0 as f32)
+    runtime.motion_camera_right = math.vec3(1.0 as f32, 0.0 as f32, 0.0 as f32)
+    runtime.motion_camera_up = math.vec3(0.0 as f32, 1.0 as f32, 0.0 as f32)
+    runtime.motion_camera_forward = math.vec3(0.0 as f32, 0.0 as f32, -1.0 as f32)
+    runtime.motion_valid = false
+    runtime.prev_view_proj_valid = false
     runtime.font_atlases = mem.persistent[FontAtlasGPU]()
     if font_size > (0.0 as f32) {
         runtime.font_base_size = font_size
@@ -2633,6 +2692,7 @@ pub fn begin_frame(runtime_raw: ref void, width: mut ref u32, height: mut ref u3
             return false
         }
     }
+    runtime.motion_valid = false
     runtime.frame_active = true
     if width != none {
         @deref(width) = runtime.render_width
@@ -2848,6 +2908,102 @@ fn bloom_blur_pass(
     return true
 }
 
+fn motion_blur_pass(
+    runtime: mut ref Renderer,
+    settings: postprocess.MotionBlurSettings,
+    source: ref void,
+    depth: ref void
+) bool = trust {
+    if runtime.motion_blur_pipeline == none || runtime.motion_blur_color == none {
+        return false
+    }
+    if !begin_pass_no_depth_sized(
+        runtime,
+        runtime.motion_blur_color,
+        runtime.render_width,
+        runtime.render_height
+    ) {
+        return false
+    }
+    sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.motion_blur_pipeline)
+    val bindings_raw: ref void = @alloc(2 as usize * @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize)
+    val b0: mut ref sdl.SDLGPUTextureSamplerBinding = bindings_raw as mut ref sdl.SDLGPUTextureSamplerBinding
+    val b1: mut ref sdl.SDLGPUTextureSamplerBinding = @ptradd(
+        bindings_raw,
+        @sizeof(sdl.SDLGPUTextureSamplerBinding) as usize
+    ) as mut ref sdl.SDLGPUTextureSamplerBinding
+    b0.texture = source
+    b0.sampler = runtime.linear_sampler
+    b1.texture = depth
+    b1.sampler = runtime.depth_sampler
+    sdl.SDL_BindGPUFragmentSamplers(
+        runtime.current_pass,
+        0 as u32,
+        bindings_raw as ref sdl.SDLGPUTextureSamplerBinding,
+        2 as u32
+    )
+    @free(bindings_raw)
+
+    val samples_raw: i32 = settings.samples
+    val samples: mut i32 = samples_raw
+    if samples < (1 as i32) {
+        samples = 1 as i32
+    }
+    if samples > (32 as i32) {
+        samples = 32 as i32
+    }
+    val aspect: f32 = (runtime.render_width as f32) / (runtime.render_height as f32)
+    val tan_half: f32 = math.tan((cam.vertical_fov() as f64) * 0.5) as f32
+    val fu: mut MotionBlurUniforms = {
+        prev_view_proj: math.transpose_mat4_ptr(@addr(runtime.prev_view_proj.m00)),
+        camera_right: {
+            x: runtime.motion_camera_right.x,
+            y: runtime.motion_camera_right.y,
+            z: runtime.motion_camera_right.z,
+            w: tan_half
+        },
+        camera_up: {
+            x: runtime.motion_camera_up.x,
+            y: runtime.motion_camera_up.y,
+            z: runtime.motion_camera_up.z,
+            w: aspect
+        },
+        camera_forward: {
+            x: runtime.motion_camera_forward.x,
+            y: runtime.motion_camera_forward.y,
+            z: runtime.motion_camera_forward.z,
+            w: cam.CAMERA_FAR
+        },
+        camera_pos: {
+            x: runtime.motion_camera_pos.x,
+            y: runtime.motion_camera_pos.y,
+            z: runtime.motion_camera_pos.z,
+            w: cam.CAMERA_NEAR
+        },
+        params: {
+            x: settings.amount,
+            y: samples as f32,
+            z: settings.max_radius,
+            w: settings.depth_threshold
+        },
+        extra: {
+            x: settings.velocity_scale,
+            y: 0.0 as f32,
+            z: 0.0 as f32,
+            w: 0.0 as f32
+        }
+    }
+    sdl.SDL_PushGPUFragmentUniformData(
+        runtime.command_buffer,
+        0 as u32,
+        @addr(fu) as ref void,
+        @sizeof(MotionBlurUniforms) as u32
+    )
+    sdl.SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
+    end_pass(runtime)
+    return true
+}
+
 /// Run the engine post-process stack and leave the swapchain pass open so UI
 /// can be drawn on top. The engine owns the implementation; games only provide
 /// generic PostProcessSettings. When godrays are enabled this convenience
@@ -2895,6 +3051,22 @@ pub fn apply_post_process_with_light(
     val active: bool = enabled && settings.enabled
     val bloom_active: bool = active && settings.bloom.enabled && runtime.bloom_threshold_pipeline != none && runtime.bloom_blur_pipeline != none && runtime.bloom_a != none && runtime.bloom_b != none && runtime.linear_sampler != none
     val godray_active: bool = active && settings.godrays.enabled && light_visible && runtime.godray_pipeline != none && runtime.godray != none && runtime.linear_sampler != none
+    val motion_active: bool = active && settings.motion_blur.enabled && runtime.motion_blur_pipeline != none && runtime.motion_blur_color != none && runtime.motion_valid && runtime.prev_view_proj_valid && runtime.scene_depth != none
+
+    // Motion blur runs before bloom and godrays so every downstream effect
+    // composites the same, already-blurred frame.
+    val scene_source: mut ref void = runtime.scene_color
+    if motion_active {
+        if !motion_blur_pass(
+            runtime,
+            settings.motion_blur,
+            runtime.scene_color,
+            runtime.scene_depth
+        ) {
+            return false
+        }
+        scene_source = runtime.motion_blur_color
+    }
 
     val bloom_width: u32 = half_extent(runtime.render_width)
     val bloom_height: u32 = half_extent(runtime.render_height)
@@ -2905,7 +3077,7 @@ pub fn apply_post_process_with_light(
         }
         sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.bloom_threshold_pipeline)
         val scene_binding: mut sdl.SDLGPUTextureSamplerBinding = {
-            texture: runtime.scene_color,
+            texture: scene_source,
             sampler: runtime.linear_sampler
         }
         sdl.SDL_BindGPUFragmentSamplers(
@@ -2975,7 +3147,7 @@ pub fn apply_post_process_with_light(
         }
         sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.godray_pipeline)
         val scene_binding: mut sdl.SDLGPUTextureSamplerBinding = {
-            texture: runtime.scene_color,
+            texture: scene_source,
             sampler: runtime.linear_sampler
         }
         sdl.SDL_BindGPUFragmentSamplers(
@@ -3036,11 +3208,11 @@ pub fn apply_post_process_with_light(
     }
     sdl.SDL_BindGPUGraphicsPipeline(runtime.current_pass, runtime.post_pipeline)
 
-    val bloom_texture: mut ref void = runtime.scene_color
+    val bloom_texture: mut ref void = scene_source
     if bloom_active {
         bloom_texture = runtime.bloom_a
     }
-    val godray_texture: mut ref void = runtime.scene_color
+    val godray_texture: mut ref void = scene_source
     if godray_active {
         godray_texture = runtime.godray
     }
@@ -3058,7 +3230,7 @@ pub fn apply_post_process_with_light(
         bindings_raw,
         (3 as usize) * (@sizeof(sdl.SDLGPUTextureSamplerBinding) as usize)
     ) as mut ref sdl.SDLGPUTextureSamplerBinding
-    b0.texture = runtime.scene_color
+    b0.texture = scene_source
     b0.sampler = runtime.linear_sampler
     b1.texture = bloom_texture
     b1.sampler = runtime.linear_sampler
@@ -3153,6 +3325,8 @@ pub fn apply_post_process_with_light(
         @sizeof(CompositeUniforms) as u32
     )
     sdl.SDL_DrawGPUPrimitives(runtime.current_pass, 3 as u32, 1 as u32, 0 as u32, 0 as u32)
+    runtime.prev_view_proj = runtime.motion_view_proj
+    runtime.prev_view_proj_valid = runtime.motion_valid
     return true
 }
 
@@ -4522,6 +4696,18 @@ pub fn render_scene(
     time: f32
 ) void = trust {
     val vp: math.Mat4 = cam.view_projection(camera, width, height)
+    if runtime != none {
+        val motion_runtime: mut ref Renderer = runtime as mut ref Renderer
+        val forward: math.Vec3 = cam.camera_forward(camera)
+        val world_up: math.Vec3 = math.vec3(0.0 as f32, 1.0 as f32, 0.0 as f32)
+        val right: math.Vec3 = math.vec3_normalize(math.vec3_cross(forward, world_up))
+        motion_runtime.motion_camera_pos = camera.position
+        motion_runtime.motion_camera_forward = forward
+        motion_runtime.motion_camera_right = right
+        motion_runtime.motion_camera_up = math.vec3_normalize(math.vec3_cross(right, forward))
+        motion_runtime.motion_view_proj = vp
+        motion_runtime.motion_valid = true
+    }
     draw_sky(runtime, camera, width, height, time)
     draw_scene_entities(runtime, resources, scene, camera, vp, time, 1.00 as f32, true)
     for floor in scene.floors {

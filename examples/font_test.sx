@@ -73,16 +73,46 @@ pub fn (FontTest) on_update(game: mut self, app: mut engine.ExoApp, _: f32, _: f
 }
 
 pub fn (FontTest) on_fixed_update(_: mut self, _: mut engine.ExoApp, _: f32) void = {}
+
 pub fn (FontTest) on_key_down(_: mut self, _: mut engine.ExoApp, _: i32, _: bool, _: u16) void = {}
+
 pub fn (FontTest) on_key_up(_: mut self, _: mut engine.ExoApp, _: i32, _: u16) void = {}
-pub fn (FontTest) on_mouse_move(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
-pub fn (FontTest) on_mouse_button(_: mut self, _: mut engine.ExoApp, _: u8, _: bool, _: u8, _: f32, _: f32) void = {}
-pub fn (FontTest) on_mouse_wheel(_: mut self, _: mut engine.ExoApp, _: f32, _: f32, _: f32, _: f32) void = {}
+
+pub fn (FontTest) on_mouse_move(
+    _: mut self,
+    _: mut engine.ExoApp,
+    _: f32,
+    _: f32,
+    _: f32,
+    _: f32
+) void = {}
+pub fn (FontTest) on_mouse_button(
+    _: mut self,
+    _: mut engine.ExoApp,
+    _: u8,
+    _: bool,
+    _: u8,
+    _: f32,
+    _: f32
+) void = {}
+pub fn (FontTest) on_mouse_wheel(
+    _: mut self,
+    _: mut engine.ExoApp,
+    _: f32,
+    _: f32,
+    _: f32,
+    _: f32
+) void = {}
 pub fn (FontTest) on_text_input(_: mut self, _: mut engine.ExoApp, _: ref u8) void = {}
+
 pub fn (FontTest) on_window_resize(_: mut self, _: mut engine.ExoApp, _: i32, _: i32) void = {}
+
 pub fn (FontTest) on_focus_changed(_: mut self, _: mut engine.ExoApp, _: bool) void = {}
+
 pub fn (FontTest) on_gamepad_button(_: mut self, _: mut engine.ExoApp, _: i32, _: bool) void = {}
+
 pub fn (FontTest) on_gamepad_axis(_: mut self, _: mut engine.ExoApp, _: i32, _: f32) void = {}
+
 pub fn (FontTest) on_shutdown(_: mut self, _: mut engine.ExoApp) void = {}
 
 pub fn main() i32 = {

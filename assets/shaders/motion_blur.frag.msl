@@ -1,0 +1,119 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct MotionBlurUniforms
+{
+    float4x4 uPrevViewProj;
+    float4 uCameraRight;
+    float4 uCameraUp;
+    float4 uCameraForward;
+    float4 uCameraPos;
+    float4 uParams;
+    float4 uExtra;
+};
+
+struct main0_out
+{
+    float4 FragColor [[color(0)]];
+};
+
+struct main0_in
+{
+    float2 vTexCoord [[user(locn0)]];
+    float4 gl_FragCoord [[position]];
+};
+
+static inline float hash12(float2 p)
+{
+    float3 p3 = fract(float3(p.xyx) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+static inline float linear_depth(float depth_value, constant MotionBlurUniforms& u)
+{
+    float near_plane = u.uCameraPos.w;
+    float far_plane = u.uCameraForward.w;
+    return (near_plane * far_plane)
+        / max(far_plane - depth_value * (far_plane - near_plane), 0.0001);
+}
+
+static inline float3 world_position(float2 uv, float distance_value, constant MotionBlurUniforms& u)
+{
+    float2 ndc = float2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);
+    float tan_half = u.uCameraRight.w;
+    return u.uCameraPos.xyz
+        + u.uCameraRight.xyz * (ndc.x * tan_half * u.uCameraUp.w) * distance_value
+        + u.uCameraUp.xyz * (ndc.y * tan_half) * distance_value
+        + u.uCameraForward.xyz * distance_value;
+}
+
+fragment main0_out main0(main0_in in [[stage_in]], constant MotionBlurUniforms& u [[buffer(0)]], texture2d<float> uSceneTex [[texture(0)]], sampler uSceneTexSmplr [[sampler(0)]], texture2d<float> uDepthTex [[texture(1)]], sampler uDepthTexSmplr [[sampler(1)]])
+{
+    main0_out out = {};
+    float2 uv = in.vTexCoord;
+    float3 center = uSceneTex.sample(uSceneTexSmplr, uv).rgb;
+    float center_raw = uDepthTex.sample(uDepthTexSmplr, uv).r;
+    float center_depth = linear_depth(center_raw, u);
+
+    if (u.uParams.x <= 0.0) {
+        out.FragColor = float4(center, 1.0);
+        return out;
+    }
+
+    float3 world = world_position(uv, center_depth, u);
+    float4 previous_clip = u.uPrevViewProj * float4(world, 1.0);
+    if (previous_clip.w <= 0.0001) {
+        out.FragColor = float4(center, 1.0);
+        return out;
+    }
+
+    float2 previous_uv = previous_clip.xy / previous_clip.w * 0.5 + 0.5;
+    previous_uv.y = 1.0 - previous_uv.y;
+    float2 velocity = (uv - previous_uv) * u.uExtra.x;
+    float speed = length(velocity);
+
+    if (speed < 0.00005) {
+        out.FragColor = float4(center, 1.0);
+        return out;
+    }
+
+    float max_radius = max(u.uParams.z, 0.0001);
+    if (speed > max_radius) {
+        velocity *= max_radius / speed;
+    }
+
+    int samples = clamp(int(u.uParams.y), 1, 32);
+    float jitter = hash12(in.gl_FragCoord.xy) - 0.5;
+    float center_weight = 1.15;
+    float3 accum = center * center_weight;
+    float weight_sum = center_weight;
+    float depth_threshold = max(u.uParams.w, 0.0001);
+
+    for (int i = 0; i < 32; i++) {
+        if (i >= samples) {
+            break;
+        }
+
+        float t = (float(i) + 0.5 + jitter) / float(samples) - 0.5;
+        float2 sample_uv = clamp(uv + velocity * t, float2(0.0), float2(1.0));
+        float3 sample_color = uSceneTex.sample(uSceneTexSmplr, sample_uv).rgb;
+        float sample_depth = linear_depth(uDepthTex.sample(uDepthTexSmplr, sample_uv).r, u);
+
+        float relative_depth = abs(sample_depth - center_depth)
+            / max(max(sample_depth, center_depth), 0.001);
+        float depth_weight = 1.0 - smoothstep(depth_threshold * 0.35, depth_threshold, relative_depth);
+
+        float filter_weight = 1.0 - abs(t) * 0.85;
+        float weight = depth_weight * filter_weight;
+        accum += sample_color * weight;
+        weight_sum += weight;
+    }
+
+    float3 blurred = accum / max(weight_sum, 0.0001);
+    float blend = clamp(u.uParams.x, 0.0, 1.0) * smoothstep(0.0, 0.001, speed);
+    out.FragColor = float4(mix(center, blurred, blend), 1.0);
+    return out;
+}

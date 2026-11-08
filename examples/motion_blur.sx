@@ -1,0 +1,740 @@
+val ecs       = use("../src/ecs.sx")
+val engine    = use("../src/engine.sx")
+val rendering = use("../src/rendering.sx")
+val sdl       = use("../src/engine/sdl.sx")
+val input     = use("../src/engine/input.sx")
+val math      = use("std/math")
+
+val (
+    START_X: f32 = 0.0 as f32
+    START_Y: f32 = 2.60 as f32
+    START_Z: f32 = 21.0 as f32
+    PI_F32: f32  = 3.14159265 as f32
+)
+
+type (engine.AppEvents) MotionBlurDemo = {
+    status: mut ref u8
+    blur_enabled: mut bool
+    blur_amount: mut f32
+}
+
+fn clamp_f32(value: f32, low: f32, high: f32) f32 = {
+    if value < low {
+        return low
+    }
+    if value > high {
+        return high
+    }
+    return value
+}
+
+fn add_box(
+    scene: mut ecs.Scene3D,
+    x: f32,
+    y: f32,
+    z: f32,
+    size: f32,
+    r: f32,
+    g: f32,
+    b: f32,
+    spin: f32
+) void = {
+    @append(
+        scene.cubes,
+        ecs.make_cube(
+            ecs.make_vec3(x, y, z),
+            ecs.make_vec3(r, g, b),
+            size,
+            spin
+        )
+    )
+}
+
+fn add_orb(
+    scene: mut ecs.Scene3D,
+    x: f32,
+    y: f32,
+    z: f32,
+    radius: f32,
+    r: f32,
+    g: f32,
+    b: f32
+) void = {
+    @append(
+        scene.spheres,
+        ecs.make_sphere(
+            ecs.make_vec3(x, y, z),
+            ecs.make_vec3(r, g, b),
+            radius
+        )
+    )
+}
+
+fn build_scene() ecs.Scene3D = {
+    val scene: mut ecs.Scene3D = ecs.new_scene()
+    scene.gravity = 0.0 as f32
+
+    scene.render.clear_top = ecs.make_vec3(0.005 as f32, 0.012 as f32, 0.028 as f32)
+    scene.render.clear_bottom = ecs.make_vec3(0.015 as f32, 0.030 as f32, 0.060 as f32)
+    scene.render.ambient = 0.34 as f32
+    scene.render.shadow_intensity = 0.78 as f32
+    scene.render.light_intensity = 1.05 as f32
+    scene.render.enable_reflections = true
+    scene.render.reflect_models = false
+    scene.render.enable_shadows = true
+    scene.render.enable_fxaa = true
+    scene.render.enable_light_glow = true
+    scene.render.reflection_plane = 0.0 as f32
+
+    // Night-time industrial atmosphere with a low warm sun and dense fog.
+    scene.render.atmosphere = {
+        enabled: true,
+        zenith_color: ecs.make_vec3(0.008 as f32, 0.018 as f32, 0.045 as f32),
+        horizon_color: ecs.make_vec3(0.140 as f32, 0.185 as f32, 0.265 as f32),
+        ground_color: ecs.make_vec3(0.008 as f32, 0.010 as f32, 0.016 as f32),
+        sun_direction: ecs.make_vec3(0.24 as f32, 0.20 as f32, -0.95 as f32),
+        sun_color: ecs.make_vec3(1.000 as f32, 0.520 as f32, 0.230 as f32),
+        sun_intensity: 1.45 as f32,
+        sun_size: 0.026 as f32,
+        cloud_cover: 0.34 as f32,
+        cloud_speed: 0.004 as f32,
+        fog_density: 0.023 as f32,
+        fog_height: 0.18 as f32,
+        fog_max: 0.78 as f32,
+        sun_casts_shadow: true,
+        sun_shadow_extent: 34.0 as f32,
+        sun_shadow_bias: 0.0018 as f32,
+        sun_shadow_strength: 0.58 as f32
+    }
+
+    ecs.add_floor(
+        scene,
+        ecs.make_floor_sized(
+            0.0 as f32,
+            0.0 as f32,
+            0.0 as f32,
+            0.0 as f32,
+            82.0 as f32,
+            82.0 as f32,
+            ecs.make_vec3(0.006 as f32, 0.010 as f32, 0.016 as f32)
+        )
+    )
+
+    // A cool key light doubles as the shadow caster and the godray source.
+    ecs.add_light(
+        scene,
+        ecs.make_shadow_light(
+            ecs.make_vec3(0.0 as f32, 9.5 as f32, -4.0 as f32),
+            ecs.make_vec3(0.35 as f32, 0.68 as f32, 1.00 as f32),
+            2.40 as f32,
+            34.0 as f32
+        )
+    )
+    ecs.add_light(
+        scene,
+        ecs.make_light(
+            ecs.make_vec3(-9.0 as f32, 4.5 as f32, 8.0 as f32),
+            ecs.make_vec3(1.00 as f32, 0.46 as f32, 0.18 as f32),
+            1.80 as f32,
+            20.0 as f32
+        )
+    )
+    ecs.add_light(
+        scene,
+        ecs.make_light(
+            ecs.make_vec3(9.0 as f32, 5.0 as f32, -10.0 as f32),
+            ecs.make_vec3(0.72 as f32, 0.16 as f32, 1.00 as f32),
+            1.55 as f32,
+            22.0 as f32
+        )
+    )
+
+    // Two rows of brutalist pylons frame the flight path. The inset bars are
+    // intentionally over-bright so bloom and motion blur pick them up.
+    val pylon_index: mut i32 = 0 as i32
+    for pylon_index < 11 {
+        val z: f32 = (0.0 as f32 - 30.0 as f32) + (pylon_index as f32) * (6.0 as f32)
+        val warm: f32 = ((pylon_index % 3) as f32) * (0.10 as f32)
+        add_box(
+            scene,
+            -7.6 as f32,
+            1.40 as f32,
+            z,
+            2.80 as f32,
+            0.012 as f32,
+            0.018 as f32,
+            0.028 as f32,
+            0.0 as f32
+        )
+        add_box(
+            scene,
+            -7.6 as f32,
+            4.20 as f32,
+            z,
+            2.80 as f32,
+            0.012 as f32,
+            0.018 as f32,
+            0.028 as f32,
+            0.0 as f32
+        )
+        add_box(
+            scene,
+            7.6 as f32,
+            1.40 as f32,
+            z,
+            2.80 as f32,
+            0.012 as f32,
+            0.018 as f32,
+            0.028 as f32,
+            0.0 as f32
+        )
+        add_box(
+            scene,
+            7.6 as f32,
+            4.20 as f32,
+            z,
+            2.80 as f32,
+            0.012 as f32,
+            0.018 as f32,
+            0.028 as f32,
+            0.0 as f32
+        )
+
+        add_box(
+            scene,
+            -6.05 as f32,
+            1.35 as f32,
+            z,
+            0.30 as f32,
+            0.10 as f32,
+            2.60 as f32,
+            3.80 as f32,
+            0.0 as f32
+        )
+        add_box(
+            scene,
+            -6.05 as f32,
+            4.30 as f32,
+            z,
+            0.30 as f32,
+            0.10 as f32,
+            2.60 as f32,
+            3.80 as f32,
+            0.0 as f32
+        )
+        add_box(
+            scene,
+            6.05 as f32,
+            1.35 as f32,
+            z,
+            0.30 as f32,
+            3.60 as f32,
+            0.35 as f32,
+            1.90 as f32,
+            0.0 as f32
+        )
+        add_box(
+            scene,
+            6.05 as f32,
+            4.30 as f32,
+            z,
+            0.30 as f32,
+            3.60 as f32,
+            0.35 as f32,
+            1.90 as f32,
+            0.0 as f32
+        )
+
+        add_orb(
+            scene,
+            -6.05 as f32,
+            5.35 as f32 + warm,
+            z,
+            0.12 as f32,
+            0.30 as f32,
+            3.20 as f32,
+            4.60 as f32
+        )
+        add_orb(
+            scene,
+            6.05 as f32,
+            5.35 as f32 + warm,
+            z,
+            0.12 as f32,
+            4.20 as f32,
+            0.45 as f32,
+            2.30 as f32
+        )
+
+        pylon_index = pylon_index + (1 as i32)
+    }
+
+    // Dotted cross-beams read as neon tubing when the camera pans past them.
+    val beam_index: mut i32 = 0 as i32
+    for beam_index < 4 {
+        val beam_z: f32 = (0.0 as f32 - 27.0 as f32) + (beam_index as f32) * (12.0 as f32)
+        val dot_index: mut i32 = 0 as i32
+        for dot_index < 11 {
+            val dot_x: f32 = (0.0 as f32 - 7.5 as f32) + (dot_index as f32) * (1.5 as f32)
+            add_box(
+                scene,
+                dot_x,
+                6.55 as f32,
+                beam_z,
+                0.26 as f32,
+                0.20 as f32,
+                2.20 as f32,
+                3.60 as f32,
+                0.0 as f32
+            )
+            dot_index = dot_index + (1 as i32)
+        }
+        beam_index = beam_index + (1 as i32)
+    }
+
+    // The forge: a bright, slowly counter-rotating core at the end of the
+    // corridor that gives the eye a clear focal point during fast strafes.
+    add_box(
+        scene,
+        0.0 as f32,
+        2.20 as f32,
+        -9.0 as f32,
+        2.40 as f32,
+        0.95 as f32,
+        0.22 as f32,
+        0.06 as f32,
+        0.45 as f32
+    )
+    add_box(
+        scene,
+        0.0 as f32,
+        2.20 as f32,
+        -9.0 as f32,
+        1.55 as f32,
+        0.10 as f32,
+        0.58 as f32,
+        1.00 as f32,
+        -0.80 as f32
+    )
+    add_box(
+        scene,
+        0.0 as f32,
+        5.10 as f32,
+        -9.0 as f32,
+        0.70 as f32,
+        4.20 as f32,
+        1.55 as f32,
+        0.25 as f32,
+        1.10 as f32
+    )
+
+    val ring_index: mut i32 = 0 as i32
+    for ring_index < 8 {
+        val angle: f32 = (ring_index as f32) * ((2.0 as f32) * PI_F32 / (8.0 as f32))
+        val ring_x: f32 = (math.cos(angle as f64) as f32) * (3.30 as f32)
+        val ring_z: f32 = (0.0 as f32 - 9.0 as f32) + (math.sin(angle as f64) as f32) * (3.30 as f32)
+        val ring_y: f32 = 2.20 as f32 + (math.sin((angle * (2.0 as f32)) as f64) as f32) * (0.80 as f32)
+        add_box(
+            scene,
+            ring_x,
+            ring_y,
+            ring_z,
+            0.46 as f32,
+            0.18 as f32,
+            2.80 as f32,
+            4.00 as f32,
+            0.90 as f32
+        )
+        add_orb(
+            scene,
+            ring_x * (1.18 as f32),
+            ring_y + (0.45 as f32),
+            ring_z * (1.05 as f32),
+            0.16 as f32,
+            4.60 as f32,
+            1.80 as f32,
+            0.35 as f32
+        )
+        ring_index = ring_index + (1 as i32)
+    }
+
+    // Low bollards guide the player down the centre of the forge.
+    val bollard_index: mut i32 = 0 as i32
+    for bollard_index < 9 {
+        val bollard_z: f32 = (0.0 as f32 - 24.0 as f32) + (bollard_index as f32) * (7.0 as f32)
+        if bollard_index % 2 == (0 as i32) {
+            add_box(
+                scene,
+                -2.70 as f32,
+                0.28 as f32,
+                bollard_z,
+                0.42 as f32,
+                0.30 as f32,
+                1.90 as f32,
+                3.20 as f32,
+                0.0 as f32
+            )
+            add_box(
+                scene,
+                2.70 as f32,
+                0.28 as f32,
+                bollard_z,
+                0.42 as f32,
+                0.30 as f32,
+                1.90 as f32,
+                3.20 as f32,
+                0.0 as f32
+            )
+        } else {
+            add_box(
+                scene,
+                -2.70 as f32,
+                0.28 as f32,
+                bollard_z,
+                0.42 as f32,
+                3.20 as f32,
+                0.35 as f32,
+                1.60 as f32,
+                0.0 as f32
+            )
+            add_box(
+                scene,
+                2.70 as f32,
+                0.28 as f32,
+                bollard_z,
+                0.42 as f32,
+                3.20 as f32,
+                0.35 as f32,
+                1.60 as f32,
+                0.0 as f32
+            )
+        }
+        bollard_index = bollard_index + (1 as i32)
+    }
+
+    // Cinematic post stack. Motion blur is the star of the show; the rest is
+    // tuned to make the HDR neon read like a modern realtime render.
+    scene.render.post_process.enabled = true
+    scene.render.post_process.bloom.enabled = true
+    scene.render.post_process.bloom.threshold = 0.55 as f32
+    scene.render.post_process.bloom.knee = 0.30 as f32
+    scene.render.post_process.bloom.intensity = 1.35 as f32
+    scene.render.post_process.bloom.radius = 1.40 as f32
+    scene.render.post_process.bloom.iterations = 3 as i32
+    scene.render.post_process.vignette.enabled = true
+    scene.render.post_process.vignette.intensity = 0.34 as f32
+    scene.render.post_process.vignette.smoothness = 0.58 as f32
+    scene.render.post_process.vignette.color = ecs.make_vec3(0.0 as f32, 0.0 as f32, 0.005 as f32)
+    scene.render.post_process.godrays.enabled = true
+    scene.render.post_process.godrays.intensity = 0.32 as f32
+    scene.render.post_process.godrays.threshold = 0.68 as f32
+    scene.render.post_process.godrays.decay = 0.955 as f32
+    scene.render.post_process.godrays.density = 0.82 as f32
+    scene.render.post_process.godrays.weight = 1.0 as f32
+    scene.render.post_process.godrays.samples = 40 as i32
+    scene.render.post_process.godrays.color = ecs.make_vec3(0.60 as f32, 0.82 as f32, 1.00 as f32)
+    scene.render.post_process.ambient_occlusion.enabled = true
+    scene.render.post_process.ambient_occlusion.radius = 0.75 as f32
+    scene.render.post_process.ambient_occlusion.intensity = 0.82 as f32
+    scene.render.post_process.ambient_occlusion.bias = 0.022 as f32
+    scene.render.post_process.motion_blur.enabled = true
+    scene.render.post_process.motion_blur.amount = 0.82 as f32
+    scene.render.post_process.motion_blur.velocity_scale = 1.10 as f32
+    scene.render.post_process.motion_blur.max_radius = 0.080 as f32
+    scene.render.post_process.motion_blur.samples = 16 as i32
+    scene.render.post_process.motion_blur.depth_threshold = 0.22 as f32
+    scene.render.post_process.exposure = 1.10 as f32
+    scene.render.post_process.contrast = 1.08 as f32
+    scene.render.post_process.saturation = 1.14 as f32
+    scene.render.post_process.chromatic_aberration = 0.00055 as f32
+    scene.render.post_process.film_grain = 0.010 as f32
+    scene.render.post_process.fxaa = true
+
+    return scene
+}
+
+fn place_player(app: mut engine.ExoApp) void = {
+    app.camera.position = ecs.make_vec3(START_X, START_Y, START_Z)
+    app.camera.yaw = PI_F32
+    app.camera.pitch = -0.06 as f32
+    app.camera.move_speed = 7.0 as f32
+    app.camera.turn_speed = 2.2 as f32
+}
+
+fn keep_player_inside(app: mut engine.ExoApp) void = {
+    app.camera.position = ecs.make_vec3(
+        clamp_f32(app.camera.position.x, 0.0 as f32 - 5.8 as f32, 5.8 as f32),
+        clamp_f32(app.camera.position.y, 0.85 as f32, 7.2 as f32),
+        clamp_f32(app.camera.position.z, 0.0 as f32 - 26.0 as f32, 29.0 as f32)
+    )
+}
+
+fn refresh_hud(game: mut MotionBlurDemo, app: mut engine.ExoApp) void = {
+    val state_text: mut ref u8 = "OFF"
+    if game.blur_enabled {
+        state_text = "ON "
+    }
+    val percent: i32 = (game.blur_amount * (100.0 as f32)) as i32
+    @snprintf(
+        game.status,
+        96 as usize,
+        "MOTION BLUR   {s}   {d} PCT",
+        { state_text, percent }
+    )
+
+    ecs.ui_clear(app.scene.ui)
+
+    // Title card.
+    ecs.ui_rect(
+        app.scene.ui,
+        24.0 as f32,
+        24.0 as f32,
+        392.0 as f32,
+        86.0 as f32,
+        ecs.make_vec3(0.006 as f32, 0.014 as f32, 0.026 as f32),
+        0.68 as f32
+    )
+    ecs.ui_rect(
+        app.scene.ui,
+        24.0 as f32,
+        24.0 as f32,
+        4.0 as f32,
+        86.0 as f32,
+        ecs.make_vec3(0.10 as f32, 0.82 as f32, 1.00 as f32),
+        0.95 as f32
+    )
+    ecs.ui_text(
+        app.scene.ui,
+        "NEON FORGE",
+        44.0 as f32,
+        36.0 as f32,
+        3.6 as f32,
+        ecs.make_vec3(0.74 as f32, 0.95 as f32, 1.00 as f32),
+        1.0 as f32
+    )
+    ecs.ui_text_sized(
+        app.scene.ui,
+        "REALTIME CINEMATIC  /  MOTION BLUR",
+        44.0 as f32,
+        82.0 as f32,
+        13.0 as f32,
+        ecs.make_vec3(0.34 as f32, 0.52 as f32, 0.66 as f32),
+        1.0 as f32
+    )
+
+    // Live blur readout.
+    ecs.ui_rect(
+        app.scene.ui,
+        24.0 as f32,
+        626.0 as f32,
+        360.0 as f32,
+        48.0 as f32,
+        ecs.make_vec3(0.006 as f32, 0.014 as f32, 0.026 as f32),
+        0.66 as f32
+    )
+    ecs.ui_text(
+        app.scene.ui,
+        game.status,
+        42.0 as f32,
+        641.0 as f32,
+        2.0 as f32,
+        ecs.make_vec3(0.42 as f32, 0.86 as f32, 1.00 as f32),
+        1.0 as f32
+    )
+
+    // Controls.
+    ecs.ui_rect(
+        app.scene.ui,
+        910.0 as f32,
+        618.0 as f32,
+        346.0 as f32,
+        56.0 as f32,
+        ecs.make_vec3(0.006 as f32, 0.014 as f32, 0.026 as f32),
+        0.62 as f32
+    )
+    ecs.ui_text_sized(
+        app.scene.ui,
+        "WASD MOVE   MOUSE LOOK   SPACE/SHIFT ALTITUDE",
+        926.0 as f32,
+        630.0 as f32,
+        12.0 as f32,
+        ecs.make_vec3(0.55 as f32, 0.68 as f32, 0.80 as f32),
+        1.0 as f32
+    )
+    ecs.ui_text_sized(
+        app.scene.ui,
+        "M TOGGLE BLUR   [ / ] STRENGTH   R RESET",
+        926.0 as f32,
+        650.0 as f32,
+        12.0 as f32,
+        ecs.make_vec3(0.38 as f32, 0.52 as f32, 0.64 as f32),
+        1.0 as f32
+    )
+}
+
+pub fn (MotionBlurDemo) on_start(game: mut self, app: mut engine.ExoApp) void = {
+    game.status = @alloc(96 as usize) as ref u8
+    game.blur_enabled = true
+    game.blur_amount = 0.82 as f32
+    place_player(app)
+    refresh_hud(game, app)
+    trust @print("Neon Forge: WASD + mouse to move, M toggles motion blur.\n", {})
+}
+
+pub fn (MotionBlurDemo) on_update(
+    game: mut self,
+    app: mut engine.ExoApp,
+    _: f32,
+    _: f32
+) void = {
+    keep_player_inside(app)
+    app.scene.render.post_process.motion_blur.enabled = game.blur_enabled
+    app.scene.render.post_process.motion_blur.amount = game.blur_amount
+    refresh_hud(game, app)
+}
+
+pub fn (MotionBlurDemo) on_fixed_update(_: mut self, _: mut engine.ExoApp, _: f32) void = {}
+
+pub fn (MotionBlurDemo) on_key_down(
+    game: mut self,
+    app: mut engine.ExoApp,
+    key: i32,
+    _: bool,
+    _: u16
+) void = {
+    if key == sdl.SDL_SCANCODE_M {
+        game.blur_enabled = !game.blur_enabled
+        refresh_hud(game, app)
+    }
+    if key == sdl.SDL_SCANCODE_LEFTBRACKET {
+        game.blur_amount = clamp_f32(
+            game.blur_amount - (0.10 as f32),
+            0.0 as f32,
+            1.0 as f32
+        )
+        refresh_hud(game, app)
+    }
+    if key == sdl.SDL_SCANCODE_RIGHTBRACKET {
+        game.blur_amount = clamp_f32(
+            game.blur_amount + (0.10 as f32),
+            0.0 as f32,
+            1.0 as f32
+        )
+        refresh_hud(game, app)
+    }
+    if key == sdl.SDL_SCANCODE_R {
+        place_player(app)
+    }
+}
+
+pub fn (MotionBlurDemo) on_key_up(_: mut self, _: mut engine.ExoApp, _: i32, _: u16) void = {}
+
+pub fn (MotionBlurDemo) on_mouse_move(
+    _: mut self,
+    _: mut engine.ExoApp,
+    _: f32,
+    _: f32,
+    _: f32,
+    _: f32
+) void = {}
+
+pub fn (MotionBlurDemo) on_mouse_button(
+    _: mut self,
+    _: mut engine.ExoApp,
+    _: u8,
+    _: bool,
+    _: u8,
+    _: f32,
+    _: f32
+) void = {}
+
+pub fn (MotionBlurDemo) on_mouse_wheel(
+    _: mut self,
+    _: mut engine.ExoApp,
+    _: f32,
+    _: f32,
+    _: f32,
+    _: f32
+) void = {}
+
+pub fn (MotionBlurDemo) on_text_input(_: mut self, _: mut engine.ExoApp, _: ref u8) void = {}
+
+pub fn (MotionBlurDemo) on_window_resize(
+    _: mut self,
+    _: mut engine.ExoApp,
+    _: i32,
+    _: i32
+) void = {}
+
+pub fn (MotionBlurDemo) on_focus_changed(_: mut self, _: mut engine.ExoApp, _: bool) void = {}
+
+pub fn (MotionBlurDemo) on_gamepad_button(
+    _: mut self,
+    _: mut engine.ExoApp,
+    _: i32,
+    _: bool
+) void = {}
+
+pub fn (MotionBlurDemo) on_gamepad_axis(_: mut self, _: mut engine.ExoApp, _: i32, _: f32) void = {}
+
+pub fn (MotionBlurDemo) on_shutdown(game: mut self, _: mut engine.ExoApp) void = {
+    if game.status != none {
+        trust @free(game.status as ref void)
+        game.status = none as ref u8
+    }
+}
+
+pub fn main() i32 = {
+    val scene: ecs.Scene3D = build_scene()
+
+    val input_cfg: input.InputConfig = {
+        keys: rendering.default_key_bindings(),
+        mouse: {
+            enabled: true,
+            sensitivity_x: 0.0018 as f32,
+            sensitivity_y: 0.0018 as f32,
+            invert_y: false
+        },
+        text_input: false,
+        gamepad: true
+    }
+
+    val builder: mut engine.ExoAppBuilder = engine.new_app()
+    engine.with_title(builder, "exo | neon forge")
+    engine.with_resolution(builder, 1440 as i32, 900 as i32)
+    engine.with_shaders(builder, engine.default_shader_config())
+    engine.with_scene(builder, scene)
+    engine.with_default_camera(builder)
+    engine.with_auto_camera(builder)
+    engine.with_input(builder, input_cfg)
+    engine.with_quit_key(builder, sdl.SDL_SCANCODE_ESCAPE)
+
+    val app: engine.ExoApp = engine.build_app(builder)
+    val game: MotionBlurDemo = {
+        status: none as ref u8,
+        blur_enabled: true,
+        blur_amount: 0.82 as f32
+    }
+    return trust engine.run_app_with_events[MotionBlurDemo](app, game)
+}
+
+test {
+    val scene = build_scene()
+    assert @len(scene.cubes) > (100 as usize)
+    assert @len(scene.spheres) > (20 as usize)
+    assert @len(scene.lights) == (3 as usize)
+    assert @len(scene.floors) == (1 as usize)
+    assert scene.render.post_process.motion_blur.enabled
+    assert scene.render.post_process.motion_blur.samples > (0 as i32)
+    assert scene.render.enable_reflections
+    assert scene.gravity == (0.0 as f32)
+
+    val game: MotionBlurDemo = {
+        status: none as ref u8,
+        blur_enabled: true,
+        blur_amount: 0.82 as f32
+    }
+    assert game.blur_enabled
+    assert clamp_f32((0.0 as f32 - 3.0 as f32), 0.0 as f32, 1.0 as f32) == (0.0 as f32)
+    assert clamp_f32(2.0 as f32, 0.0 as f32, 1.0 as f32) == (1.0 as f32)
+}

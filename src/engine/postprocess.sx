@@ -43,6 +43,26 @@ pub type AmbientOcclusionSettings = {
     bias: f32
 }
 
+/// Camera motion blur reconstructed from the depth buffer and the previous
+/// frame's view-projection matrix. Static geometry smears along the on-screen
+/// path the camera travelled, which gives fast pans and dolly moves a
+/// cinematic, Unreal-style sense of speed. The effect is per-pixel and
+/// depth-aware, so sharp silhouettes do not bleed into the background.
+pub type MotionBlurSettings = {
+    enabled: bool
+    /// Blend between the sharp frame (0) and the fully blurred frame (1).
+    amount: f32
+    /// Multiplier applied to the reprojected screen-space velocity.
+    velocity_scale: f32
+    /// Longest blur trail in screen UV units.
+    max_radius: f32
+    /// Number of gather samples. Clamped to 1..32 by the renderer.
+    samples: i32
+    /// Relative depth difference above which a sample is rejected. Lower
+    /// values keep silhouettes crisp; higher values blur more aggressively.
+    depth_threshold: f32
+}
+
 /// Engine-owned post-processing settings. Games may tune these, but the
 /// engine does not attach any gameplay meaning to them.
 pub type PostProcessSettings = {
@@ -51,6 +71,7 @@ pub type PostProcessSettings = {
     vignette: VignetteSettings
     godrays: GodraySettings
     ambient_occlusion: AmbientOcclusionSettings
+    motion_blur: MotionBlurSettings
     exposure: f32
     contrast: f32
     saturation: f32
@@ -91,6 +112,14 @@ pub fn default_settings() PostProcessSettings = {
             radius: 0.60 as f32,
             intensity: 0.70 as f32,
             bias: 0.025 as f32
+        },
+        motion_blur: {
+            enabled: true,
+            amount: 0.70 as f32,
+            velocity_scale: 1.00 as f32,
+            max_radius: 0.055 as f32,
+            samples: 12 as i32,
+            depth_threshold: 0.18 as f32
         },
         exposure: 1.0 as f32,
         contrast: 1.0 as f32,

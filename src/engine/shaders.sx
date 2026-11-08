@@ -9,6 +9,8 @@ pub type PostProcessShaderConfig = {
     threshold: ShaderProgramConfig
     blur: ShaderProgramConfig
     godrays: ShaderProgramConfig
+    /// Depth-reprojected camera motion blur.
+    motion_blur: ShaderProgramConfig
     composite: ShaderProgramConfig
 }
 
@@ -88,6 +90,10 @@ pub fn default_shader_config() ExoShaderConfig = {
                     vertex_path: "./assets/shaders/fullscreen.vert.msl",
                     fragment_path: "./assets/shaders/godrays.frag.msl"
                 },
+                motion_blur: {
+                    vertex_path: "./assets/shaders/fullscreen.vert.msl",
+                    fragment_path: "./assets/shaders/motion_blur.frag.msl"
+                },
                 composite: {
                     vertex_path: "./assets/shaders/fullscreen.vert.msl",
                     fragment_path: "./assets/shaders/composite.frag.msl"
@@ -136,6 +142,10 @@ pub fn default_shader_config() ExoShaderConfig = {
             godrays: {
                 vertex_path: "./assets/shaders/fullscreen.vert.spv",
                 fragment_path: "./assets/shaders/godrays.frag.spv"
+            },
+            motion_blur: {
+                vertex_path: "./assets/shaders/fullscreen.vert.spv",
+                fragment_path: "./assets/shaders/motion_blur.frag.spv"
             },
             composite: {
                 vertex_path: "./assets/shaders/fullscreen.vert.spv",
