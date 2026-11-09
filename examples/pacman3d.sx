@@ -57,7 +57,7 @@ type Ghost = {
 }
 
 type (engine.AppEvents) PacmanGame = {
-    rows: list[ref u8]
+    rows: list[string.StringView]
     pellets: mut list[Pellet]
     ghosts: mut list[Ghost]
     pellets_left: mut i32
@@ -84,8 +84,8 @@ type (engine.AppEvents) PacmanGame = {
     shot_path: mut ref u8
 }
 
-fn maze_rows() list[ref u8] = {
-    val rows: mut list[ref u8] = mem.persistent[ref u8]()
+fn maze_rows() list[string.StringView] = {
+    val rows: mut list[string.StringView] = mem.persistent[string.StringView]()
     @append(rows, "###################")
     @append(rows, "#........#........#")
     @append(rows, "#o##.###.#.###.##o#")
@@ -110,12 +110,15 @@ fn maze_rows() list[ref u8] = {
     return rows
 }
 
-fn row_char(rows: list[ref u8], r: i32, c: i32) u8 = {
+fn row_char(rows: list[string.StringView], r: i32, c: i32) u8 = {
     if r < (0 as i32) || r >= MAZE_ROWS || c < (0 as i32) || c >= MAZE_COLS {
         return 35 as u8
     }
     if @get(rows, r as usize) is some row {
-        return trust @load8(@ptradd(row, c as usize))
+        if (c as i64) >= row.len {
+            return 35 as u8
+        }
+        return trust @load8(@ptradd(row.ptr, c as usize))
     }
     return 35 as u8
 }
@@ -240,7 +243,7 @@ fn reset_game(game: mut PacmanGame) void = {
     reset_positions(game)
 }
 
-fn make_game(rows: list[ref u8]) PacmanGame = {
+fn make_game(rows: list[string.StringView]) PacmanGame = {
     val game: mut PacmanGame = {
         rows: rows,
         pellets: mem.persistent[Pellet](),
@@ -718,7 +721,7 @@ fn refresh_hud(game: PacmanGame, app: mut engine.ExoApp) void = {
     }
 }
 
-fn build_scene(rows: list[ref u8]) ecs.Scene3D = {
+fn build_scene(rows: list[string.StringView]) ecs.Scene3D = {
     val scene: mut ecs.Scene3D = ecs.new_scene()
     scene.gravity = 0.0 as f32
     scene.render.clear_top = ecs.make_vec3(0.005 as f32, 0.008 as f32, 0.030 as f32)
@@ -931,7 +934,7 @@ pub fn (PacmanGame) on_shutdown(game: mut self, _: mut engine.ExoApp) void = {
 }
 
 pub fn main() i32 = {
-    val rows: list[ref u8] = maze_rows()
+    val rows: list[string.StringView] = maze_rows()
     val scene: ecs.Scene3D = build_scene(rows)
     val input_cfg: input.InputConfig = {
         keys: rendering.default_key_bindings(),
