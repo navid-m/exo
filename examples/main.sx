@@ -341,7 +341,7 @@ test {
     assert @len(game.cubes) == (2 as usize)
     assert @len(app.audio.clips) == (1 as usize)
     if @get(app.audio.clips, 0 as usize) is some clip {
-        assert string.raw_cmp(clip.path, "./example_sound.mp3") == 0
+        assert trust string.eql(clip.path, "./example_sound.mp3")
     } else {
         assert false
     }
@@ -370,7 +370,7 @@ test {
         assert model.primitive_count == 1
         assert model.vertex_count == 3
         assert model.index_count == 0
-        assert string.raw_cmp(model.mesh_name, "fixture") == 0
+        assert trust string.eql(string.from_cstr(model.mesh_name), "fixture")
     } else {
         assert false
     }

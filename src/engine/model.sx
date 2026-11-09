@@ -13,15 +13,15 @@ val GLB_VERSION: u32 = 2
 val GLB_JSON_CHUNK: u32 = 0x4E4F534A
 val GLB_BIN_CHUNK: u32 = 0x004E4942
 
-fn obj_int(obj: ref void, key: ref u8, fallback: i64) i32 = trust {
-    if json.obj_get_int(obj, key) is some value {
+fn obj_int(obj: ref void, key: string.StringView, fallback: i64) i32 = trust {
+    if json.obj_get_int(obj, key.ptr) is some value {
         return value as i32
     }
     return fallback as i32
 }
 
-fn obj_bool(obj: ref void, key: ref u8, fallback: bool) bool = trust {
-    if json.obj_get_bool(obj, key) is some value {
+fn obj_bool(obj: ref void, key: string.StringView, fallback: bool) bool = trust {
+    if json.obj_get_bool(obj, key.ptr) is some value {
         return value
     }
     return fallback
@@ -34,8 +34,8 @@ fn arr_f32(arr: ref void, index: usize) f32 = trust {
     return 0.0 as f32
 }
 
-fn obj_vec3(obj: ref void, key: ref u8, x: f32, y: f32, z: f32) math.Vec3 = trust {
-    if json.obj_get(obj, key) is some arr {
+fn obj_vec3(obj: ref void, key: string.StringView, x: f32, y: f32, z: f32) math.Vec3 = trust {
+    if json.obj_get(obj, key.ptr) is some arr {
         return math.vec3(
             arr_f32(arr, 0 as usize),
             arr_f32(arr, 1 as usize),
@@ -45,8 +45,8 @@ fn obj_vec3(obj: ref void, key: ref u8, x: f32, y: f32, z: f32) math.Vec3 = trus
     return math.vec3(x, y, z)
 }
 
-fn obj_quat(obj: ref void, key: ref u8) math.Vec4f = trust {
-    if json.obj_get(obj, key) is some arr {
+fn obj_quat(obj: ref void, key: string.StringView) math.Vec4f = trust {
+    if json.obj_get(obj, key.ptr) is some arr {
         return math.quat(
             arr_f32(arr, 0 as usize),
             arr_f32(arr, 1 as usize),
@@ -57,8 +57,8 @@ fn obj_quat(obj: ref void, key: ref u8) math.Vec4f = trust {
     return math.quat(0.0 as f32, 0.0 as f32, 0.0 as f32, 1.0 as f32)
 }
 
-fn obj_matrix(obj: ref void, key: ref u8) math.Mat4 = trust {
-    if json.obj_get(obj, key) is some arr {
+fn obj_matrix(obj: ref void, key: string.StringView) math.Mat4 = trust {
+    if json.obj_get(obj, key.ptr) is some arr {
         return math.mat4(
             arr_f32(
                 arr,
@@ -81,23 +81,23 @@ fn obj_matrix(obj: ref void, key: ref u8) math.Mat4 = trust {
     return math.mat4_identity()
 }
 
-fn component_count(type_name: ref u8) i32 = trust {
-    if type_name == none {
+fn component_count(type_name: string.StringView) i32 = trust {
+    if type_name.ptr == none {
         return 0 as i32
     }
-    if string.raw_cmp(type_name, "SCALAR") == (0 as i64) {
+    if string.eql(type_name, "SCALAR") {
         return 1 as i32
     }
-    if string.raw_cmp(type_name, "VEC2") == (0 as i64) {
+    if string.eql(type_name, "VEC2") {
         return 2 as i32
     }
-    if string.raw_cmp(type_name, "VEC3") == (0 as i64) {
+    if string.eql(type_name, "VEC3") {
         return 3 as i32
     }
-    if string.raw_cmp(type_name, "VEC4") == (0 as i64) {
+    if string.eql(type_name, "VEC4") {
         return 4 as i32
     }
-    if string.raw_cmp(type_name, "MAT4") == (0 as i64) {
+    if string.eql(type_name, "MAT4") {
         return 16 as i32
     }
     return 0 as i32
@@ -122,17 +122,17 @@ fn build_accessor(root: ref void, bin_offset: usize, index: usize) ecs.ModelAcce
         stride: 0 as usize,
         normalized: false
     }
-    if json.obj_get(root, "accessors") is some accessors {
+    if json.obj_get(root, c"accessors") is some accessors {
         if json.arr_get(accessors, index) is some accessor {
             result.count = obj_int(accessor, "count", 0)
             result.component_type = obj_int(accessor, "componentType", 5126)
-            if json.obj_get_str(accessor, "type") is some type_name {
-                result.components = component_count(type_name)
+            if json.obj_get_str(accessor, c"type") is some type_name {
+                result.components = component_count(string.from_cstr(type_name))
             }
             result.normalized = obj_bool(accessor, "normalized", false)
             val accessor_offset: usize = obj_int(accessor, "byteOffset", 0) as usize
-            if json.obj_get_int(accessor, "bufferView") is some buffer_view_index {
-                if json.obj_get(root, "bufferViews") is some buffer_views {
+            if json.obj_get_int(accessor, c"bufferView") is some buffer_view_index {
+                if json.obj_get(root, c"bufferViews") is some buffer_views {
                     if json.arr_get(buffer_views, buffer_view_index as usize) is some buffer_view {
                         val view_offset: usize = obj_int(buffer_view, "byteOffset", 0) as usize
                         val view_stride: i32 = obj_int(buffer_view, "byteStride", 0)
@@ -162,11 +162,11 @@ fn read_node(root: ref void, index: usize) ecs.ModelNode = trust {
         mesh: -1 as i32,
         skin: -1 as i32
     }
-    if json.obj_get(root, "nodes") is some nodes {
+    if json.obj_get(root, c"nodes") is some nodes {
         if json.arr_get(nodes, index) is some node {
             result.mesh = obj_int(node, "mesh", -1)
             result.skin = obj_int(node, "skin", -1)
-            if json.obj_get(node, "matrix") is some _ {
+            if json.obj_get(node, c"matrix") is some _ {
                 result.matrix = obj_matrix(node, "matrix")
                 result.has_matrix = true
             } else {
@@ -192,7 +192,7 @@ type ImageTable = {
 
 fn parse_nodes(root: ref void) list[ecs.ModelNode] = trust {
     val result: mut list[ecs.ModelNode] = mem.persistent[ecs.ModelNode]()
-    if json.obj_get(root, "nodes") is some nodes {
+    if json.obj_get(root, c"nodes") is some nodes {
         val node_count: usize = json.arr_len(nodes)
         val index: mut usize = 0 as usize
         for index < node_count {
@@ -202,7 +202,7 @@ fn parse_nodes(root: ref void) list[ecs.ModelNode] = trust {
         val parent_index: mut usize = 0 as usize
         for parent_index < node_count {
             if json.arr_get(nodes, parent_index) is some node {
-                if json.obj_get(node, "children") is some children {
+                if json.obj_get(node, c"children") is some children {
                     val child_index: mut usize = 0 as usize
                     for child_index < json.arr_len(children) {
                         if json.arr_get(children, child_index) is some child_value {
@@ -259,7 +259,7 @@ fn read_u32_value(asset: ecs.ModelAsset, accessor_index: i32, element: usize) u3
 
 fn parse_skins(asset: ecs.ModelAsset, root: ref void) list[ecs.ModelSkin] = trust {
     val result: mut list[ecs.ModelSkin] = mem.persistent[ecs.ModelSkin]()
-    if json.obj_get(root, "skins") is some skins {
+    if json.obj_get(root, c"skins") is some skins {
         val total: mut usize = 0 as usize
         val index: mut usize = 0 as usize
         for index < json.arr_len(skins) {
@@ -270,7 +270,7 @@ fn parse_skins(asset: ecs.ModelAsset, root: ref void) list[ecs.ModelSkin] = trus
                     inverse_bind_count: 0 as usize,
                     joint_offset: total
                 }
-                if json.obj_get(skin_obj, "joints") is some joints {
+                if json.obj_get(skin_obj, c"joints") is some joints {
                     val joint_index: mut usize = 0 as usize
                     for joint_index < json.arr_len(joints) {
                         if json.arr_get(joints, joint_index) is some joint_value {
@@ -279,7 +279,7 @@ fn parse_skins(asset: ecs.ModelAsset, root: ref void) list[ecs.ModelSkin] = trus
                         joint_index = joint_index + (1 as usize)
                     }
                 }
-                if json.obj_get_int(skin_obj, "inverseBindMatrices") is some ibm_accessor {
+                if json.obj_get_int(skin_obj, c"inverseBindMatrices") is some ibm_accessor {
                     if @get(asset.accessors, ibm_accessor as usize) is some ibm_acc {
                         val matrix_count: usize = ibm_acc.count as usize
                         val float_count: usize = matrix_count * (16 as usize)
@@ -320,14 +320,14 @@ fn parse_skins(asset: ecs.ModelAsset, root: ref void) list[ecs.ModelSkin] = trus
 fn parse_images(root: ref void, bin_offset: usize) ImageTable = trust {
     val offsets: mut list[usize] = mem.persistent[usize]()
     val lengths: mut list[usize] = mem.persistent[usize]()
-    if json.obj_get(root, "images") is some images {
+    if json.obj_get(root, c"images") is some images {
         val index: mut usize = 0 as usize
         for index < json.arr_len(images) {
             val offset: mut usize = 0 as usize
             val length: mut usize = 0 as usize
             if json.arr_get(images, index) is some image {
-                if json.obj_get_int(image, "bufferView") is some view_index {
-                    if json.obj_get(root, "bufferViews") is some buffer_views {
+                if json.obj_get_int(image, c"bufferView") is some view_index {
+                    if json.obj_get(root, c"bufferViews") is some buffer_views {
                         if json.arr_get(buffer_views, view_index as usize) is some buffer_view {
                             offset = bin_offset + (obj_int(buffer_view, "byteOffset", 0) as usize)
                             length = obj_int(buffer_view, "byteLength", 0) as usize
@@ -345,17 +345,17 @@ fn parse_images(root: ref void, bin_offset: usize) ImageTable = trust {
 
 fn parse_materials(root: ref void) list[i32] = trust {
     val result: mut list[i32] = mem.persistent[i32]()
-    if json.obj_get(root, "materials") is some materials {
+    if json.obj_get(root, c"materials") is some materials {
         val index: mut usize = 0 as usize
         for index < json.arr_len(materials) {
             val image_index: mut i32 = -1 as i32
             if json.arr_get(materials, index) is some material {
-                if json.obj_get(material, "pbrMetallicRoughness") is some pbr {
-                    if json.obj_get(pbr, "baseColorTexture") is some base_color {
-                        if json.obj_get_int(base_color, "index") is some texture_index {
-                            if json.obj_get(root, "textures") is some textures {
+                if json.obj_get(material, c"pbrMetallicRoughness") is some pbr {
+                    if json.obj_get(pbr, c"baseColorTexture") is some base_color {
+                        if json.obj_get_int(base_color, c"index") is some texture_index {
+                            if json.obj_get(root, c"textures") is some textures {
                                 if json.arr_get(textures, texture_index as usize) is some texture {
-                                    if json.obj_get_int(texture, "source") is some source {
+                                    if json.obj_get_int(texture, c"source") is some source {
                                         image_index = source as i32
                                     }
                                 }
@@ -390,7 +390,7 @@ fn read_vec2(asset: ecs.ModelAsset, accessor_index: i32, element: usize) math.Ve
 fn parse_meshes(asset: ecs.ModelAsset, root: ref void) list[ecs.ModelMesh] = trust {
     val result: mut list[ecs.ModelMesh] = mem.persistent[ecs.ModelMesh]()
     val meshes_value: mut ref void = none
-    if json.obj_get(root, "meshes") is some value {
+    if json.obj_get(root, c"meshes") is some value {
         meshes_value = value
     } else {
         return result
@@ -430,11 +430,11 @@ fn parse_meshes(asset: ecs.ModelAsset, root: ref void) list[ecs.ModelMesh] = tru
                     }
                 }
             }
-            if json.obj_get(mesh_obj, "primitives") is some primitives {
+            if json.obj_get(mesh_obj, c"primitives") is some primitives {
                 val primitive_index: mut usize = 0 as usize
                 for primitive_index < json.arr_len(primitives) {
                     if json.arr_get(primitives, primitive_index) is some primitive {
-                        if json.obj_get(primitive, "attributes") is some attributes {
+                        if json.obj_get(primitive, c"attributes") is some attributes {
                             val position_accessor: i32 = obj_int(attributes, "POSITION", -1)
                             if position_accessor >= (0 as i32) {
                                 if @get(
@@ -606,7 +606,7 @@ fn parse_meshes(asset: ecs.ModelAsset, root: ref void) list[ecs.ModelMesh] = tru
 fn parse_animations(asset: ecs.ModelAsset, root: ref void) list[ecs.ModelAnimation] = trust {
     val result: mut list[ecs.ModelAnimation] = mem.persistent[ecs.ModelAnimation]()
     val animations_value: mut ref void = none
-    if json.obj_get(root, "animations") is some value {
+    if json.obj_get(root, c"animations") is some value {
         animations_value = value
     } else {
         return result
@@ -615,37 +615,37 @@ fn parse_animations(asset: ecs.ModelAsset, root: ref void) list[ecs.ModelAnimati
     for animation_index < json.arr_len(animations_value) {
         if json.arr_get(animations_value, animation_index) is some animation_obj {
             val animation: mut ecs.ModelAnimation = {
-                name: glb.dup_cstr("clip"),
+                name: glb.dup_cstr(c"clip"),
                 channels: mem.persistent[ecs.ModelAnimChannel](),
                 duration: 0.0 as f32
             }
-            if json.obj_get_str(animation_obj, "name") is some name {
+            if json.obj_get_str(animation_obj, c"name") is some name {
                 animation.name = glb.dup_cstr(name)
             }
-            if json.obj_get(animation_obj, "channels") is some channels {
-                if json.obj_get(animation_obj, "samplers") is some samplers {
+            if json.obj_get(animation_obj, c"channels") is some channels {
+                if json.obj_get(animation_obj, c"samplers") is some samplers {
                     val channel_index: mut usize = 0 as usize
                     for channel_index < json.arr_len(channels) {
                         if json.arr_get(channels, channel_index) is some channel_obj {
-                            if json.obj_get_int(channel_obj, "sampler") is some sampler_index {
+                            if json.obj_get_int(channel_obj, c"sampler") is some sampler_index {
                                 if json.arr_get(samplers, sampler_index as usize) is some sampler {
-                                    if json.obj_get(channel_obj, "target") is some target {
-                                        if json.obj_get_str(target, "path") is some path_name {
+                                    if json.obj_get(channel_obj, c"target") is some target {
+                                        if json.obj_get_str(target, c"path") is some path_name {
                                             val path: mut i32 = -1 as i32
-                                            if string.raw_cmp(
-                                                path_name,
+                                            if string.eql(
+                                                string.from_cstr(path_name),
                                                 "translation"
-                                            ) == (0 as i64) {
+                                            ) {
                                                 path = 0 as i32
-                                            } elif string.raw_cmp(
-                                                path_name,
+                                            } elif string.eql(
+                                                string.from_cstr(path_name),
                                                 "rotation"
-                                            ) == (0 as i64) {
+                                            ) {
                                                 path = 1 as i32
-                                            } elif string.raw_cmp(
-                                                path_name,
+                                            } elif string.eql(
+                                                string.from_cstr(path_name),
                                                 "scale"
-                                            ) == (0 as i64) {
+                                            ) {
                                                 path = 2 as i32
                                             }
                                             if path >= (0 as i32) {
@@ -662,17 +662,17 @@ fn parse_animations(asset: ecs.ModelAsset, root: ref void) list[ecs.ModelAnimati
                                                 val interpolation: mut i32 = 0 as i32
                                                 if json.obj_get_str(
                                                     sampler,
-                                                    "interpolation"
+                                                    c"interpolation"
                                                 ) is some interpolation_name {
-                                                    if string.raw_cmp(
-                                                        interpolation_name,
+                                                    if string.eql(
+                                                        string.from_cstr(interpolation_name),
                                                         "STEP"
-                                                    ) == (0 as i64) {
+                                                    ) {
                                                         interpolation = 1 as i32
-                                                    } elif string.raw_cmp(
-                                                        interpolation_name,
+                                                    } elif string.eql(
+                                                        string.from_cstr(interpolation_name),
                                                         "CUBICSPLINE"
-                                                    ) == (0 as i64) {
+                                                    ) {
                                                         interpolation = 2 as i32
                                                     }
                                                 }
@@ -802,7 +802,7 @@ pub fn parse_model_bytes(data: ref u8, len: usize) option[ecs.ModelAsset] = trus
     @memcpy(json_buf, @ptradd(data, json_offset) as ref void, json_len as usize)
     @store8(@ptradd(json_buf, json_len as usize), 0)
 
-    if json.parse(json_buf) is some doc {
+    if json.parse(string.view(json_buf, json_len as i64)) is some doc {
         val root: ref void = json.doc_root(doc)
         val asset: mut ecs.ModelAsset = ecs.empty_model_asset()
         val raw_copy: ref u8 = @alloc(len) as ref u8
@@ -815,7 +815,7 @@ pub fn parse_model_bytes(data: ref u8, len: usize) option[ecs.ModelAsset] = trus
         asset.raw_bytes = raw_copy
         asset.raw_len = len
 
-        if json.obj_get(root, "accessors") is some accessors {
+        if json.obj_get(root, c"accessors") is some accessors {
             val accessor_index: mut usize = 0 as usize
             for accessor_index < json.arr_len(accessors) {
                 @append(asset.accessors, build_accessor(root, bin_offset, accessor_index))
@@ -851,7 +851,7 @@ pub fn parse_model_bytes(data: ref u8, len: usize) option[ecs.ModelAsset] = trus
     return none
 }
 
-pub fn load_model(path: ref u8) option[ecs.ModelAsset] = trust {
+pub fn load_model(path: string.StringView) option[ecs.ModelAsset] = trust {
     if io.load_binary_file(path) is some blob {
         val parsed = parse_model_bytes(blob.data, blob.len)
         @free(blob.data)
@@ -860,6 +860,6 @@ pub fn load_model(path: ref u8) option[ecs.ModelAsset] = trust {
     return none
 }
 
-pub fn find_animation(asset: ecs.ModelAsset, name: ref u8) i32 = trust {
+pub fn find_animation(asset: ecs.ModelAsset, name: string.StringView) i32 = trust {
     return animation.find_animation(asset, name)
 }

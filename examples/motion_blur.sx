@@ -4,6 +4,7 @@ val rendering = use("../src/rendering.sx")
 val sdl       = use("../src/engine/sdl.sx")
 val input     = use("../src/engine/input.sx")
 val math      = use("std/math")
+val string    = use("std/string")
 
 val (
     START_X: f32 = 0.0 as f32
@@ -470,9 +471,9 @@ fn keep_player_inside(app: mut engine.ExoApp) void = {
 }
 
 fn refresh_hud(game: mut MotionBlurDemo, app: mut engine.ExoApp) void = {
-    val state_text: mut ref u8 = "OFF"
+    val state_text: mut ref u8 = c"OFF"
     if game.blur_enabled {
-        state_text = "ON "
+        state_text = c"ON "
     }
     val percent: i32 = (game.blur_amount * (100.0 as f32)) as i32
     @snprintf(
@@ -496,7 +497,7 @@ fn refresh_hud(game: mut MotionBlurDemo, app: mut engine.ExoApp) void = {
     )
     ecs.ui_text(
         app.scene.ui,
-        game.status,
+        string.from_cstr(game.status),
         42.0 as f32,
         641.0 as f32,
         2.0 as f32,

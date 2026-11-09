@@ -3,7 +3,7 @@ val mem    = use("mem.sx")
 
 /// A compile-time embedded engine asset.
 pub type EmbeddedAsset = {
-    key: ref u8
+    key: string.StringView
     data: ref u8
     len: usize
 }
@@ -49,7 +49,7 @@ val (
     example_sound            = @embed("../assets/example_sound.wav")
 )
 
-fn asset(key: ref u8, data: ref u8, len: i64) EmbeddedAsset = {
+fn asset(key: string.StringView, data: ref u8, len: i64) EmbeddedAsset = {
     return {
         key: key,
         data: data,
@@ -57,23 +57,22 @@ fn asset(key: ref u8, data: ref u8, len: i64) EmbeddedAsset = {
     }
 }
 
-fn key_matches(a: ref u8, b: ref u8) bool = trust {
-    if string.raw_cmp(a, b) == 0 {
+fn trim_dot_slash(v: string.StringView) string.StringView = trust {
+    if string.starts_with(v, "./") {
+        return string.slice(v, 2, v.len)
+    }
+    return v
+}
+
+fn key_matches(a: string.StringView, b: string.StringView) bool = trust {
+    if string.eql(a, b) {
         return true
     }
-    val ai: mut ref u8 = a
-    val bi: mut ref u8 = b
-    if string.len_raw(ai) > 2 && @load8(ai) == (46 as u8) && @load8(@ptradd(ai, 1)) == (47 as u8) {
-        ai = @ptradd(ai, 2) as ref u8
-    }
-    if string.len_raw(bi) > 2 && @load8(bi) == (46 as u8) && @load8(@ptradd(bi, 1)) == (47 as u8) {
-        bi = @ptradd(bi, 2) as ref u8
-    }
-    return string.raw_cmp(ai, bi) == 0
+    return string.eql(trim_dot_slash(a), trim_dot_slash(b))
 }
 
 /// Look up an embedded asset by the path that would normally be used on disk.
-pub fn find(key: ref u8) option[EmbeddedAsset] = trust {
+pub fn find(key: string.StringView) option[EmbeddedAsset] = trust {
     val assets: mut list[EmbeddedAsset] = mem.scoped[EmbeddedAsset]()
     @append(
         assets,

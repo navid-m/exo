@@ -20,18 +20,18 @@ val (
 )
 
 pub type ExoConfig = {
-    title: ref u8
+    title: string.StringView
     width: i32
     height: i32
     shaders: shaders.ExoShaderConfig
     quit_key: i32
     auto_camera: bool
     fixed_dt: f32
-    font_path: ref u8
+    font_path: string.StringView
     font_data: ref u8
     font_len: usize
     font_size: f32
-    debug_dump_path: ref u8
+    debug_dump_path: string.StringView
     debug_frame: i32
 }
 
@@ -50,7 +50,7 @@ pub type ExoApp = {
     frame: mut u64
     scene_revision: mut u64
     screenshot_requested: mut bool
-    screenshot_path: mut ref u8
+    screenshot_path: mut string.StringView
 }
 
 /// Application lifecycle and input hooks. The engine assigns no gameplay
@@ -168,7 +168,7 @@ pub fn default_shader_config() shaders.ExoShaderConfig = {
     return shaders.default_shader_config()
 }
 
-pub fn load_glb(path: ref u8) option[ecs.GlbModel] = trust {
+pub fn load_glb(path: string.StringView) option[ecs.GlbModel] = trust {
     return glb.load_glb(path)
 }
 
@@ -177,7 +177,7 @@ pub fn parse_glb_bytes(data: ref u8, len: usize) option[ecs.GlbModel] = trust {
 }
 
 /// Load a complete GLB scene with all meshes, materials, skins and animations.
-pub fn load_model(path: ref u8) option[ecs.ModelAsset] = trust {
+pub fn load_model(path: string.StringView) option[ecs.ModelAsset] = trust {
     return model.load_model(path)
 }
 
@@ -185,7 +185,7 @@ pub fn parse_model_bytes(data: ref u8, len: usize) option[ecs.ModelAsset] = trus
     return model.parse_model_bytes(data, len)
 }
 
-pub fn model_animation_index(asset: ecs.ModelAsset, name: ref u8) i32 = trust {
+pub fn model_animation_index(asset: ecs.ModelAsset, name: string.StringView) i32 = trust {
     return model.find_animation(asset, name)
 }
 
@@ -244,7 +244,7 @@ pub fn create_app(
         frame: 0 as u64,
         scene_revision: 0 as u64,
         screenshot_requested: false,
-        screenshot_path: none as ref u8
+        screenshot_path: string.view(none, 0)
     }
 }
 
@@ -258,7 +258,7 @@ pub fn create_basic_app(
 }
 
 pub type ExoAppBuilder = {
-    title: mut ref u8
+    title: mut string.StringView
     width: mut i32
     height: mut i32
     shaders: mut shaders.ExoShaderConfig
@@ -269,11 +269,11 @@ pub type ExoAppBuilder = {
     quit_key: mut i32
     auto_camera: mut bool
     fixed_dt: mut f32
-    font_path: mut ref u8
+    font_path: mut string.StringView
     font_data: mut ref u8
     font_len: mut usize
     font_size: mut f32
-    debug_dump_path: mut ref u8
+    debug_dump_path: mut string.StringView
     debug_frame: mut i32
 }
 
@@ -319,7 +319,7 @@ pub fn build_app(builder: ExoAppBuilder) ExoApp = {
     return create_app(config, builder.scene, builder.camera, builder.input, builder.audio)
 }
 
-pub fn with_title(app: mut ExoAppBuilder, title: ref u8) void = {
+pub fn with_title(app: mut ExoAppBuilder, title: string.StringView) void = {
     app.title = title
 }
 
@@ -371,7 +371,7 @@ pub fn with_fixed_timestep(app: mut ExoAppBuilder, dt: f32) void = {
 /// Load a font from a filesystem path (or the engine's embedded defaults).
 /// A `.png` path uses the legacy bitmap atlas; any other valid file is treated
 /// as a TTF/OTF and rasterized by stb_truetype.
-pub fn with_font(app: mut ExoAppBuilder, path: ref u8) void = {
+pub fn with_font(app: mut ExoAppBuilder, path: string.StringView) void = {
     app.font_path = path
     app.font_data = none as ref u8
     app.font_len = 0 as usize
@@ -386,7 +386,7 @@ pub fn with_font(app: mut ExoAppBuilder, path: ref u8) void = {
 pub fn with_font_bytes(app: mut ExoAppBuilder, data: ref u8, len: usize) void = {
     app.font_data = data
     app.font_len = len
-    app.font_path = none as ref u8
+    app.font_path = string.view(none, 0)
 }
 
 /// Set the pixel size of the base UI font. `UiText.scale` multiplies this value,
@@ -400,7 +400,7 @@ pub fn default_font_size() f32 = {
     return 8.0 as f32
 }
 
-pub fn with_debug_dump(app: mut ExoAppBuilder, path: ref u8, frame: i32) void = {
+pub fn with_debug_dump(app: mut ExoAppBuilder, path: string.StringView, frame: i32) void = {
     app.debug_dump_path = path
     app.debug_frame = frame
 }
@@ -423,7 +423,7 @@ pub fn request_quit(app: mut ExoApp) void = {
 }
 
 /// Ask the engine to save the next rendered frame to a PPM file.
-pub fn request_screenshot(app: mut ExoApp, path: ref u8) void = {
+pub fn request_screenshot(app: mut ExoApp, path: string.StringView) void = {
     app.screenshot_path = path
     app.screenshot_requested = true
 }
@@ -855,7 +855,7 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
         }
         renderer.set_capture_active(
             runtime,
-            app.screenshot_requested && app.screenshot_path != none
+            app.screenshot_requested && !string.is_empty(app.screenshot_path)
         )
         renderer.render_shadow_pass(runtime, meshes, app.scene, app.time)
         renderer.render_sun_shadow_pass(runtime, meshes, app.scene, app.camera, app.time)
@@ -923,11 +923,9 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
         }
         renderer.render_ui(runtime, meshes, app.scene, frame_w as i32, frame_h as i32)
         renderer.end_pass(runtime)
-        val capture_path: mut ref u8 = none as ref u8
+        val capture_path: mut string.StringView = string.view(none, 0)
         if app.screenshot_requested {
-            if app.screenshot_path != none && string.len_raw(app.screenshot_path) > (0 as usize) {
-                capture_path = app.screenshot_path
-            }
+            capture_path = app.screenshot_path
             app.screenshot_requested = false
         }
         if !renderer.submit_frame_capture(runtime, capture_path) {
@@ -935,7 +933,7 @@ fn run_app_internal[E: AppEvents](app0: ExoApp, events0: E) i32 = trust {
             exit_code = 1 as i32
             break
         }
-        if app.config.debug_frame >= (0 as i32) && app.frame == (app.config.debug_frame as u64) && app.config.debug_dump_path != none && string.len_raw(app.config.debug_dump_path) > (0 as usize) {
+        if app.config.debug_frame >= (0 as i32) && app.frame == (app.config.debug_frame as u64) && !string.is_empty(app.config.debug_dump_path) {
             renderer.debug_dump_scene(runtime, app.config.debug_dump_path)
         }
         app.frame = app.frame + (1 as u64)

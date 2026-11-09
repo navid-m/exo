@@ -1,4 +1,5 @@
 val math      = use("std/math")
+val string    = use("std/string")
 val ecs       = use("../src/ecs.sx")
 val engine    = use("../src/engine.sx")
 val rendering = use("../src/rendering.sx")
@@ -410,7 +411,7 @@ fn refresh_hud(game: PongGame, app: mut engine.ExoApp) void = {
     )
     ecs.ui_text(
         app.scene.ui,
-        game.hud,
+        string.from_cstr(game.hud),
         26.0 as f32,
         26.0 as f32,
         3.0 as f32,
@@ -538,7 +539,7 @@ pub fn (PongGame) on_key_down(
     if key == KEY_0 || key == KEY_F12 {
         game.shots = game.shots + (1 as i32)
         @snprintf(game.shot_path, 128 as usize, "./pong3d_screenshot_{d}.ppm", {game.shots})
-        engine.request_screenshot(app, game.shot_path)
+        engine.request_screenshot(app, string.from_cstr(game.shot_path))
     }
 }
 

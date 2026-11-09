@@ -1,5 +1,6 @@
 val math        = use("engine/math.sx")
 val postprocess = use("engine/postprocess.sx")
+val string      = use("std/string")
 val mem         = use("mem.sx")
 
 pub spec SceneEntity = {
@@ -320,7 +321,7 @@ pub type RenderSettings = {
 }
 
 pub type UiText = {
-    text: ref u8
+    text: string.StringView
     x: f32
     y: f32
     scale: f32
@@ -539,7 +540,7 @@ pub fn ui_clear(ui: mut Ui) void = {
 
 pub fn ui_text(
     ui: mut Ui,
-    text: ref u8,
+    text: string.StringView,
     x: f32,
     y: f32,
     scale: f32,
@@ -561,7 +562,7 @@ pub fn ui_text(
 /// size and the `scale` multiplier.
 pub fn ui_text_sized(
     ui: mut Ui,
-    text: ref u8,
+    text: string.StringView,
     x: f32,
     y: f32,
     pixel_size: f32,

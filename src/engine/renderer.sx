@@ -9,6 +9,7 @@ val io          = use("io.sx")
 val exoerr      = use("error.sx")
 val animation   = use("animation.sx")
 val string      = use("std/string")
+val cstr        = use("std/string/cstr")
 val mem         = use("../mem.sx")
 
 pub val SHADOW_RESOLUTION: u32 = 1024 as u32
@@ -418,7 +419,7 @@ pub type VertexAttributeTriple = {
 
 pub fn load_shader(
     runtime: ref Renderer,
-    path: ref u8,
+    path: string.StringView,
     stage: i32,
     num_samplers: u32,
     num_uniform_buffers: u32
@@ -720,8 +721,8 @@ pub fn recreate_render_targets(runtime: mut ref Renderer, width: u32, height: u3
 
 pub fn create_pipeline(
     runtime: ref Renderer,
-    vs_path: ref u8,
-    fs_path: ref u8,
+    vs_path: string.StringView,
+    fs_path: string.StringView,
     color_format: i32,
     enable_blend: bool,
     src_color: i32,
@@ -913,8 +914,8 @@ fn shadows_supported() bool = {
 /// Scene pipeline variant: stride=32 (pos+normal+uv), 3 vertex attributes.
 pub fn create_scene_pipeline(
     runtime: ref Renderer,
-    vs_path: ref u8,
-    fs_path: ref u8,
+    vs_path: string.StringView,
+    fs_path: string.StringView,
     color_format: i32
 ) ref void = trust {
     val vs: ref void = load_shader(
@@ -1032,8 +1033,8 @@ pub fn create_scene_pipeline(
 /// scene pass but never tests or writes depth, so geometry draws over it.
 pub fn create_sky_pipeline(
     runtime: ref Renderer,
-    vs_path: ref u8,
-    fs_path: ref u8,
+    vs_path: string.StringView,
+    fs_path: string.StringView,
     color_format: i32
 ) ref void = trust {
     val vs: ref void = load_shader(
@@ -1126,8 +1127,8 @@ pub fn create_sky_pipeline(
 /// Depth-only pipeline used for the dynamic cube shadow pass.
 pub fn create_shadow_pipeline(
     runtime: ref Renderer,
-    vs_path: ref u8,
-    fs_path: ref u8
+    vs_path: string.StringView,
+    fs_path: string.StringView
 ) ref void = trust {
     val vs: ref void = load_shader(
         runtime,
@@ -1235,8 +1236,8 @@ pub fn create_shadow_pipeline(
 /// target and alpha blending so HUD quads can be drawn directly to the swapchain.
 pub fn create_ui_pipeline(
     runtime: ref Renderer,
-    vs_path: ref u8,
-    fs_path: ref u8,
+    vs_path: string.StringView,
+    fs_path: string.StringView,
     color_format: i32
 ) ref void = trust {
     val vs: ref void = load_shader(
@@ -1355,8 +1356,8 @@ pub fn create_ui_pipeline(
 
 pub fn create_postprocess_pipeline(
     runtime: ref Renderer,
-    vs_path: ref u8,
-    fs_path: ref u8,
+    vs_path: string.StringView,
+    fs_path: string.StringView,
     color_format: i32,
     fragment_samplers: u32,
     fragment_uniforms: u32
@@ -1479,7 +1480,7 @@ pub fn create_postprocess_pipeline(
     return pipeline
 }
 
-pub fn load_png_texture(runtime: ref Renderer, path: ref u8) ref void = trust {
+pub fn load_png_texture(runtime: ref Renderer, path: string.StringView) ref void = trust {
     if io.load_binary_file(path) is some blob {
         val w: mut i32 = 0 as i32
         val h: mut i32 = 0 as i32
@@ -1572,6 +1573,7 @@ pub fn create_pipelines(
         runtime.swapchain_format
     )
     if runtime.scene_pipeline == none {
+        exoerr.print("scene pipeline creation failed")
         return false
     }
     runtime.sky_pipeline = create_sky_pipeline(
@@ -1606,6 +1608,7 @@ pub fn create_pipelines(
         0 as u32
     )
     if runtime.blit_pipeline == none {
+        exoerr.print("blit pipeline creation failed")
         return false
     }
     runtime.ui_pipeline = create_ui_pipeline(
@@ -1615,6 +1618,7 @@ pub fn create_pipelines(
         runtime.swapchain_format
     )
     if runtime.ui_pipeline == none {
+        exoerr.print("ui pipeline creation failed")
         return false
     }
     runtime.floor_pipeline = create_pipeline(
@@ -1631,6 +1635,7 @@ pub fn create_pipelines(
         1 as u32
     )
     if runtime.floor_pipeline == none {
+        exoerr.print("floor pipeline creation failed")
         return false
     }
     runtime.glow_pipeline = create_pipeline(
@@ -1647,6 +1652,7 @@ pub fn create_pipelines(
         0 as u32
     )
     if runtime.glow_pipeline == none {
+        exoerr.print("glow pipeline creation failed")
         return false
     }
     runtime.bloom_threshold_pipeline = create_postprocess_pipeline(
@@ -1658,6 +1664,7 @@ pub fn create_pipelines(
         1 as u32
     )
     if runtime.bloom_threshold_pipeline == none {
+        exoerr.print("bloom threshold pipeline creation failed")
         return false
     }
     runtime.bloom_blur_pipeline = create_postprocess_pipeline(
@@ -1669,6 +1676,7 @@ pub fn create_pipelines(
         1 as u32
     )
     if runtime.bloom_blur_pipeline == none {
+        exoerr.print("bloom blur pipeline creation failed")
         return false
     }
     runtime.godray_pipeline = create_postprocess_pipeline(
@@ -1680,6 +1688,7 @@ pub fn create_pipelines(
         1 as u32
     )
     if runtime.godray_pipeline == none {
+        exoerr.print("godray pipeline creation failed")
         return false
     }
     runtime.motion_blur_pipeline = create_postprocess_pipeline(
@@ -1703,6 +1712,7 @@ pub fn create_pipelines(
         1 as u32
     )
     if runtime.post_pipeline == none {
+        exoerr.print("post pipeline creation failed")
         return false
     }
     runtime.water_pipeline = create_pipeline(
@@ -1718,7 +1728,11 @@ pub fn create_pipelines(
         false,
         2 as u32
     )
-    return runtime.water_pipeline != none
+    if runtime.water_pipeline == none {
+        exoerr.print("water pipeline creation failed")
+        return false
+    }
+    return true
 }
 
 pub fn destroy_pipelines(runtime: mut ref Renderer) void = trust {
@@ -2214,16 +2228,16 @@ fn lower_byte(value: u8) u8 = {
     return value
 }
 
-fn path_has_extension(path: ref u8, extension: ref u8) bool = trust {
-    val path_len: usize = string.len_raw(path)
-    val ext_len: usize = string.len_raw(extension)
+fn path_has_extension(path: string.StringView, extension: string.StringView) bool = trust {
+    val path_len: usize = string.len(path) as usize
+    val ext_len: usize = string.len(extension) as usize
     if path_len < ext_len {
         return false
     }
-    val base: ref u8 = @ptradd(path, path_len - ext_len) as ref u8
+    val base: ref u8 = @ptradd(string.ptr(path), path_len - ext_len) as ref u8
     val i: mut usize = 0 as usize
     for i < ext_len {
-        if lower_byte(@load8(@ptradd(base, i))) != lower_byte(@load8(@ptradd(extension, i))) {
+        if lower_byte(@load8(@ptradd(base, i))) != lower_byte(@load8(@ptradd(string.ptr(extension), i))) {
             return false
         }
         i = i + (1 as usize)
@@ -2254,17 +2268,17 @@ fn create_gpu_device(debug: bool) ref void = trust {
     val dev: ref void = sdl.SDL_CreateGPUDeviceWithProperties(props)
     sdl.SDL_DestroyProperties(props)
     if dev == none as ref void {
-        return exoerr.set_ptr(sdl.SDL_GetError())
+        return exoerr.set_ptr(string.from_cstr(sdl.SDL_GetError()))
     }
     return dev
 }
 
 pub fn create(
-    title: ref u8,
+    title: string.StringView,
     width: i32,
     height: i32,
     shader_cfg: shaders.ExoShaderConfig,
-    font_path: ref u8,
+    font_path: string.StringView,
     font_bytes: ref u8,
     font_bytes_len: usize,
     font_size: f32
@@ -2298,7 +2312,7 @@ pub fn create(
     } else {
         runtime.font_base_size = 8.0 as f32
     }
-    runtime.window = sdl.SDL_CreateWindow(title, width, height, 0 as u64)
+    runtime.window = sdl.SDL_CreateWindow(title.ptr, width, height, 0 as u64)
     if runtime.window == none {
         destroy(runtime)
         return none as ref void
@@ -2449,7 +2463,7 @@ pub fn create(
             }
         }
     }
-    if !runtime.font_is_ttf && font_path != none && string.len_raw(font_path) > (0 as usize) {
+    if !runtime.font_is_ttf && !string.is_empty(font_path) {
         if !path_has_extension(font_path, ".png") {
             if io.load_binary_file(font_path) is some blob {
                 if font.valid(blob.data, blob.len) {
@@ -3341,7 +3355,7 @@ pub fn apply_post_process_with_light(
     return true
 }
 
-fn write_mapped_ppm(runtime: ref Renderer, tbuf: ref void, path: ref u8) void = trust {
+fn write_mapped_ppm(runtime: ref Renderer, tbuf: ref void, path: string.StringView) void = trust {
     val w: u32 = runtime.render_width
     val h: u32 = runtime.render_height
     val mapped: ref u8 = sdl.SDL_MapGPUTransferBuffer(runtime.device, tbuf, false) as ref u8
@@ -3359,11 +3373,11 @@ fn write_mapped_ppm(runtime: ref Renderer, tbuf: ref void, path: ref u8) void = 
             @store8(@ptradd(rgb, d + (2 as usize)), b)
             i = i + (1 as u32)
         }
-        val file: ref void = sdl.fopen(path, "wb")
+        val file: ref void = sdl.fopen(path.ptr, c"wb")
         if file != none {
             val hdr: ref u8 = @alloc(64 as usize) as ref u8
             @snprintf(hdr, 64 as usize, "P6\n{lld} {lld}\n255\n", {w as i64, h as i64})
-            sdl.fwrite(hdr, 1 as usize, string.len_raw(hdr), file)
+            sdl.fwrite(hdr, 1 as usize, cstr.len(hdr) as usize, file)
             sdl.fwrite(rgb, 1 as usize, (w * h * (3 as u32)) as usize, file)
             sdl.fclose(file)
             @free(hdr)
@@ -3373,7 +3387,7 @@ fn write_mapped_ppm(runtime: ref Renderer, tbuf: ref void, path: ref u8) void = 
     }
 }
 
-pub fn debug_dump_scene(runtime_raw: ref void, path: ref u8) void = trust {
+pub fn debug_dump_scene(runtime_raw: ref void, path: string.StringView) void = trust {
     val runtime: ref Renderer = runtime_raw as ref Renderer
     val w: u32 = runtime.render_width
     val h: u32 = runtime.render_height
@@ -3440,7 +3454,7 @@ fn present_capture(runtime: mut ref Renderer) bool = trust {
     return true
 }
 
-pub fn submit_frame_capture(runtime_raw: ref void, path: ref u8) bool = trust {
+pub fn submit_frame_capture(runtime_raw: ref void, path: string.StringView) bool = trust {
     exoerr.clear()
     if runtime_raw == none {
         return exoerr.set("frame not active")
@@ -3453,7 +3467,7 @@ pub fn submit_frame_capture(runtime_raw: ref void, path: ref u8) bool = trust {
     val w: u32 = runtime.render_width
     val h: u32 = runtime.render_height
     val tbuf: mut ref void = none
-    val capture_enabled: bool = path != none && string.len_raw(path) > (0 as usize) && runtime.capture_active && runtime.capture_color != none && runtime.swapchain_texture != none
+    val capture_enabled: bool = !string.is_empty(path) && runtime.capture_active && runtime.capture_color != none && runtime.swapchain_texture != none
     if capture_enabled {
         present_capture(runtime)
         val byte_size: u32 = w * h * (4 as u32)
@@ -3502,7 +3516,7 @@ pub fn submit_frame_capture(runtime_raw: ref void, path: ref u8) bool = trust {
 }
 
 pub fn submit_frame(runtime_raw: ref void) bool = trust {
-    return submit_frame_capture(runtime_raw, none as ref u8)
+    return submit_frame_capture(runtime_raw, string.view(none, 0))
 }
 
 pub fn draw_scene_mesh(
@@ -4940,7 +4954,7 @@ fn draw_ttf_text(
     screen_w: f32,
     screen_h: f32
 ) void = trust {
-    if text.text == none {
+    if text.text.ptr == none {
         return
     }
     val line_height: f32 = font.line_height(atlas.cpu)
@@ -4948,10 +4962,10 @@ fn draw_ttf_text(
     val pen_y: mut f32 = text.y
     val i: mut usize = 0 as usize
     for {
-        val ch: u8 = @load8(@ptradd(text.text, i))
-        if ch == (0 as u8) {
+        if i >= text.text.len as usize {
             break
         }
+        val ch: u8 = @load8(@ptradd(text.text.ptr, i))
         if ch == (10 as u8) {
             pen_x = text.x
             pen_y = pen_y + line_height
@@ -5041,10 +5055,10 @@ pub fn render_ui(
         val pen_y: mut f32 = text.y
         val i: mut usize = 0 as usize
         for {
-            val ch: u8 = @load8(@ptradd(text.text, i))
-            if ch == (0 as u8) {
+            if i >= text.text.len as usize {
                 break
             }
+            val ch: u8 = @load8(@ptradd(text.text.ptr, i))
             if ch == (10 as u8) {
                 pen_x = text.x
                 pen_y = pen_y + line_height + (2.0 as f32) * text_scale

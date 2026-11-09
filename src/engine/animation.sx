@@ -190,10 +190,10 @@ fn sample_quat(asset: ecs.ModelAsset, channel: ecs.ModelAnimChannel, time: f32) 
 }
 
 /// Find an animation clip by name. Returns -1 when it is not present.
-pub fn find_animation(asset: ecs.ModelAsset, name: ref u8) i32 = trust {
+pub fn find_animation(asset: ecs.ModelAsset, name: string.StringView) i32 = trust {
     val index: mut usize = 0 as usize
     for animation in asset.animations {
-        if animation.name != none && string.raw_cmp(animation.name, name) == (0 as i64) {
+        if animation.name != none && string.eql(string.from_cstr(animation.name), name) {
             return index as i32
         }
         index = index + (1 as usize)

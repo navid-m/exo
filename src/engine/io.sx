@@ -11,30 +11,30 @@ pub type BinaryBlob = {
 /// Resolve relative asset paths against the current directory and a small
 /// number of parent directories. This lets an executable run from a nested
 /// directory (for example ./examples) while still finding ./assets.
-pub fn resolve_path(path: ref u8) ref u8 = trust {
-    if path == none {
-        return path
+pub fn resolve_path(path: string.StringView) ref u8 = trust {
+    if path.ptr == none {
+        return path.ptr
     }
-    val probe: ref void = sdl.fopen(path, "rb")
+    val probe: ref void = sdl.fopen(path.ptr, c"rb")
     if probe != none {
         sdl.fclose(probe)
-        return path
+        return path.ptr
     }
-    if string.len_raw(path) == 0 || @load8(path) == (47 as u8) {
-        return path
+    if string.is_empty(path) || @load8(path.ptr) == (47 as u8) {
+        return path.ptr
     }
-    val name: mut ref u8 = path
-    if string.len_raw(path) > 2 && @load8(path) == (46 as u8) && @load8(@ptradd(
-            path,
+    val name: mut ref u8 = path.ptr
+    if string.len(path) > 2 && @load8(path.ptr) == (46 as u8) && @load8(@ptradd(
+            path.ptr,
             1
         )) == (47 as u8) {
-        name = @ptradd(path, 2) as ref u8
+        name = @ptradd(path.ptr, 2) as ref u8
     }
-    val prefix: mut ref u8 = "."
+    val prefix: mut ref u8 = c"."
     val depth: mut i32 = 0 as i32
     for depth < (4 as i32) {
         val candidate: ref u8 = @fmtalloc("{s}/{s}", {prefix, name})
-        val candidate_file: ref void = sdl.fopen(candidate, "rb")
+        val candidate_file: ref void = sdl.fopen(candidate, c"rb")
         if candidate_file != none {
             sdl.fclose(candidate_file)
             return candidate
@@ -42,12 +42,12 @@ pub fn resolve_path(path: ref u8) ref u8 = trust {
         prefix = @fmtalloc("{s}/..", {prefix})
         depth += (1 as i32)
     }
-    return path
+    return path.ptr
 }
 
-pub fn load_binary_file(path: ref u8) option[BinaryBlob] = trust {
+pub fn load_binary_file(path: string.StringView) option[BinaryBlob] = trust {
     val resolved: ref u8 = resolve_path(path)
-    val file: ref void = sdl.fopen(resolved, "rb")
+    val file: ref void = sdl.fopen(resolved, c"rb")
     if file == none {
         if embedded.find(path) is some asset {
             val buf: ref u8 = @alloc(asset.len) as ref u8

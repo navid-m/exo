@@ -1,4 +1,4 @@
-spectre_version "v0.0.15"
+spectre_version "v0.0.16"
 version "v0.0.2"
 
 dep "https://github.com/mackron/dr_libs.git"

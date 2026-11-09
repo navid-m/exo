@@ -1,29 +1,32 @@
-val sdl   = use("sdl.sx")
-val stdio = use("std/stdio")
+val sdl    = use("sdl.sx")
+val stdio  = use("std/stdio")
+val string = use("std/string")
 
-val last_error: mut ref u8 = none
+val last_error: mut string.StringView = string.view(none, 0)
 
 pub fn clear() void = {
-    last_error = none
+    last_error = string.view(none, 0)
 }
 
-pub fn set(msg: ref u8) bool = {
+pub fn set(msg: string.StringView) bool = {
     last_error = msg
     return false
 }
 
-pub fn set_ptr(msg: ref u8) ref void = {
+pub fn set_ptr(msg: string.StringView) ref void = {
     last_error = msg
     return none as ref void
 }
 
-pub fn get() ref u8 = {
-    if last_error != none {
+pub fn get() string.StringView = {
+    if last_error.ptr != none {
         return last_error
     }
-    return trust sdl.SDL_GetError()
+    return string.from_cstr(trust sdl.SDL_GetError())
 }
 
-pub fn print(prefix: ref u8) void = {
-    trust stdio.eprint("{s}: {s}\n", {prefix, get()})
+pub fn print(prefix: string.StringView) void = trust {
+    stdio.eprintv(prefix)
+    stdio.eprintv(": ")
+    stdio.eputs(get())
 }

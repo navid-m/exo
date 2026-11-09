@@ -6,7 +6,7 @@ val embedded = use("../embedded.sx")
 val mem      = use("../mem.sx")
 
 pub type AudioClip = {
-    path: ref u8
+    path: string.StringView
     loops: i32
     volume: i32
 }
@@ -44,19 +44,19 @@ fn lower_ascii(value: u8) u8 = {
     return value
 }
 
-fn is_mp3_path(path: ref u8) bool = trust {
-    val length: usize = string.len_raw(path)
+fn is_mp3_path(path: string.StringView) bool = trust {
+    val length: usize = string.len(path) as usize
     if length < (4 as usize) {
         return false
     }
-    val suffix: ref u8 = @ptradd(path, length - (4 as usize)) as ref u8
+    val suffix: ref u8 = @ptradd(string.ptr(path), length - (4 as usize)) as ref u8
     return @load8(suffix) == (46 as u8)
     && lower_ascii(@load8(@ptradd(suffix, 1 as usize))) == (109 as u8)
     && lower_ascii(@load8(@ptradd(suffix, 2 as usize))) == (112 as u8)
     && lower_ascii(@load8(@ptradd(suffix, 3 as usize))) == (51 as u8)
 }
 
-fn load_mp3(audio: mut ref ExoSDL3Audio, path: ref u8) bool = trust {
+fn load_mp3(audio: mut ref ExoSDL3Audio, path: string.StringView) bool = trust {
     if io.load_binary_file(path) is some blob {
         val handle: ref void = sdl.exo_mp3_load(blob.data as ref void, blob.len)
         @free(blob.data as ref void)
@@ -73,9 +73,9 @@ fn load_mp3(audio: mut ref ExoSDL3Audio, path: ref u8) bool = trust {
     return false
 }
 
-pub fn create_audio(wav_path: ref u8, volume: i32) ref void = trust {
+pub fn create_audio(wav_path: string.StringView, volume: i32) ref void = trust {
     exoerr.clear()
-    if wav_path == none || string.len_raw(wav_path) == (0 as usize) {
+    if wav_path.ptr == none || string.is_empty(wav_path) {
         return exoerr.set_ptr("audio path is empty")
     }
     val audio: mut ref ExoSDL3Audio = @alloc(@sizeof(ExoSDL3Audio)) as mut ref ExoSDL3Audio
@@ -190,7 +190,7 @@ pub fn default_audio_mixer() AudioBankConfig = {
     }
 }
 
-pub fn make_clip(path: ref u8, loops: i32, volume: i32) AudioClip = {
+pub fn make_clip(path: string.StringView, loops: i32, volume: i32) AudioClip = {
     return {
         path: path,
         loops: loops,
@@ -204,7 +204,7 @@ pub fn add_clip(config: mut AudioBankConfig, clip: AudioClip) void = {
 
 pub fn audio_enabled(config: AudioBankConfig) bool = {
     for clip in config.clips {
-        if clip.path != none && string.len_raw(clip.path) > (0 as usize) {
+        if clip.path.ptr != none && !string.is_empty(clip.path) {
             return true
         }
     }

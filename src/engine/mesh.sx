@@ -3,6 +3,7 @@ val math     = use("math.sx")
 val ecs      = use("../ecs.sx")
 val glb      = use("glb.sx")
 val json     = use("std/json")
+val string   = use("std/string")
 val bin      = use("std/encoding/binary")
 val mem      = use("../mem.sx")
 val PI: f64 = 3.14159265358979323846
@@ -175,7 +176,7 @@ pub fn upload_glb_model(runtime: ref void, model: ecs.GlbModel) renderer.MeshGPU
     @memcpy(json_buf, @ptradd(data, json_offset) as ref void, json_len as usize)
     @store8(@ptradd(json_buf, json_len as usize), 0)
     val result: mut renderer.MeshGPU = { raw: none as ref void, index_count: 0 as i32 }
-    if json.parse(json_buf) is some doc {
+    if json.parse(string.view(json_buf, json_len as i64)) is some doc {
         val root: ref void = json.doc_root(doc)
         val vc: usize = model.vertex_count as usize
         val ic: usize = model.index_count as usize
@@ -199,21 +200,21 @@ pub fn upload_glb_model(runtime: ref void, model: ecs.GlbModel) renderer.MeshGPU
             val idx_offset: mut usize = 0 as usize
             val has_nrm: mut bool = false
             val has_uv: mut bool = false
-            if json.obj_get(root, "accessors") is some accessors {
-                if json.obj_get(root, "bufferViews") is some buffer_views {
-                    if json.obj_get(root, "meshes") is some meshes {
+            if json.obj_get(root, c"accessors") is some accessors {
+                if json.obj_get(root, c"bufferViews") is some buffer_views {
+                    if json.obj_get(root, c"meshes") is some meshes {
                         if json.arr_get(meshes, 0 as usize) is some mesh {
-                            if json.obj_get(mesh, "primitives") is some primitives {
+                            if json.obj_get(mesh, c"primitives") is some primitives {
                                 if json.arr_get(primitives, 0 as usize) is some prim {
-                                    if json.obj_get(prim, "attributes") is some attrs {
-                                        if json.obj_get_int(attrs, "POSITION") is some pi {
+                                    if json.obj_get(prim, c"attributes") is some attrs {
+                                        if json.obj_get_int(attrs, c"POSITION") is some pi {
                                             pos_offset = glb.parse_accessor_offset(
                                                 accessors,
                                                 buffer_views,
                                                 pi
                                             )
                                         }
-                                        if json.obj_get_int(attrs, "NORMAL") is some ni {
+                                        if json.obj_get_int(attrs, c"NORMAL") is some ni {
                                             nrm_offset = glb.parse_accessor_offset(
                                                 accessors,
                                                 buffer_views,
@@ -221,7 +222,7 @@ pub fn upload_glb_model(runtime: ref void, model: ecs.GlbModel) renderer.MeshGPU
                                             )
                                             has_nrm = true
                                         }
-                                        if json.obj_get_int(attrs, "TEXCOORD_0") is some ti {
+                                        if json.obj_get_int(attrs, c"TEXCOORD_0") is some ti {
                                             uv_offset = glb.parse_accessor_offset(
                                                 accessors,
                                                 buffer_views,
@@ -230,7 +231,7 @@ pub fn upload_glb_model(runtime: ref void, model: ecs.GlbModel) renderer.MeshGPU
                                             has_uv = true
                                         }
                                     }
-                                    if json.obj_get_int(prim, "indices") is some ii {
+                                    if json.obj_get_int(prim, c"indices") is some ii {
                                         idx_offset = glb.parse_accessor_offset(
                                             accessors,
                                             buffer_views,
@@ -269,16 +270,16 @@ pub fn upload_glb_model(runtime: ref void, model: ecs.GlbModel) renderer.MeshGPU
                 vi = vi + (1 as usize)
             }
             val use_u16: mut bool = false
-            if json.parse(json_buf) is some doc2 {
+            if json.parse(string.view(json_buf, json_len as i64)) is some doc2 {
                 val root2: ref void = json.doc_root(doc2)
-                if json.obj_get(root2, "accessors") is some accessors2 {
-                    if json.obj_get(root2, "meshes") is some meshes2 {
+                if json.obj_get(root2, c"accessors") is some accessors2 {
+                    if json.obj_get(root2, c"meshes") is some meshes2 {
                         if json.arr_get(meshes2, 0 as usize) is some mesh2 {
-                            if json.obj_get(mesh2, "primitives") is some prims2 {
+                            if json.obj_get(mesh2, c"primitives") is some prims2 {
                                 if json.arr_get(prims2, 0 as usize) is some prim2 {
-                                    if json.obj_get_int(prim2, "indices") is some ii2 {
+                                    if json.obj_get_int(prim2, c"indices") is some ii2 {
                                         if json.arr_get(accessors2, ii2 as usize) is some acc {
-                                            if json.obj_get_int(acc, "componentType") is some ct {
+                                            if json.obj_get_int(acc, c"componentType") is some ct {
                                                 if ct == (5123 as i64) {
                                                     use_u16 = true
                                                 }

@@ -1,4 +1,5 @@
 val math      = use("std/math")
+val string    = use("std/string")
 val ecs       = use("../src/ecs.sx")
 val engine    = use("../src/engine.sx")
 val rendering = use("../src/rendering.sx")
@@ -406,7 +407,7 @@ fn refresh_hud(game: SkiFree, app: mut engine.ExoApp) void = {
     )
     ecs.ui_text(
         app.scene.ui,
-        game.hud,
+        string.from_cstr(game.hud),
         26.0 as f32,
         26.0 as f32,
         3.0 as f32,

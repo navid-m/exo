@@ -6,6 +6,7 @@ val input     = use("../src/engine/input.sx")
 val audio     = use("../src/engine/audio.sx")
 val physics   = use("../src/physics.sx")
 val math      = use("std/math")
+val string    = use("std/string")
 val mem       = use("../src/mem.sx")
 
 val (
@@ -301,7 +302,7 @@ fn refresh_hud(game: mut CrystalRun, app: mut engine.ExoApp) void = {
     )
     ecs.ui_text(
         app.scene.ui,
-        game.hud,
+        string.from_cstr(game.hud),
         26.0 as f32,
         25.0 as f32,
         3.0 as f32,

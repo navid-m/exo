@@ -1,8 +1,9 @@
 val sdl = use("sdl.sx")
+val string = use("std/string")
 
 pub type ShaderProgramConfig = {
-    vertex_path: ref u8
-    fragment_path: ref u8
+    vertex_path: string.StringView
+    fragment_path: string.StringView
 }
 
 pub type PostProcessShaderConfig = {
@@ -40,9 +41,9 @@ pub fn exo_shader_format() u32 = {
 
 pub fn exo_shader_entrypoint() ref u8 = {
     when darwin {
-        return "main0"
+        return c"main0"
     }
-    return "main"
+    return c"main"
 }
 
 
