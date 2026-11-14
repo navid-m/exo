@@ -1,3 +1,3 @@
-spectre_version "v0.0.16"
+spectre_version "v0.0.17"
 
 single_flags "-dynamic"

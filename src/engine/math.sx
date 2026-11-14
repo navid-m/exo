@@ -365,6 +365,38 @@ pub fn model_matrix(position: Vec3, uniform_scale: f32, rotation_y: f32) Mat4 = 
     )
 }
 
+pub fn sin(x: f64) f64 = {
+    return math.sin(x)
+}
+
+pub fn cos(x: f64) f64 = {
+    return math.cos(x)
+}
+
+pub fn tan(x: f64) f64 = {
+    return math.tan(x)
+}
+
+pub fn acos(x: f64) f64 = {
+    return math.acos(x)
+}
+
+pub fn sqrt(x: f64) f64 = {
+    return math.sqrt(x)
+}
+
+pub fn fabs(x: f64) f64 = {
+    return math.fabs(x)
+}
+
+pub fn floor(x: f64) f64 = {
+    return math.floor(x)
+}
+
+pub fn fclamp(x: f64, lo: f64, hi: f64) f64 = {
+    return math.fclamp(x, lo, hi)
+}
+
 pub fn reflect_position_y(position: Vec3, plane_y: f32) Vec3 = {
     return vec3(position.x, ((2.0 as f32) * plane_y) - position.y, position.z)
 }
